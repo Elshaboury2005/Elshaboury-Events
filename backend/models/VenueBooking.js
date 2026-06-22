@@ -172,16 +172,33 @@ const VenueBooking = {
               wt.user_id AS held_for_user_id
        FROM venue_bookings vb
        INNER JOIN venues v ON v.id = vb.venue_id
-       INNER JOIN events e ON e.id = vb.event_id
        INNER JOIN wallet_transactions wt
          ON wt.related_venue_booking_id = vb.id
         AND wt.status = 'held'
         AND wt.type = 'credit'
         AND wt.source = 'venue-booking'
        WHERE vb.status IN ('accepted','confirmed')
-         AND e.event_date <= DATE_SUB(NOW(), INTERVAL ? HOUR)
-         AND (e.lifecycle_status = 'expired' OR e.event_date <= NOW())`,
+         AND vb.event_date < DATE_SUB(NOW(), INTERVAL ? HOUR)`,
       [graceHours]
+    );
+    return rows;
+  },
+
+  // Past/cancelled/declined/completed bookings for owner
+  async findHistoryForOwner(ownerId) {
+    const [rows] = await pool.execute(
+      `SELECT vb.*, v.name AS venue_name, v.address AS venue_address, v.governorate,
+              v.category, v.price_per_day,
+              e.title AS event_title, e.event_type,
+              u.full_name AS host_name, u.email AS host_email
+       FROM venue_bookings vb
+       INNER JOIN venues v ON v.id = vb.venue_id AND v.owner_id = ?
+       LEFT JOIN events e ON e.id = vb.event_id
+       LEFT JOIN users u ON u.id = vb.host_id
+       WHERE vb.status IN ('cancelled','declined','declined_auto_expired','completed')
+          OR (vb.status IN ('accepted','confirmed') AND vb.event_date < CURDATE())
+       ORDER BY vb.event_date DESC, vb.booked_at DESC, vb.id DESC`,
+      [ownerId]
     );
     return rows;
   },

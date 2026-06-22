@@ -19,6 +19,19 @@
 
       const page = document.getElementById('pageContent');
       page.innerHTML = `
+        <div class="modal-overlay" id="venueDetailsModal" aria-hidden="true">
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="venueDetailsModalTitle">
+            <div class="modal-header">
+              <div class="modal-title-wrap">
+                <span class="section-kicker">Venue Details</span>
+                <h2 id="venueDetailsModalTitle">Venue</h2>
+              </div>
+              <button type="button" class="modal-close" id="closeVenueDetailsModal" aria-label="Close venue details">Close</button>
+            </div>
+            <div class="modal-body" id="venueDetailsBody"></div>
+          </div>
+        </div>
+
         <div class="stats-grid cols-4" id="venueStats"></div>
 
         <div class="two-col">
@@ -199,23 +212,30 @@
         <div class="card">
           <div class="section-head">
             <div>
-              <h3 class="section-title">Venues</h3>
-              <p class="section-meta">Current venue inventory, category, reviews, featured status, and revenue.</p>
+              <h3 class="section-title">All Venues</h3>
+              <p class="section-meta">All venue listings across every approval status.</p>
             </div>
+            <label class="label-stack" style="min-width: 220px;">Status Filter
+              <select id="allVenuesStatusFilter" class="search-input">
+                <option value="all">All</option>
+                <option value="approved">Approved</option>
+                <option value="pending_review">Pending Review</option>
+                <option value="rejected">Rejected</option>
+                <option value="suspended">Suspended</option>
+                <option value="changes_requested">Changes Requested</option>
+              </select>
+            </label>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>Venue Name</th>
+                  <th>Owner Name</th>
+                  <th>Owner Email</th>
+                  <th>Status</th>
                   <th>Category</th>
                   <th>Governorate</th>
-                  <th>Rating</th>
-                  <th>Capacity</th>
-                  <th>Price</th>
-                  <th>Featured</th>
-                  <th>Status</th>
-                  <th>Revenue</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -269,6 +289,11 @@
       const venueResetBtn = document.getElementById('venueResetBtn');
       const venuesBody = document.getElementById('venuesBody');
       const venueBookingsBody = document.getElementById('venueBookingsBody');
+      const allVenuesStatusFilter = document.getElementById('allVenuesStatusFilter');
+      const venueDetailsModal = document.getElementById('venueDetailsModal');
+      const venueDetailsBody = document.getElementById('venueDetailsBody');
+      const venueDetailsModalTitle = document.getElementById('venueDetailsModalTitle');
+      const closeVenueDetailsModal = document.getElementById('closeVenueDetailsModal');
       const venueImagePreview = document.getElementById('venueImagePreview');
       const venueImagesInput = document.getElementById('venueImages');
       const venueImageUpload = document.getElementById('venueImageUpload');
@@ -417,37 +442,76 @@
         return value;
       }
 
+      function statusBadge(status) {
+        const safeStatus = String(status || 'approved');
+        return `<span class="status-badge status-${AdminApp.escapeHtml(venueStatusClass(safeStatus))}">${AdminApp.escapeHtml(safeStatus.replace(/_/g, ' '))}</span>`;
+      }
+
+      function filteredVenues() {
+        const filter = allVenuesStatusFilter.value || 'all';
+        if (filter === 'all') return venues;
+        return venues.filter((venue) => String(venue.status || 'approved') === filter);
+      }
+
       function renderVenues() {
-        if (!venues.length) {
-          venuesBody.innerHTML = '<tr><td colspan="10"><div class="empty-state">No venues found.</div></td></tr>';
+        const visibleVenues = filteredVenues();
+        if (!visibleVenues.length) {
+          venuesBody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No venues found.</div></td></tr>';
           return;
         }
 
-        venuesBody.innerHTML = venues.map((venue) => `
+        venuesBody.innerHTML = visibleVenues.map((venue) => `
           <tr data-id="${venue.id}">
             <td>
               <div><strong>${AdminApp.escapeHtml(venue.name)}</strong></div>
               <div class="user-sub">${AdminApp.escapeHtml(venue.address)}</div>
             </td>
+            <td>
+              <div>${AdminApp.escapeHtml(venue.ownerName || 'Platform')}</div>
+              <div class="user-sub">${venue.venueType === 'platform' ? 'Admin-created' : AdminApp.escapeHtml(venue.venueType || '-')}</div>
+            </td>
+            <td>${AdminApp.escapeHtml(venue.ownerEmail || '-')}</td>
+            <td>${statusBadge(venue.status)}<div class="user-sub">${venue.isAvailable ? 'available' : 'offline'}</div></td>
             <td>${AdminApp.escapeHtml(categoryLabel(venue.category))}</td>
             <td>${AdminApp.escapeHtml(venue.governorate)}</td>
-            <td>${Number(venue.rating || 0).toFixed(1)} (${AdminApp.formatNumber(venue.totalReviews || 0)})</td>
-            <td>${AdminApp.formatNumber(venue.totalCapacity)}</td>
-            <td>${AdminApp.formatCurrency(venue.pricePerDay)}</td>
-            <td>${venue.isFeatured ? 'Yes' : 'No'}</td>
-            <td>
-              <span class="status-badge status-${AdminApp.escapeHtml(venueStatusClass(venue.status))}">${AdminApp.escapeHtml(venue.status || 'approved').replace(/_/g, ' ')}</span>
-              <div class="user-sub">${venue.isAvailable ? 'available' : 'offline'}</div>
-            </td>
-            <td>${AdminApp.formatCurrency(venue.totalRevenue || 0)}</td>
             <td>
               <div class="inline-actions">
-                <button class="btn btn-outline-primary" data-action="edit">Edit</button>
-                <button class="btn btn-secondary" data-action="calendar">Calendar</button>
+                <button class="btn btn-outline-primary" data-action="details">View Details</button>
+                ${venue.status === 'approved' ? '' : '<button class="btn btn-success" data-action="approve">Approve</button>'}
+                <button class="btn btn-outline-danger" data-action="reject">Reject</button>
+                <button class="btn btn-outline-warning" data-action="suspend">Suspend</button>
               </div>
             </td>
           </tr>
         `).join('');
+      }
+
+      function openVenueDetails(venue) {
+        venueDetailsModalTitle.textContent = venue.name || 'Venue';
+        venueDetailsBody.innerHTML = `
+          <div class="info-grid">
+            <div class="info-item"><div class="info-label">Venue Name</div><div class="info-value">${AdminApp.escapeHtml(venue.name || '-')}</div></div>
+            <div class="info-item"><div class="info-label">Owner Name</div><div class="info-value">${AdminApp.escapeHtml(venue.ownerName || 'Platform')}</div></div>
+            <div class="info-item"><div class="info-label">Owner Email</div><div class="info-value">${AdminApp.escapeHtml(venue.ownerEmail || '-')}</div></div>
+            <div class="info-item"><div class="info-label">Status</div><div class="info-value">${statusBadge(venue.status)}</div></div>
+            <div class="info-item"><div class="info-label">Category</div><div class="info-value">${AdminApp.escapeHtml(categoryLabel(venue.category))}</div></div>
+            <div class="info-item"><div class="info-label">Governorate</div><div class="info-value">${AdminApp.escapeHtml(venue.governorate || '-')}</div></div>
+            <div class="info-item"><div class="info-label">Address</div><div class="info-value">${AdminApp.escapeHtml(venue.address || '-')}</div></div>
+            <div class="info-item"><div class="info-label">Capacity</div><div class="info-value">${AdminApp.formatNumber(venue.totalCapacity || 0)}</div></div>
+            <div class="info-item"><div class="info-label">Price Per Day</div><div class="info-value">${AdminApp.formatCurrency(venue.pricePerDay || 0)}</div></div>
+            <div class="info-item"><div class="info-label">Revenue</div><div class="info-value">${AdminApp.formatCurrency(venue.totalRevenue || 0)}</div></div>
+            <div class="info-item"><div class="info-label">Contact</div><div class="info-value">${AdminApp.escapeHtml(venue.contactPhone || '-')} / ${AdminApp.escapeHtml(venue.contactEmail || '-')}</div></div>
+            <div class="info-item"><div class="info-label">Admin Notes</div><div class="info-value">${AdminApp.escapeHtml(venue.adminNotes || '-')}</div></div>
+          </div>
+          <div class="info-item" style="margin-top: 16px;"><div class="info-label">Description</div><div class="info-value">${AdminApp.escapeHtml(venue.description || '-')}</div></div>
+        `;
+        venueDetailsModal.classList.add('open');
+        venueDetailsModal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeDetailsModal() {
+        venueDetailsModal.classList.remove('open');
+        venueDetailsModal.setAttribute('aria-hidden', 'true');
       }
 
       function renderSubmissions(submissions) {
@@ -584,7 +648,7 @@
 
       async function loadData() {
         const [venuesRes, bookingsRes, analyticsRes, submissionsRes] = await Promise.all([
-          AdminApp.request('/Admin/venues'),
+          AdminApp.request(`/Admin/venues?status=${encodeURIComponent(allVenuesStatusFilter.value || 'all')}`),
           AdminApp.request('/Admin/venue-bookings'),
           AdminApp.request('/Admin/venues/analytics'),
           AdminApp.request('/Admin/venue-submissions')
@@ -648,14 +712,81 @@
 
       venueResetBtn.addEventListener('click', resetForm);
 
+      async function approveVenue(venueId) {
+        const response = await AdminApp.request(`/Admin/venue-submissions/${venueId}/approve`, {
+          method: 'PATCH'
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          window.alert(data.message || 'Failed to approve venue');
+          return false;
+        }
+        return true;
+      }
+
+      async function rejectVenue(venueId) {
+        const reason = window.prompt('Enter rejection reason (sent to owner):');
+        if (reason === null) return false;
+        if (!reason.trim()) {
+          window.alert('Rejection reason is required');
+          return false;
+        }
+        const response = await AdminApp.request(`/Admin/venue-submissions/${venueId}/reject`, {
+          method: 'PATCH',
+          body: JSON.stringify({ reason: reason.trim() })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          window.alert(data.message || 'Failed to reject venue');
+          return false;
+        }
+        return true;
+      }
+
+      async function updateVenueStatus(venueId, status) {
+        const response = await AdminApp.request(`/Admin/venues/${venueId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          window.alert(data.message || 'Failed to update venue status');
+          return false;
+        }
+        return true;
+      }
+
       venuesBody.addEventListener('click', async (event) => {
         const button = event.target.closest('button[data-action]');
         if (!button) return;
         const row = button.closest('tr[data-id]');
         const venue = venues.find((item) => Number(item.id) === Number(row.dataset.id));
         if (!venue) return;
-        if (button.dataset.action === 'edit') fillForm(venue);
-        if (button.dataset.action === 'calendar') await loadCalendar(venue.id);
+        const action = button.dataset.action;
+
+        if (action === 'details') {
+          openVenueDetails(venue);
+          return;
+        }
+        if (action === 'approve') {
+          if (!window.confirm('Approve this venue listing?')) return;
+          if (await approveVenue(venue.id)) await loadData();
+          return;
+        }
+        if (action === 'reject') {
+          if (await rejectVenue(venue.id)) await loadData();
+          return;
+        }
+        if (action === 'suspend') {
+          if (!window.confirm('Suspend this venue listing?')) return;
+          if (await updateVenueStatus(venue.id, 'suspended')) await loadData();
+        }
+      });
+
+      allVenuesStatusFilter.addEventListener('change', loadData);
+      closeVenueDetailsModal.addEventListener('click', closeDetailsModal);
+      venueDetailsModal.addEventListener('click', (event) => {
+        if (event.target === venueDetailsModal) closeDetailsModal();
       });
 
       calendarVenueSelect.addEventListener('change', () => loadCalendar(calendarVenueSelect.value));
@@ -740,32 +871,9 @@
 
         if (action === 'approve') {
           if (!window.confirm('Approve this venue listing?')) return;
-          const response = await AdminApp.request(`/Admin/venue-submissions/${venueId}/approve`, {
-            method: 'PATCH'
-          });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok || !data.success) {
-            window.alert(data.message || 'Failed to approve venue');
-            return;
-          }
-          await loadData();
+          if (await approveVenue(venueId)) await loadData();
         } else if (action === 'reject') {
-          const reason = window.prompt('Enter rejection reason (sent to owner):');
-          if (reason === null) return;
-          if (!reason.trim()) {
-            window.alert('Rejection reason is required');
-            return;
-          }
-          const response = await AdminApp.request(`/Admin/venue-submissions/${venueId}/reject`, {
-            method: 'PATCH',
-            body: JSON.stringify({ reason: reason.trim() })
-          });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok || !data.success) {
-            window.alert(data.message || 'Failed to reject venue');
-            return;
-          }
-          await loadData();
+          if (await rejectVenue(venueId)) await loadData();
         } else if (action === 'changes') {
           const comments = window.prompt('Enter requested changes/comments:');
           if (comments === null) return;

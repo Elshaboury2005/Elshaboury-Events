@@ -1,7 +1,6 @@
 const pool = require('../config/database');
 const Notification = require('../models/Notification');
 const { releaseEventVaultIfExpired } = require('./eventVaultService');
-const { autoExpireVenueRequests, releaseCompletedEventFunds } = require('./venueOwnerEscrowService');
 let cron = null;
 try {
   cron = require('node-cron');
@@ -235,9 +234,6 @@ async function runLifecycleJobs() {
     await sendUpcomingReminders();
     await sendPostEventReviewPrompts();
     await sendVenueReviewPrompts();
-    // Venue Owner escrow jobs
-    await autoExpireVenueRequests();
-    await releaseCompletedEventFunds();
   } catch (error) {
     console.error('Lifecycle job error:', error.message);
   }

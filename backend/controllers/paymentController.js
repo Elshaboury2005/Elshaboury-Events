@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const Payment = require('../models/Payment');
 const Notification = require('../models/Notification');
 const pool = require('../config/database');
+const VenueBooking = require('../models/VenueBooking');
 const { roundMoney, creditWallet, debitWallet, getWalletOverview, lockUserWallet } = require('../services/walletService');
 const { computePerTicketPromoTotals } = require('../utils/promoPricing');
 const { confirmVenueBookingAfterPayment } = require('../services/venueBookingService');
@@ -207,7 +208,7 @@ exports.create = async (req, res) => {
         }
 
         const bookingIdToConfirm = Number(venueBookingId || event.venue_booking_id || 0) || null;
-        let confirmedVenueBooking = null;
+        let paymentVenueBooking = null;
         if (bookingIdToConfirm) {
           const [bookingRows] = await connection.execute(
             `SELECT id, status, host_id
@@ -229,11 +230,12 @@ exports.create = async (req, res) => {
             await connection.execute(
               `UPDATE venue_bookings
                SET event_id = ?, payment_status = 'paid'
-               WHERE id = ?`,
+              WHERE id = ?`,
               [eventId, bookingIdToConfirm]
             );
+            paymentVenueBooking = await VenueBooking.findById(bookingIdToConfirm, connection);
           } else {
-            confirmedVenueBooking = await confirmVenueBookingAfterPayment({
+            paymentVenueBooking = await confirmVenueBookingAfterPayment({
               connection,
               venueBookingId: bookingIdToConfirm,
               eventId,
@@ -257,11 +259,11 @@ exports.create = async (req, res) => {
           'success'
         );
 
-        if (confirmedVenueBooking) {
+        if (paymentVenueBooking && paymentVenueBooking.status === 'confirmed') {
           await Notification.create(
             userId,
             'Venue Booking Confirmed',
-            `Venue ${confirmedVenueBooking.venue_name || 'venue'} has been confirmed for ${String(confirmedVenueBooking.event_date || '').slice(0, 10)}.`,
+            `Venue ${paymentVenueBooking.venue_name || 'venue'} has been confirmed for ${String(paymentVenueBooking.event_date || '').slice(0, 10)}.`,
             'success'
           );
         }
@@ -279,11 +281,12 @@ exports.create = async (req, res) => {
             status: 'completed'
           },
           wallet: walletSnapshot ? { balance: walletSnapshot.balance } : null,
-          venueBooking: confirmedVenueBooking
+          venueBooking: paymentVenueBooking
             ? {
-              id: confirmedVenueBooking.id,
-              status: confirmedVenueBooking.status,
-              paymentStatus: confirmedVenueBooking.payment_status
+              id: paymentVenueBooking.id,
+              status: paymentVenueBooking.status,
+              paymentStatus: paymentVenueBooking.payment_status,
+              bookedAt: paymentVenueBooking.booked_at
             }
             : null
         });

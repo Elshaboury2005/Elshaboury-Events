@@ -7,6 +7,7 @@ const router = express.Router();
 router.get('/', authenticateOptional, venueController.getAvailableVenues);
 router.get('/featured', authenticateOptional, venueController.getFeaturedVenues);
 router.get('/suggestions', authenticateOptional, venueController.getVenueSuggestions);
+router.get('/owner/:ownerId/profile', venueController.getOwnerProfile);
 router.get('/wishlist', authenticateToken, venueController.getWishlist);
 router.get('/my-bookings', authenticateToken, venueController.getMyBookings);
 router.post('/book', authenticateToken, venueController.bookVenue);

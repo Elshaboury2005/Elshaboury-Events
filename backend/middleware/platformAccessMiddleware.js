@@ -1,5 +1,8 @@
 const { getPlatformAccessState } = require('../services/platformAccessService');
 
+let didLogWebAccessError = false;
+let didLogApiAccessError = false;
+
 function isStaticAssetRequest(pathname) {
   return /\.[a-z0-9]+$/i.test(pathname) && !pathname.endsWith('.html');
 }
@@ -42,7 +45,10 @@ async function enforcePlatformWebAccess(req, res, next) {
 
     return res.redirect('/html/signin.html?platformLocked=1');
   } catch (error) {
-    console.error('Platform web access middleware error:', error);
+    if (!didLogWebAccessError) {
+      console.warn('Platform web access middleware skipped:', error.message);
+      didLogWebAccessError = true;
+    }
     return next();
   }
 }
@@ -67,7 +73,10 @@ async function enforcePlatformApiAccess(req, res, next) {
       locked: true
     });
   } catch (error) {
-    console.error('Platform API access middleware error:', error);
+    if (!didLogApiAccessError) {
+      console.warn('Platform API access middleware skipped:', error.message);
+      didLogApiAccessError = true;
+    }
     return next();
   }
 }

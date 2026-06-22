@@ -844,14 +844,50 @@ exports.deleteEvent = async (req, res) => {
 
 exports.getVenues = async (req, res) => {
   try {
+    const allowedStatuses = new Set(['approved', 'pending_review', 'rejected', 'suspended', 'changes_requested']);
+    const status = String(req.query.status || 'all').trim().toLowerCase();
     const venues = await Venue.findAll();
+    const filteredVenues = allowedStatuses.has(status)
+      ? venues.filter((row) => String(row.status || 'approved').toLowerCase() === status)
+      : venues;
     res.json({
       success: true,
-      venues: venues.map((row) => normalizeVenueResponse(row))
+      venues: filteredVenues.map((row) => normalizeVenueResponse(row))
     });
   } catch (error) {
     console.error('Admin get venues error:', error);
     res.status(500).json({ success: false, message: 'Failed to load venues' });
+  }
+};
+
+exports.updateVenueStatus = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const status = String(req.body.status || '').trim().toLowerCase();
+    const allowedStatuses = new Set(['approved', 'pending_review', 'rejected', 'suspended', 'changes_requested']);
+
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid venue ID' });
+    }
+    if (!allowedStatuses.has(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid venue status' });
+    }
+
+    const [[venue]] = await pool.execute('SELECT id, name FROM venues WHERE id = ? LIMIT 1', [id]);
+    if (!venue) {
+      return res.status(404).json({ success: false, message: 'Venue not found' });
+    }
+
+    const updates = { status };
+    if (status === 'approved') updates.isAvailable = true;
+    if (status === 'suspended') updates.isAvailable = false;
+    const updated = await Venue.update(id, updates);
+
+    await logAdminAction(req.admin.id, 'UPDATE_VENUE_STATUS', 'venue', String(id), { name: venue.name, status }, getClientIp(req));
+    res.json({ success: true, venue: normalizeVenueResponse({ ...updated, upcoming_bookings: updated.upcoming_bookings || 0 }) });
+  } catch (error) {
+    console.error('Admin update venue status error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update venue status' });
   }
 };
 

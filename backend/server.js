@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, 'project.env') });
+require('./config/env');
 
 const accountRoutes = require('./routes/accountRoutes');
 const eventRoutes = require('./routes/eventRoutes');
@@ -31,6 +31,8 @@ const { setupDatabase } = require('./utils/databaseSetup');
 const { setupAdminDatabase } = require('./utils/admin/adminSetup');
 const { startEventLifecycleJobs } = require('./services/eventLifecycleService');
 const { startChatCleanupJob } = require('./services/chatCleanupService');
+const { startVenueBookingExpiryJob } = require('./services/venueBookingExpiryService');
+const { startVenueBookingFundReleaseJob } = require('./services/venueBookingFundReleaseService');
 
 const http = require('http');
 const { setupSocket } = require('./utils/socketHandler');
@@ -127,6 +129,8 @@ server.listen(PORT, () => {
       if (ready) {
         startEventLifecycleJobs();
         startChatCleanupJob();
+        startVenueBookingExpiryJob();
+        startVenueBookingFundReleaseJob();
       }
     })
     .catch((err) => {

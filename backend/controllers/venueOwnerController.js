@@ -13,7 +13,8 @@ const {
   holdFundsForVenueOwner,
   refundHeldFundsToHost,
   getWalletOverview,
-  roundMoney
+  roundMoney,
+  debitWallet
 } = require('../services/walletService');
 const { cancelAndRefundVenueBooking } = require('../services/venueOwnerEscrowService');
 
@@ -433,6 +434,20 @@ exports.getUpcomingBookings = async (req, res) => {
 
 // ── Wallet ────────────────────────────────────────────────────────────────
 
+exports.getBookingHistory = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+    const rows = await VenueBooking.findHistoryForOwner(ownerId);
+    res.json({
+      success: true,
+      bookings: rows.map(normalizeBookingForOwner)
+    });
+  } catch (error) {
+    console.error('getBookingHistory error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load booking history' });
+  }
+};
+
 exports.getWallet = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -451,6 +466,68 @@ exports.getWallet = async (req, res) => {
     }
     console.error('venueOwner getWallet error:', error);
     res.status(500).json({ success: false, message: 'Failed to load wallet data' });
+  }
+};
+
+exports.withdrawWallet = async (req, res) => {
+  let connection;
+  try {
+    const userId = req.user.userId;
+    const amount = roundMoney(req.body.amount);
+    const cardLast4 = String(req.body.cardLast4 || '').replace(/\D/g, '').slice(-4);
+    const note = String(req.body.note || '').trim();
+
+    if (amount == null || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Withdrawal amount must be a positive number'
+      });
+    }
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const descriptionParts = [`Venue owner withdrawal of ${amount.toFixed(2)} EGP`];
+    if (cardLast4) descriptionParts.push(`to card ending in ${cardLast4}`);
+    if (note) descriptionParts.push(`- ${note}`);
+
+    const result = await debitWallet({
+      userId,
+      amount,
+      source: 'withdrawal',
+      description: descriptionParts.join(' '),
+      conn: connection
+    });
+
+    await connection.commit();
+    connection.release();
+    connection = null;
+
+    res.status(201).json({
+      success: true,
+      message: 'Withdrawal completed successfully',
+      balance: result.newBalance,
+      walletTransaction: {
+        id: result.transactionId,
+        amount,
+        type: 'debit',
+        source: 'withdrawal',
+        status: 'available'
+      }
+    });
+  } catch (error) {
+    if (connection) {
+      try { await connection.rollback(); } catch (_) {}
+      connection.release();
+    }
+    if (error.message === 'User not found') {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    if (error.message === 'Insufficient wallet balance') {
+      return res.status(400).json({ success: false, message: 'Withdrawal amount exceeds available wallet balance' });
+    }
+    console.error('venueOwner withdrawWallet error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to withdraw wallet balance' });
   }
 };
 

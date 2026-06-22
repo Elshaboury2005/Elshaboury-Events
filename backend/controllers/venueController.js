@@ -221,6 +221,93 @@ exports.getFeaturedVenues = async (req, res) => {
   }
 };
 
+exports.getOwnerProfile = async (req, res) => {
+  try {
+    const ownerId = String(req.params.ownerId || '').trim();
+    if (!ownerId) {
+      return res.status(400).json({ success: false, message: 'Owner ID is required' });
+    }
+
+    const [[owner]] = await pool.execute(
+      `SELECT id, full_name
+       FROM users
+       WHERE id = ? AND role = 'venue_owner'
+       LIMIT 1`,
+      [ownerId]
+    );
+
+    if (!owner) {
+      return res.status(404).json({ success: false, message: 'Venue owner not found' });
+    }
+
+    const [venueRows] = await pool.execute(
+      `SELECT
+         v.*,
+         FALSE AS is_booked_on_date,
+         FALSE AS is_blocked_on_date,
+         TRUE AS is_available_on_date,
+         FALSE AS is_in_wishlist,
+         (
+           SELECT COUNT(*)
+           FROM venue_bookings vb
+           WHERE vb.venue_id = v.id
+             AND vb.status IN ('accepted', 'confirmed')
+             AND vb.event_date >= CURDATE()
+         ) AS upcoming_bookings,
+         (
+           SELECT COUNT(*)
+           FROM venue_bookings vb
+           WHERE vb.venue_id = v.id
+             AND vb.status IN ('accepted', 'confirmed')
+         ) AS confirmed_bookings,
+         (
+           SELECT COALESCE(SUM(vb.total_price), 0)
+           FROM venue_bookings vb
+           WHERE vb.venue_id = v.id
+             AND vb.status = 'confirmed'
+             AND vb.payment_status = 'paid'
+         ) AS total_revenue
+       FROM venues v
+       WHERE v.owner_id = ?
+         AND v.status = 'approved'
+       ORDER BY v.is_featured DESC, v.rating DESC, v.price_per_day ASC, v.name ASC`,
+      [ownerId]
+    );
+
+    const [[bookingStats]] = await pool.execute(
+      `SELECT COUNT(*) AS total_confirmed_bookings
+       FROM venue_bookings vb
+       INNER JOIN venues v ON v.id = vb.venue_id
+       WHERE v.owner_id = ?
+         AND v.status = 'approved'
+         AND vb.status IN ('accepted', 'confirmed')`,
+      [ownerId]
+    );
+
+    const approvedVenuesCount = venueRows.length;
+    const averageRating = approvedVenuesCount > 0
+      ? venueRows.reduce((sum, venue) => sum + Number(venue.rating || 0), 0) / approvedVenuesCount
+      : 0;
+
+    res.json({
+      success: true,
+      owner: {
+        id: owner.id,
+        fullName: owner.full_name || 'Venue Owner'
+      },
+      stats: {
+        approvedVenuesCount,
+        averageRating: Number(averageRating.toFixed(2)),
+        totalConfirmedBookings: Number(bookingStats.total_confirmed_bookings || 0)
+      },
+      venues: venueRows.map((row) => normalizeVenueForResponse(row))
+    });
+  } catch (error) {
+    console.error('Get venue owner profile error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load venue owner profile' });
+  }
+};
+
 exports.getVenueDetails = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);

@@ -27,6 +27,7 @@ router.get('/venues', authenticateAdmin, adminController.getVenues);
 router.get('/venues/analytics', authenticateAdmin, adminController.getVenueAnalytics);
 router.post('/venues', authenticateAdmin, adminController.createVenue);
 router.patch('/venues/:id', authenticateAdmin, adminController.updateVenue);
+router.patch('/venues/:id/status', authenticateAdmin, adminController.updateVenueStatus);
 router.get('/venues/:id/calendar', authenticateAdmin, adminController.getVenueCalendar);
 router.post('/venues/:id/availability-blocks', authenticateAdmin, adminController.createVenueAvailabilityBlock);
 router.delete('/venues/availability-blocks/:blockId', authenticateAdmin, adminController.deleteVenueAvailabilityBlock);

@@ -41,6 +41,8 @@
       bookingReference: venueBooking.id || draft.venueBookingId || payment.transactionId || 'N/A',
       transactionId: payment.transactionId || 'N/A',
       venueBookingId: venueBooking.id || draft.venueBookingId || null,
+      venueBookingStatus: venueBooking.status || null,
+      venueBookingBookedAt: venueBooking.bookedAt || null,
       listingFee: Number(draft.listingFee || 0),
       venueFee: Number(draft.venueFee || 0),
       manageUrl: eventId ? `manage-event.html?id=${encodeURIComponent(eventId)}` : 'my-events.html',
@@ -284,6 +286,10 @@
       }
 
       document.getElementById('successOverlay').classList.add('success-visible');
+      if (draft.venueType === 'platform_booked') {
+        storeVenueConfirmation({ eventId, paymentData });
+        document.querySelector('#successOverlay .btn-outline').href = '/html/venue-booking-confirmation.html';
+      }
       localStorage.removeItem('eventDraft');
     } catch (error) {
       console.error('Publish payment failed:', error);

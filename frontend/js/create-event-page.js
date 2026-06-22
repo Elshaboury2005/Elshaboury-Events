@@ -172,6 +172,7 @@
   const venueModalAddress = document.getElementById('venueModalAddress');
   const venueModalReviews = document.getElementById('venueModalReviews');
   const venueDirectionsLink = document.getElementById('venueDirectionsLink');
+  const venueOwnerProfileLink = document.getElementById('venueOwnerProfileLink');
   const venueModalCategoryBadge = document.getElementById('venueModalCategoryBadge');
   const venueModalRatingBadge = document.getElementById('venueModalRatingBadge');
   const venueModalName = document.getElementById('venueModalName');
@@ -1282,6 +1283,12 @@
     venueDirectionsLink.href = venue.latitude != null && venue.longitude != null
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue.latitude},${venue.longitude}`)}`
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.address)}`;
+    if (venueOwnerProfileLink) {
+      venueOwnerProfileLink.href = venue.ownerId
+        ? `/html/venue-owner-profile.html?ownerId=${encodeURIComponent(venue.ownerId)}`
+        : '#';
+      venueOwnerProfileLink.classList.toggle('hidden', !venue.ownerId);
+    }
     venuePrice.textContent = money(venue.pricePerDay);
     venueHourlyRow.classList.toggle('hidden', !(venue.pricePerHour && venue.minHours));
     venueHourlyPrice.textContent = money(venue.pricePerHour || 0);

@@ -1,4 +1,6 @@
 (function () {
+  const VENUE_RESPONSE_WINDOW_HOURS = 48;
+
   function money(value) {
     return `${Number(value || 0).toLocaleString('en-US', {
       minimumFractionDigits: 2,
@@ -12,6 +14,26 @@
     return Number.isNaN(date.getTime())
       ? value
       : date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function longDateTime(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? value
+      : date.toLocaleString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+  }
+
+  function responseDeadline(bookedAt) {
+    const createdAt = new Date(bookedAt);
+    if (Number.isNaN(createdAt.getTime())) return null;
+    return new Date(createdAt.getTime() + VENUE_RESPONSE_WINDOW_HOURS * 60 * 60 * 1000);
   }
 
   function loadConfirmation() {
@@ -37,6 +59,15 @@
     document.getElementById('receiptListingFee').textContent = money(payload.listingFee);
     document.getElementById('receiptTotal').textContent = money(payload.totalPaid);
     document.getElementById('continueEventBtn').href = payload.manageUrl || 'my-events.html';
+
+    const deadlineNotice = document.getElementById('venueResponseDeadlineNotice');
+    const deadline = responseDeadline(payload.venueBookingBookedAt || payload.bookedAt);
+    if (payload.venueBookingStatus === 'pending_venue_response' && deadline) {
+      deadlineNotice.textContent = `Awaiting venue owner response — they have until ${longDateTime(deadline)} to respond`;
+      deadlineNotice.classList.remove('hidden');
+    } else {
+      deadlineNotice.classList.add('hidden');
+    }
   }
 
   function downloadReceipt(payload) {

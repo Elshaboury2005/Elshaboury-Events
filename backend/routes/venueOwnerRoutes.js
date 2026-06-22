@@ -21,10 +21,12 @@ router.post('/booking-requests/:id/decline', venueOwnerController.declineBooking
 
 // Upcoming/Confirmed Bookings and cancel bookings
 router.get('/bookings', venueOwnerController.getUpcomingBookings);
+router.get('/bookings/history', venueOwnerController.getBookingHistory);
 router.post('/bookings/:id/cancel', venueOwnerController.cancelBooking);
 
 // Wallet and Analytics
 router.get('/wallet', venueOwnerController.getWallet);
+router.post('/wallet/withdraw', venueOwnerController.withdrawWallet);
 router.get('/analytics', venueOwnerController.getAnalytics);
 
 // Reviews

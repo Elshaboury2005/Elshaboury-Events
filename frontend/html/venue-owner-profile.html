@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Venue Owner Profile | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/public/css/auth.css">
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="/css/organizer-profile.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/contact-form.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section id="profileSection">
+      <div class="loading-state">Loading venue owner profile...</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-row">
+      <p>Elshaboury Events</p>
+      <p>Public venue owner profile and approved venue portfolio</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) setMenuState(false);
+      }));
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+      const profileSection = document.getElementById('profileSection');
+
+      function escapeHtml(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function toNumber(value, fallback = 0) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : fallback;
+      }
+
+      function getOwnerIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('ownerId') || '';
+      }
+
+      function buildStars(rating) {
+        const rounded = Math.round(Math.max(0, Math.min(5, toNumber(rating, 0))));
+        let stars = '';
+        for (let i = 1; i <= 5; i += 1) {
+          stars += `<span>${i <= rounded ? '&#9733;' : '&#9734;'}</span>`;
+        }
+        return stars;
+      }
+
+      function getInitials(name) {
+        const safe = String(name || 'VO').trim();
+        return safe.split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'VO';
+      }
+
+      function money(value) {
+        return `${toNumber(value, 0).toFixed(2)} EGP`;
+      }
+
+      function renderVenuesGrid(venues) {
+        if (!Array.isArray(venues) || venues.length === 0) {
+          return '<p class="empty-note">No approved venues to show.</p>';
+        }
+
+        return `
+          <div class="event-grid">
+            ${venues.map((venue) => `
+              <article class="event-card">
+                <h3>${escapeHtml(venue.name || 'Untitled Venue')}</h3>
+                <p>&#128205; ${escapeHtml(venue.governorate || 'Location TBA')}</p>
+                <p>${escapeHtml(venue.address || '')}</p>
+                <p>${toNumber(venue.totalCapacity, 0).toLocaleString('en-US')} guests · ${money(venue.pricePerDay)}</p>
+                <p><span class="stat-stars">${buildStars(venue.rating)}</span> (${toNumber(venue.totalReviews, 0)} reviews)</p>
+                <a href="/html/create-event.html?venueId=${encodeURIComponent(venue.id)}">View Venue</a>
+              </article>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderProfile(data) {
+        const owner = data.owner || {};
+        const stats = data.stats || {};
+        const ownerName = owner.fullName || 'Venue Owner';
+
+        profileSection.innerHTML = `
+          <section class="profile-hero">
+            <div class="hero-top">
+              <div class="profile-avatar">${escapeHtml(getInitials(ownerName))}</div>
+              <div class="hero-main">
+                <h1>${escapeHtml(ownerName)}</h1>
+                <p>Venue owner profile</p>
+                <div class="hero-row">
+                  <span class="pill verified">&#10003; Approved Venue Portfolio</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="stats-grid">
+            <article class="stat-card">
+              <span>Approved Venues</span>
+              <strong>${toNumber(stats.approvedVenuesCount, 0).toLocaleString('en-US')}</strong>
+            </article>
+            <article class="stat-card">
+              <span>Average Rating</span>
+              <strong>${toNumber(stats.averageRating, 0).toFixed(1)}</strong>
+              <div class="stat-stars">${buildStars(stats.averageRating)}</div>
+            </article>
+            <article class="stat-card">
+              <span>Confirmed Bookings</span>
+              <strong>${toNumber(stats.totalConfirmedBookings, 0).toLocaleString('en-US')}</strong>
+            </article>
+          </section>
+
+          <section class="surface-card">
+            <div class="section-head">
+              <div>
+                <h2>Approved Venues</h2>
+                <p>Public catalog listings managed by this owner.</p>
+              </div>
+            </div>
+            ${renderVenuesGrid(data.venues)}
+          </section>
+        `;
+      }
+
+      async function loadProfile() {
+        const ownerId = getOwnerIdFromUrl();
+        if (!ownerId) {
+          profileSection.innerHTML = '<div class="loading-state">Venue owner ID is missing.</div>';
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/venues/owner/${encodeURIComponent(ownerId)}/profile`, {
+            cache: 'no-store'
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Unable to load venue owner profile');
+          }
+          renderProfile(data);
+        } catch (error) {
+          profileSection.innerHTML = `<div class="loading-state">${escapeHtml(error.message || 'Failed to load venue owner profile.')}</div>`;
+        }
+      }
+
+      loadProfile();
+    })();
+  </script>
+  <script src="/public/js/auth-nav.js"></script>
+  <script src="/js/ai-assistant.js"></script>
+</body>
+
+</html>

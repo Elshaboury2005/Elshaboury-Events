@@ -261,6 +261,8 @@ const Venue = {
     const [rows] = await pool.execute(
       `SELECT
          v.*,
+         u.full_name AS owner_name,
+         u.email AS owner_email,
          (
            SELECT COUNT(*)
            FROM venue_bookings vb
@@ -282,6 +284,7 @@ const Venue = {
              AND vb.payment_status = 'paid'
          ) AS total_revenue
        FROM venues v
+       LEFT JOIN users u ON u.id = v.owner_id
        ORDER BY v.is_featured DESC, v.created_at DESC, v.id DESC`
     );
     return rows;
