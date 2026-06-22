@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venue Owner Dashboard | Elshaboury Events</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../public/css/auth.css">
+    <script src="../public/js/auth-config.js"></script>
+    <script src="../public/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="../css/navbar.css">
+    <style>
+        :root {
+            --bg-color: #0b192c;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #f97316;
+            --primary-hover: #ea580c;
+            --text-color: #eaf7fb;
+            --muted-color: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #0ea5e9;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-image: radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.08) 0%, transparent 40%),
+                              radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.08) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 100px auto 40px auto;
+            padding: 0 20px;
+        }
+
+        .welcome-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .welcome-header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-header p {
+            color: var(--muted-color);
+            margin: 5px 0 0 0;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .analytic-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(8px);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .analytic-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(249, 115, 22, 0.2);
+        }
+
+        .analytic-card .card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted-color);
+            margin: 0 0 10px 0;
+        }
+
+        .analytic-card .card-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .analytic-card .card-subtext {
+            font-size: 0.8rem;
+            color: var(--muted-color);
+            margin: 5px 0 0 0;
+        }
+
+        .tabs-nav {
+            display: flex;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 30px;
+            gap: 10px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--muted-color);
+            padding: 12px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-color);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Lists and Cards */
+        .list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+        }
+
+        .venue-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(8px);
+        }
+
+        .venue-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+
+        .venue-card-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .venue-card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+
+        .badge-pending { background-color: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-approved { background-color: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-rejected { background-color: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-changes { background-color: rgba(14, 165, 233, 0.15); color: var(--info); border: 1px solid rgba(14, 165, 233, 0.3); }
+
+        .venue-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--muted-color);
+        }
+
+        .venue-info-row span:last-child {
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .venue-card-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--card-border);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            flex: 1;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--primary);
+        }
+
+        .admin-notes-panel {
+            background-color: rgba(239, 68, 68, 0.08);
+            border-left: 4px solid var(--danger);
+            padding: 10px 15px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 15px;
+            font-size: 0.85rem;
+        }
+
+        .admin-notes-panel strong {
+            color: #fca5a5;
+        }
+
+        /* Tables */
+        .table-wrap {
+            overflow-x: auto;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.92rem;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 16px 20px;
+            font-weight: 600;
+            color: var(--muted-color);
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .booking-host {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .booking-host span:first-child {
+            font-weight: 600;
+        }
+
+        .booking-host span:last-child {
+            font-size: 0.8rem;
+            color: var(--muted-color);
+        }
+
+        .action-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-sm-success {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-sm-success:hover {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-sm-danger {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-sm-danger:hover {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-sm-outline {
+            background-color: transparent;
+            color: var(--muted-color);
+            border: 1px solid var(--card-border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-sm-outline:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-color);
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(11, 25, 44, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #0f213b;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            animation: modalSlide 0.3s ease;
+            position: relative;
+        }
+
+        @keyframes modalSlide {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .modal-body {
+            margin-bottom: 25px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: white;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: var(--muted-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Wallet custom */
+        .wallet-banner {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .wallet-box {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.6) 100%);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(8px);
+        }
+
+        .wallet-box.accented {
+            border-color: rgba(249, 115, 22, 0.3);
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%);
+        }
+
+        .wallet-label {
+            font-size: 0.9rem;
+            color: var(--muted-color);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 5px;
+        }
+
+        .wallet-amount {
+            font-size: 2.2rem;
+            font-weight: 800;
+        }
+
+        .transaction-type {
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .type-credit { color: var(--success); }
+        .type-debit { color: var(--danger); }
+
+        .tx-status {
+            font-size: 0.8rem;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .tx-status-held { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .tx-status-released { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .tx-status-refunded { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        .tx-status-available { background: rgba(14, 165, 233, 0.15); color: var(--info); }
+
+        .filter-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .filter-row select {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header class="ee-navbar">
+        <a class="brand" href="/html/venue-owner-dashboard.html">
+            <div class="brand-mark">EE</div>
+            <div>
+                <strong>Elshaboury Events</strong>
+                <p class="brand-subtitle">Venue Owner Dashboard</p>
+            </div>
+        </a>
+        <nav class="ee-navbar-nav">
+            <div class="ee-nav-main">
+                <span style="font-weight: 600; color: var(--primary);">Venue Owner Portal</span>
+            </div>
+            <div class="ee-nav-actions">
+                <a class="nav-btn" href="#" id="logoutBtn">Sign Out</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <div class="welcome-header">
+            <div>
+                <h1 id="welcomeTitle">Loading Dashboard...</h1>
+                <p>Manage your venues, view bookings, and track escrow wallet funds</p>
+            </div>
+            <a href="/html/venue-owner-submit.html" class="btn-primary">
+                <span>&#65291;</span> Add New Venue
+            </a>
+        </div>
+
+        <!-- Analytics Overview -->
+        <div class="analytics-grid">
+            <div class="analytic-card">
+                <p class="card-title">My Venues</p>
+                <p class="card-value" id="statVenues">0</p>
+                <p class="card-subtext" id="statVenuesBreakdown">0 approved | 0 pending</p>
+            </div>
+            <div class="analytic-card">
+                <p class="card-title">Total Bookings</p>
+                <p class="card-value" id="statBookings">0</p>
+                <p class="card-subtext" id="statBookingsBreakdown">0 active | 0 cancelled</p>
+            </div>
+            <div class="analytic-card">
+                <p class="card-title">Escrow Held Balance</p>
+                <p class="card-value" style="color: var(--warning);" id="statHeldBalance">0.00 EGP</p>
+                <p class="card-subtext">Released after events end</p>
+            </div>
+            <div class="analytic-card">
+                <p class="card-title">Total Earnings</p>
+                <p class="card-value" style="color: var(--success);" id="statEarnedBalance">0.00 EGP</p>
+                <p class="card-subtext">Funds released to wallet</p>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('venues')">My Venues</button>
+            <button class="tab-btn" onclick="switchTab('requests')">Booking Requests <span id="requestsCountBadge" style="background: var(--primary); color: white; border-radius: 99px; padding: 2px 6px; font-size: 0.75rem; display: none;">0</span></button>
+            <button class="tab-btn" onclick="switchTab('bookings')">Upcoming Bookings</button>
+            <button class="tab-btn" onclick="switchTab('wallet')">Escrow Wallet</button>
+            <button class="tab-btn" onclick="switchTab('reviews')">Reviews</button>
+        </div>
+
+        <!-- TAB CONTENT: MY VENUES -->
+        <div id="tab-venues" class="tab-content active">
+            <div class="list-grid" id="venuesList">
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted-color);">
+                    Loading venues...
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: BOOKING REQUESTS -->
+        <div id="tab-requests" class="tab-content">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Venue</th>
+                            <th>Host Details</th>
+                            <th>Event Title</th>
+                            <th>Date</th>
+                            <th>Price</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: var(--muted-color);">
+                                Loading requests...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: UPCOMING BOOKINGS -->
+        <div id="tab-bookings" class="tab-content">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Venue</th>
+                            <th>Host Details</th>
+                            <th>Event Details</th>
+                            <th>Date</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--muted-color);">
+                                Loading bookings...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: WALLET -->
+        <div id="tab-wallet" class="tab-content">
+            <div class="wallet-banner">
+                <div class="wallet-box">
+                    <p class="wallet-label">Available Wallet Balance</p>
+                    <p class="wallet-amount" style="color: var(--success);" id="walletAvailableBalance">0.00 EGP</p>
+                    <p style="font-size: 0.85rem; color: var(--muted-color); margin-top: 5px;">Withdrawal or spending power</p>
+                </div>
+                <div class="wallet-box accented">
+                    <p class="wallet-label">Escrow Frozen Balance</p>
+                    <p class="wallet-amount" style="color: var(--warning);" id="walletFrozenBalance">0.00 EGP</p>
+                    <p style="font-size: 0.85rem; color: var(--muted-color); margin-top: 5px;">Held until hosted events complete</p>
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700;">Transaction History</h3>
+                <select id="walletFilterSelect" onchange="loadWalletData()">
+                    <option value="all">All Transactions</option>
+                    <option value="held">Held (Escrow)</option>
+                    <option value="released">Released to Balance</option>
+                    <option value="refunded">Refunded to Host</option>
+                </select>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="walletTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: var(--muted-color);">
+                                Loading transaction history...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: REVIEWS -->
+        <div id="tab-reviews" class="tab-content">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Venue</th>
+                            <th>Reviewer</th>
+                            <th>Rating</th>
+                            <th>Comments</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reviewsTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--muted-color);">
+                                Loading reviews...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DECLINE REQUEST -->
+    <div id="declineModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeDeclineModal()">&times;</button>
+            <div class="modal-header">
+                <h3>Decline Booking Request</h3>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--muted-color); margin-bottom: 15px; font-size: 0.9rem;">
+                    Please provide a reason for declining. This explanation will be sent to the host.
+                </p>
+                <div class="form-group">
+                    <label for="declineReason" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.85rem;">Rejection Reason</label>
+                    <textarea class="form-control" id="declineReason" rows="4" placeholder="e.g. Venue is undergoing maintenance, conflicting off-platform booking, etc." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-sm-outline" style="padding: 10px 18px;" onclick="closeDeclineModal()">Cancel</button>
+                <button class="btn-primary" style="padding: 10px 18px;" id="submitDeclineBtn">Decline Request</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: AVAILABILITY BLOCKS -->
+    <div id="availabilityModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="close-btn" onclick="closeAvailabilityModal()">&times;</button>
+            <div class="modal-header">
+                <h3 id="availabilityModalTitle">Manage Availability</h3>
+            </div>
+            <div class="modal-body">
+                <!-- Add Block Form -->
+                <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid var(--card-border);">
+                    <h4 style="margin: 0 0 15px 0;">Create Block</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; color: var(--muted-color); margin-bottom: 5px;">Start Date</label>
+                            <input type="date" class="form-control" id="blockStartDate" required>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; color: var(--muted-color); margin-bottom: 5px;">End Date</label>
+                            <input type="date" class="form-control" id="blockEndDate" required>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-size: 0.8rem; color: var(--muted-color); margin-bottom: 5px;">Reason</label>
+                        <input type="text" class="form-control" id="blockReason" placeholder="e.g. Private renovation">
+                    </div>
+                    <button class="btn-primary" onclick="submitAvailabilityBlock()">Add Availability Block</button>
+                </div>
+
+                <!-- Existing Blocks -->
+                <h4 style="margin: 0 0 10px 0;">Blocked Slots</h4>
+                <div class="table-wrap" style="max-height: 200px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Reason</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="blocksTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inline auth guard check
+        const userRaw = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
+        if (!token || !userRaw) {
+            window.location.href = '/html/signin.html';
+        }
+        const currentUser = JSON.parse(userRaw);
+        if (currentUser.role !== 'venue_owner') {
+            window.location.href = '/html/index.html';
+        }
+
+        const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+
+        document.getElementById('welcomeTitle').textContent = `Welcome back, ${currentUser.fullName}!`;
+
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('isLoggedIn');
+            window.location.href = '/html/signin.html';
+        });
+
+        // Tab Switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.toLowerCase().includes(tabName));
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const contentDiv = document.getElementById(`tab-${tabName}`);
+            if (contentDiv) contentDiv.classList.add('active');
+
+            // Refresh tab-specific data
+            if (tabName === 'venues') loadVenues();
+            if (tabName === 'requests') loadRequests();
+            if (tabName === 'bookings') loadBookings();
+            if (tabName === 'wallet') loadWalletData();
+            if (tabName === 'reviews') loadReviews();
+        }
+
+        // Fetch dashboard analytics
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/analytics`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const stats = data.analytics;
+                    document.getElementById('statVenues').textContent = stats.venues.total;
+                    document.getElementById('statVenuesBreakdown').textContent = `${stats.venues.approved} approved | ${stats.venues.pending} pending`;
+                    
+                    document.getElementById('statBookings').textContent = stats.bookings.total;
+                    document.getElementById('statBookingsBreakdown').textContent = `${stats.bookings.active} active | ${stats.bookings.cancelled} cancelled`;
+
+                    document.getElementById('statHeldBalance').textContent = `${stats.wallet.totalHeld.toFixed(2)} EGP`;
+                    document.getElementById('statEarnedBalance').textContent = `${stats.wallet.totalEarned.toFixed(2)} EGP`;
+                }
+            } catch (err) {
+                console.error('Failed to load analytics', err);
+            }
+        }
+
+        // Load Venues Tab
+        async function loadVenues() {
+            const listEl = document.getElementById('venuesList');
+            listEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted-color);">Loading venues...</div>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/venues`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success && data.venues.length > 0) {
+                    listEl.innerHTML = '';
+                    data.venues.forEach(venue => {
+                        const card = document.createElement('div');
+                        card.className = 'venue-card';
+                        
+                        const statusText = venue.status.replace('_', ' ');
+                        let badgeClass = 'badge-pending';
+                        if (venue.status === 'approved') badgeClass = 'badge-approved';
+                        if (venue.status === 'rejected' || venue.status === 'suspended') badgeClass = 'badge-rejected';
+                        if (venue.status === 'changes_requested') badgeClass = 'badge-changes';
+
+                        const imgUrl = venue.images && venue.images[0] ? venue.images[0] : 'https://placehold.co/600x400/0c4f59/f6fbfc?text=Venue+Image';
+
+                        let notesHtml = '';
+                        if ((venue.status === 'rejected' || venue.status === 'changes_requested') && venue.adminNotes) {
+                            notesHtml = `
+                                <div class="admin-notes-panel">
+                                    <strong>Admin Comments:</strong> ${venue.adminNotes}
+                                </div>
+                            `;
+                        }
+
+                        card.innerHTML = `
+                            <img src="${imgUrl}" alt="${venue.name}">
+                            <div class="venue-card-body">
+                                <div class="venue-card-title">
+                                    <span>${venue.name}</span>
+                                    <span class="badge ${badgeClass}">${statusText}</span>
+                                </div>
+                                <div class="venue-info-row">
+                                    <span>Governorate:</span>
+                                    <span>${venue.governorate}</span>
+                                </div>
+                                <div class="venue-info-row">
+                                    <span>Capacity:</span>
+                                    <span>${venue.totalCapacity} guests</span>
+                                </div>
+                                <div class="venue-info-row">
+                                    <span>Pricing:</span>
+                                    <span>${venue.pricePerDay.toFixed(2)} EGP / day</span>
+                                </div>
+                                ${notesHtml}
+                                <div class="venue-card-actions">
+                                    <button class="btn-outline" onclick="openAvailability(${venue.id}, '${venue.name.replace(/'/g, "\\'")}')">Availability</button>
+                                </div>
+                            </div>
+                        `;
+                        listEl.appendChild(card);
+                    });
+                } else {
+                    listEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted-color);">No venues listed yet. Submit your first venue above.</div>';
+                }
+            } catch (err) {
+                listEl.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--danger);">Failed to load venues.</div>';
+            }
+        }
+
+        // Load Booking Requests
+        async function loadRequests() {
+            const tbody = document.getElementById('requestsTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--muted-color);">Loading requests...</td></tr>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/booking-requests`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                const countBadge = document.getElementById('requestsCountBadge');
+                if (data.success && data.bookingRequests.length > 0) {
+                    countBadge.style.display = 'inline-flex';
+                    countBadge.textContent = data.bookingRequests.length;
+                    
+                    tbody.innerHTML = '';
+                    data.bookingRequests.forEach(req => {
+                        const tr = document.createElement('tr');
+                        
+                        const dateStr = new Date(req.eventDate).toLocaleDateString('en-US', {
+                            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+                        });
+
+                        tr.innerHTML = `
+                            <td><strong>${req.venue.name}</strong><br><span style="font-size:0.8rem; color:var(--muted-color);">${req.venue.address}</span></td>
+                            <td>
+                                <div class="booking-host">
+                                    <span>${req.hostName}</span>
+                                    <span>${req.hostEmail}</span>
+                                </div>
+                            </td>
+                            <td>${req.eventTitle}</td>
+                            <td>${dateStr}</td>
+                            <td><strong>${req.totalPrice.toFixed(2)} EGP</strong></td>
+                            <td class="action-cell">
+                                <button class="btn-sm-success" onclick="acceptRequest(${req.id})">Accept</button>
+                                <button class="btn-sm-danger" onclick="declineRequestPrompt(${req.id})">Decline</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    countBadge.style.display = 'none';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--muted-color);">No pending requests found.</td></tr>';
+                }
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--danger);">Failed to load requests.</td></tr>';
+            }
+        }
+
+        // Accept request
+        async function acceptRequest(id) {
+            if (!confirm('Are you sure you want to accept this request? This will deduct the amount from the host\'s wallet.')) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/booking-requests/${id}/accept`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message || 'Request accepted successfully!');
+                    loadRequests();
+                    loadAnalytics();
+                } else {
+                    alert(data.message || 'Failed to accept request.');
+                }
+            } catch (err) {
+                alert('An error occurred while accepting request.');
+            }
+        }
+
+        // Decline request prompting
+        let currentDeclineId = null;
+        function declineRequestPrompt(id) {
+            currentDeclineId = id;
+            document.getElementById('declineReason').value = '';
+            document.getElementById('declineModal').style.display = 'flex';
+        }
+        function closeDeclineModal() {
+            document.getElementById('declineModal').style.display = 'none';
+            currentDeclineId = null;
+        }
+
+        document.getElementById('submitDeclineBtn').addEventListener('click', async () => {
+            const reason = document.getElementById('declineReason').value.trim();
+            if (!reason) {
+                alert('Please state a reason for declining');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/booking-requests/${currentDeclineId}/decline`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ reason })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Booking request declined');
+                    closeDeclineModal();
+                    loadRequests();
+                    loadAnalytics();
+                } else {
+                    alert(data.message || 'Failed to decline request');
+                }
+            } catch (err) {
+                alert('Error declining request');
+            }
+        });
+
+        // Load Bookings Tab
+        async function loadBookings() {
+            const tbody = document.getElementById('bookingsTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--muted-color);">Loading bookings...</td></tr>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/bookings`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success && data.bookings.length > 0) {
+                    tbody.innerHTML = '';
+                    data.bookings.forEach(booking => {
+                        const tr = document.createElement('tr');
+                        const dateStr = new Date(booking.eventDate).toLocaleDateString('en-US', {
+                            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+                        });
+
+                        const statusText = booking.status.replace('_', ' ');
+                        let statusStyle = 'color: var(--muted-color)';
+                        if (booking.status === 'accepted') statusStyle = 'color: var(--success); font-weight:600';
+                        if (booking.status === 'confirmed') statusStyle = 'color: var(--info); font-weight:600';
+
+                        let cancelBtn = '';
+                        if (booking.status === 'accepted') {
+                            cancelBtn = `<button class="btn-sm-danger" onclick="cancelBooking(${booking.id})">Cancel</button>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td><strong>${booking.venue.name}</strong><br><span style="font-size:0.8rem; color:var(--muted-color);">${booking.venue.address}</span></td>
+                            <td>
+                                <div class="booking-host">
+                                    <span>${booking.hostName}</span>
+                                    <span>${booking.hostEmail}</span>
+                                </div>
+                            </td>
+                            <td><strong>${booking.eventTitle}</strong><br><span style="font-size:0.85rem; color:var(--info);">${booking.eventType}</span></td>
+                            <td>${dateStr}</td>
+                            <td><strong>${booking.totalPrice.toFixed(2)} EGP</strong></td>
+                            <td style="${statusStyle}">${statusText}</td>
+                            <td>${cancelBtn}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--muted-color);">No upcoming bookings found.</td></tr>';
+                }
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--danger);">Failed to load bookings.</td></tr>';
+            }
+        }
+
+        // Cancel booking
+        async function cancelBooking(id) {
+            if (!confirm('Are you sure you want to cancel this booking? This will issue a full refund to the host.')) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/bookings/${id}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message || 'Booking cancelled successfully!');
+                    loadBookings();
+                    loadAnalytics();
+                } else {
+                    alert(data.message || 'Failed to cancel booking.');
+                }
+            } catch (err) {
+                alert('Error cancelling booking');
+            }
+        }
+
+        // Load Wallet and Transactions Data
+        async function loadWalletData() {
+            const tbody = document.getElementById('walletTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--muted-color);">Loading transaction history...</td></tr>';
+            const filterVal = document.getElementById('walletFilterSelect').value;
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/wallet?filter=${filterVal}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('walletAvailableBalance').textContent = `${data.balance.toFixed(2)} EGP`;
+                    document.getElementById('walletFrozenBalance').textContent = `${data.frozenBalance.toFixed(2)} EGP`;
+
+                    if (data.transactions.length > 0) {
+                        tbody.innerHTML = '';
+                        data.transactions.forEach(tx => {
+                            const tr = document.createElement('tr');
+                            const dateStr = new Date(tx.createdAt).toLocaleString();
+                            const isCredit = tx.type === 'credit';
+                            const amtSign = isCredit ? '+' : '-';
+                            const amtClass = isCredit ? 'type-credit' : 'type-debit';
+                            
+                            tr.innerHTML = `
+                                <td>#${tx.transactionId}</td>
+                                <td>${dateStr}</td>
+                                <td class="transaction-type ${amtClass}">${tx.type}</td>
+                                <td class="${amtClass}"><strong>${amtSign}${tx.amount.toFixed(2)} EGP</strong></td>
+                                <td><span class="tx-status tx-status-${tx.status}">${tx.status}</span></td>
+                                <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${tx.description || '-'}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--muted-color);">No transactions match this filter.</td></tr>';
+                    }
+                }
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--danger);">Failed to load wallet transactions.</td></tr>';
+            }
+        }
+
+        // Load Reviews
+        async function loadReviews() {
+            const tbody = document.getElementById('reviewsTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--muted-color);">Loading reviews...</td></tr>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/reviews`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success && data.reviews.length > 0) {
+                    tbody.innerHTML = '';
+                    data.reviews.forEach(rev => {
+                        const tr = document.createElement('tr');
+                        const dateStr = new Date(rev.created_at).toLocaleDateString();
+                        
+                        let stars = '';
+                        const ratingVal = Math.round(rev.rating || 0);
+                        for (let i = 1; i <= 5; i++) {
+                            stars += i <= ratingVal ? '&#9733;' : '&#9734;';
+                        }
+
+                        tr.innerHTML = `
+                            <td><strong>${rev.venue_name}</strong></td>
+                            <td>${rev.reviewer_name || 'Anonymous'}</td>
+                            <td style="color: var(--warning); font-size: 1.1rem;">${stars}</td>
+                            <td>${rev.review_text || '-'}</td>
+                            <td>${dateStr}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--muted-color);">No reviews left for your venues yet.</td></tr>';
+                }
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--danger);">Failed to load reviews.</td></tr>';
+            }
+        }
+
+        // Availability Blocks Modal Management
+        let currentBlockVenueId = null;
+
+        async function openAvailability(venueId, venueName) {
+            currentBlockVenueId = venueId;
+            document.getElementById('availabilityModalTitle').textContent = `Manage Availability: ${venueName}`;
+            
+            // Reset block fields
+            document.getElementById('blockStartDate').value = '';
+            document.getElementById('blockEndDate').value = '';
+            document.getElementById('blockReason').value = '';
+            
+            await loadAvailabilityBlocks();
+            document.getElementById('availabilityModal').style.display = 'flex';
+        }
+
+        function closeAvailabilityModal() {
+            document.getElementById('availabilityModal').style.display = 'none';
+            currentBlockVenueId = null;
+        }
+
+        async function loadAvailabilityBlocks() {
+            const tbody = document.getElementById('blocksTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--muted-color);">Loading availability blocks...</td></tr>';
+            try {
+                // Fetch calendar blocks
+                const response = await fetch(`${API_BASE_URL}/venue-owner/venues/${currentBlockVenueId}/availability-blocks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success && data.blocks.length > 0) {
+                    tbody.innerHTML = '';
+                    data.blocks.forEach(block => {
+                        const tr = document.createElement('tr');
+                        const start = new Date(block.startDate).toLocaleDateString();
+                        const end = new Date(block.endDate).toLocaleDateString();
+                        tr.innerHTML = `
+                            <td>${start}</td>
+                            <td>${end}</td>
+                            <td>${block.reason || '-'}</td>
+                            <td>
+                                <button class="btn-sm-danger" onclick="deleteAvailabilityBlock(${block.id})">Remove</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--muted-color);">No blocked slots.</td></tr>';
+                }
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--danger);">Failed to load blocked slots.</td></tr>';
+            }
+        }
+
+        async function submitAvailabilityBlock() {
+            const startDate = document.getElementById('blockStartDate').value;
+            const endDate = document.getElementById('blockEndDate').value;
+            const reason = document.getElementById('blockReason').value.trim();
+
+            if (!startDate || !endDate) {
+                alert('Start date and End date are required');
+                return;
+            }
+            if (new Date(endDate) < new Date(startDate)) {
+                alert('End date must be on or after the start date');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/venues/${currentBlockVenueId}/availability-blocks`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ startDate, endDate, reason })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Availability block added!');
+                    loadAvailabilityBlocks();
+                } else {
+                    alert(data.message || 'Failed to add block');
+                }
+            } catch (err) {
+                alert('Error adding availability block');
+            }
+        }
+
+        async function deleteAvailabilityBlock(blockId) {
+            if (!confirm('Are you sure you want to remove this availability block?')) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/venues/${currentBlockVenueId}/availability-blocks/${blockId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Block removed successfully');
+                    loadAvailabilityBlocks();
+                } else {
+                    alert(data.message || 'Failed to remove block');
+                }
+            } catch (err) {
+                alert('Error removing block');
+            }
+        }
+
+        // Initialize dashboard
+        loadAnalytics();
+        loadVenues();
+    </script>
+    <script src="../js/ai-assistant.js"></script>
+</body>
+</html>

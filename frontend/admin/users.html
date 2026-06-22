@@ -1,0 +1,456 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Users</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="userModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div id="userModalAvatar" class="avatar avatar-lg">NA</div>
+          <div>
+            <h3 id="userModalTitle">User Details</h3>
+            <p id="userModalSubtitle" class="section-meta">Loading...</p>
+          </div>
+        </div>
+        <button id="closeUserModal" class="modal-close">Close</button>
+      </div>
+      <div id="userModalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Users Management');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="card">
+          <div class="filters-inline">
+            <label class="label-stack">Search Users
+              <input id="userSearch" class="search-input" placeholder="Search by name, username, or email" />
+            </label>
+            <label class="label-stack">Status Filter
+              <select id="statusFilter">
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </label>
+            <label class="label-stack">Role Filter
+              <select id="roleFilter">
+                <option value="all">All</option>
+                <option value="user">Host / Attendee</option>
+                <option value="venue_owner">Venue Owner</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="stats-grid cols-4" id="usersStats"></div>
+
+        <div class="card">
+          <div class="bulk-actions">
+            <button id="bulkActivate" class="btn btn-outline-success" disabled>Activate Selected</button>
+            <button id="bulkDeactivate" class="btn btn-outline-warning" disabled>Deactivate Selected</button>
+            <button id="bulkDelete" class="btn btn-outline-danger" disabled>Delete Selected</button>
+            <span id="selectedCount" class="bulk-count">0 selected</span>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th><input id="selectAllUsers" type="checkbox" /></th>
+                  <th>Name</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      const usersBody = document.getElementById('usersBody');
+      const usersStats = document.getElementById('usersStats');
+      const userSearch = document.getElementById('userSearch');
+      const statusFilter = document.getElementById('statusFilter');
+      const roleFilter = document.getElementById('roleFilter');
+      const selectAllUsers = document.getElementById('selectAllUsers');
+      const selectedCount = document.getElementById('selectedCount');
+      const bulkActivate = document.getElementById('bulkActivate');
+      const bulkDeactivate = document.getElementById('bulkDeactivate');
+      const bulkDelete = document.getElementById('bulkDelete');
+
+      const userModal = document.getElementById('userModal');
+      const closeUserModal = document.getElementById('closeUserModal');
+      const userModalAvatar = document.getElementById('userModalAvatar');
+      const userModalTitle = document.getElementById('userModalTitle');
+      const userModalSubtitle = document.getElementById('userModalSubtitle');
+      const userModalBody = document.getElementById('userModalBody');
+
+      let users = [];
+      let filteredUsers = [];
+      const selectedUserIds = new Set();
+
+      function statusBadge(isActive) {
+        return isActive
+          ? '<span class="status-badge status-active">Active</span>'
+          : '<span class="status-badge status-inactive">Inactive</span>';
+      }
+
+      function getRoleLabel(role) {
+        return String(role || 'user') === 'venue_owner' ? 'Venue Owner' : 'Host / Attendee';
+      }
+
+      function roleBadge(role) {
+        const safeRole = String(role || 'user');
+        const badgeClass = safeRole === 'venue_owner' ? 'status-pending' : 'status-active';
+        return `<span class="status-badge ${badgeClass}">${AdminApp.escapeHtml(getRoleLabel(safeRole))}</span>`;
+      }
+
+      function renderStats() {
+        const total = users.length;
+        const active = users.filter((user) => !!user.is_active).length;
+        const venueOwners = users.filter((user) => String(user.role || 'user') === 'venue_owner').length;
+        const hosts = total - venueOwners;
+
+        usersStats.innerHTML = `
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Total Users</span><span class="stat-icon">&#128101;</span></div><div class="stat-value">${AdminApp.formatNumber(total)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Active Users</span><span class="stat-icon">?</span></div><div class="stat-value">${AdminApp.formatNumber(active)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Hosts / Attendees</span><span class="stat-icon">&#127914;</span></div><div class="stat-value">${AdminApp.formatNumber(hosts)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Venue Owners</span><span class="stat-icon">&#127963;&#65039;</span></div><div class="stat-value">${AdminApp.formatNumber(venueOwners)}</div></div>
+        `;
+      }
+
+      function updateSelectionUI() {
+        const count = selectedUserIds.size;
+        selectedCount.textContent = `${count} selected`;
+        bulkActivate.disabled = count === 0;
+        bulkDeactivate.disabled = count === 0;
+        bulkDelete.disabled = count === 0;
+
+        if (!filteredUsers.length) {
+          selectAllUsers.checked = false;
+          selectAllUsers.indeterminate = false;
+          return;
+        }
+
+        const visibleIds = filteredUsers.map((user) => user.id);
+        const selectedVisible = visibleIds.filter((id) => selectedUserIds.has(id)).length;
+        selectAllUsers.checked = selectedVisible > 0 && selectedVisible === visibleIds.length;
+        selectAllUsers.indeterminate = selectedVisible > 0 && selectedVisible < visibleIds.length;
+      }
+
+      function renderUsersTable() {
+        if (!filteredUsers.length) {
+          usersBody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No users match this filter.</div></td></tr>';
+          updateSelectionUI();
+          return;
+        }
+
+        usersBody.innerHTML = filteredUsers.map((user) => {
+          const name = user.full_name || user.username || 'Unknown User';
+          const initials = AdminApp.getInitials(name);
+          const active = !!user.is_active;
+          return `
+            <tr data-id="${user.id}">
+              <td><input type="checkbox" class="user-checkbox" data-id="${user.id}" ${selectedUserIds.has(user.id) ? 'checked' : ''} /></td>
+              <td>
+                <div class="user-cell">
+                  <div class="avatar">${AdminApp.escapeHtml(initials)}</div>
+                  <div>
+                    <div>${AdminApp.escapeHtml(name)}</div>
+                  </div>
+                </div>
+              </td>
+              <td>${AdminApp.escapeHtml(user.username || '-')}</td>
+              <td>${AdminApp.escapeHtml(user.email || '-')}</td>
+              <td>${roleBadge(user.role)}</td>
+              <td>${statusBadge(active)}</td>
+              <td>${AdminApp.formatDateTime(user.created_at)}</td>
+              <td>
+                <div class="inline-actions">
+                  ${active
+                    ? '<button class="btn btn-outline-warning" data-action="deactivate">Deactivate</button>'
+                    : '<button class="btn btn-outline-success" data-action="activate">Activate</button>'}
+                  <button class="btn btn-outline-primary" data-action="details">Details</button>
+                  <button class="btn btn-outline-danger" data-action="delete">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        updateSelectionUI();
+      }
+
+      function applyFilters() {
+        const query = userSearch.value.trim().toLowerCase();
+        const status = statusFilter.value;
+        const role = roleFilter.value;
+
+        filteredUsers = users.filter((user) => {
+          const fullText = `${user.full_name || ''} ${user.username || ''} ${user.email || ''}`.toLowerCase();
+          const statusMatch = status === 'all'
+            ? true
+            : status === 'active'
+              ? !!user.is_active
+              : !user.is_active;
+          const roleMatch = role === 'all' || String(user.role || 'user') === role;
+          return statusMatch && roleMatch && (!query || fullText.includes(query));
+        });
+
+        renderUsersTable();
+      }
+
+      async function loadUsers() {
+        const response = await AdminApp.request('/Admin/users');
+        const data = await response.json().catch(() => ({}));
+        users = data.users || [];
+        renderStats();
+        applyFilters();
+      }
+
+      async function setUserStatus(userId, isActive) {
+        if (!isActive && !window.confirm('Deactivate this user account?')) return;
+        await AdminApp.request(`/Admin/users/${userId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ isActive })
+        });
+        selectedUserIds.delete(userId);
+        await loadUsers();
+      }
+
+      async function deleteUser(userId) {
+        if (!window.confirm('Delete this user and related data?')) return;
+        await AdminApp.request(`/Admin/users/${userId}`, { method: 'DELETE' });
+        selectedUserIds.delete(userId);
+        await loadUsers();
+      }
+
+      async function runBulk(action) {
+        const ids = Array.from(selectedUserIds);
+        if (!ids.length) return;
+
+        if (action === 'deactivate' && !window.confirm(`Deactivate ${ids.length} selected users?`)) return;
+        if (action === 'delete' && !window.confirm(`Delete ${ids.length} selected users? This cannot be undone.`)) return;
+
+        await Promise.all(ids.map((id) => {
+          if (action === 'activate') {
+            return AdminApp.request(`/Admin/users/${id}/status`, {
+              method: 'PATCH',
+              body: JSON.stringify({ isActive: true })
+            });
+          }
+          if (action === 'deactivate') {
+            return AdminApp.request(`/Admin/users/${id}/status`, {
+              method: 'PATCH',
+              body: JSON.stringify({ isActive: false })
+            });
+          }
+          return AdminApp.request(`/Admin/users/${id}`, { method: 'DELETE' });
+        }));
+
+        selectedUserIds.clear();
+        await loadUsers();
+      }
+
+      function tableOrEmpty(columns, rowsHtml, emptyText) {
+        return `
+          <div class="table-wrap">
+            <table>
+              <thead><tr>${columns.map((col) => `<th>${col}</th>`).join('')}</tr></thead>
+              <tbody>${rowsHtml || `<tr><td colspan="${columns.length}"><span class="muted">${emptyText}</span></td></tr>`}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      async function showDetails(userId) {
+        userModal.classList.add('open');
+        userModal.setAttribute('aria-hidden', 'false');
+        userModalBody.innerHTML = '<div class="empty-state">Loading user details...</div>';
+
+        const response = await AdminApp.request(`/Admin/users/${userId}`);
+        const data = await response.json().catch(() => ({}));
+        const user = data.user || {};
+        const summary = data.summary || {};
+        const bookings = data.bookings || [];
+        const createdEvents = data.createdEvents || [];
+        const payments = data.payments || [];
+        const favorites = data.favorites || [];
+
+        const userName = user.full_name || user.username || 'User';
+        userModalAvatar.textContent = AdminApp.getInitials(userName);
+        userModalTitle.textContent = userName;
+        userModalSubtitle.textContent = `${user.username || '-'} · ${user.email || '-'}`;
+
+        userModalBody.innerHTML = `
+          <div class="info-grid">
+            <div class="info-item"><div class="info-label">User ID</div><div class="info-value">${AdminApp.escapeHtml(user.id || '-')}</div></div>
+            <div class="info-item"><div class="info-label">Role</div><div class="info-value">${roleBadge(user.role)}</div></div>
+            <div class="info-item"><div class="info-label">Status</div><div class="info-value">${statusBadge(!!user.is_active)}</div></div>
+            <div class="info-item"><div class="info-label">Created</div><div class="info-value">${AdminApp.formatDateTime(user.created_at)}</div></div>
+          </div>
+
+          <div class="stats-grid cols-4">
+            <div class="stat-card"><div class="stat-head"><span class="stat-label">Bookings</span><span class="stat-icon">&#127903;&#65039;</span></div><div class="stat-value">${AdminApp.formatNumber(summary.totalBookings || bookings.length)}</div></div>
+            <div class="stat-card"><div class="stat-head"><span class="stat-label">Created Events</span><span class="stat-icon">&#127914;</span></div><div class="stat-value">${AdminApp.formatNumber(summary.totalCreatedEvents || createdEvents.length)}</div></div>
+            <div class="stat-card"><div class="stat-head"><span class="stat-label">Payments</span><span class="stat-icon">&#128179;</span></div><div class="stat-value">${AdminApp.formatNumber(summary.totalPayments || payments.length)}</div></div>
+            <div class="stat-card"><div class="stat-head"><span class="stat-label">Favorites</span><span class="stat-icon">?</span></div><div class="stat-value">${AdminApp.formatNumber(summary.totalFavorites || favorites.length)}</div></div>
+          </div>
+
+          <div class="card">
+            <h4 class="card-title">Event Bookings</h4>
+            ${tableOrEmpty(
+              ['Event', 'Status', 'Ticket Type', 'Date'],
+              bookings.map((booking) => `
+                <tr>
+                  <td>${AdminApp.escapeHtml(booking.event_title || '-')}</td>
+                  <td><span class="status-badge status-${AdminApp.escapeHtml(String(booking.status || '').toLowerCase())}">${AdminApp.escapeHtml(booking.status || '-')}</span></td>
+                  <td>${AdminApp.escapeHtml(booking.ticket_type || '-')}</td>
+                  <td>${AdminApp.formatDateTime(booking.booking_date)}</td>
+                </tr>
+              `).join(''),
+              'No bookings found.'
+            )}
+          </div>
+
+          <div class="card">
+            <h4 class="card-title">Created Events</h4>
+            ${tableOrEmpty(
+              ['Event', 'Status', 'Event Date', 'Location', 'Bookings', 'Seats'],
+              createdEvents.map((event) => {
+                const lifecycle = AdminApp.getEventLifecycleStatus(event.event_date, event.event_status);
+                return `
+                  <tr>
+                    <td>${AdminApp.escapeHtml(event.title || '-')}</td>
+                    <td><span class="status-badge status-${AdminApp.escapeHtml(lifecycle)}">${AdminApp.escapeHtml(lifecycle)}</span></td>
+                    <td>${AdminApp.formatDateTime(event.event_date)}</td>
+                    <td>${AdminApp.escapeHtml(event.location || '-')}</td>
+                    <td>${AdminApp.formatNumber(event.total_bookings || 0)}</td>
+                    <td>${AdminApp.formatNumber(event.available_seats || 0)}/${AdminApp.formatNumber(event.max_seats || 0)}</td>
+                  </tr>
+                `;
+              }).join(''),
+              'No created events found.'
+            )}
+          </div>
+
+          <div class="card">
+            <h4 class="card-title">Payments</h4>
+            ${tableOrEmpty(
+              ['Event', 'Amount', 'Status', 'Method', 'Date'],
+              payments.map((payment) => `
+                <tr>
+                  <td>${AdminApp.escapeHtml(payment.event_title || '-')}</td>
+                  <td>${AdminApp.formatCurrency(payment.amount || 0)}</td>
+                  <td>${AdminApp.escapeHtml(payment.status || '-')}</td>
+                  <td>${AdminApp.escapeHtml(payment.payment_method || '-')}</td>
+                  <td>${AdminApp.formatDateTime(payment.created_at)}</td>
+                </tr>
+              `).join(''),
+              'No payments found.'
+            )}
+          </div>
+
+          <div class="card" style="margin-bottom:0;">
+            <h4 class="card-title">Favorites</h4>
+            ${tableOrEmpty(
+              ['Event', 'Event Date', 'Added At'],
+              favorites.map((favorite) => `
+                <tr>
+                  <td>${AdminApp.escapeHtml(favorite.event_title || '-')}</td>
+                  <td>${AdminApp.formatDateTime(favorite.event_date)}</td>
+                  <td>${AdminApp.formatDateTime(favorite.created_at)}</td>
+                </tr>
+              `).join(''),
+              'No favorites found.'
+            )}
+          </div>
+        `;
+      }
+
+      function closeModal() {
+        userModal.classList.remove('open');
+        userModal.setAttribute('aria-hidden', 'true');
+      }
+
+      userSearch.addEventListener('input', AdminApp.debounce(applyFilters, 120));
+      statusFilter.addEventListener('change', applyFilters);
+      roleFilter.addEventListener('change', applyFilters);
+
+      selectAllUsers.addEventListener('change', () => {
+        if (selectAllUsers.checked) {
+          filteredUsers.forEach((user) => selectedUserIds.add(user.id));
+        } else {
+          filteredUsers.forEach((user) => selectedUserIds.delete(user.id));
+        }
+        renderUsersTable();
+      });
+
+      usersBody.addEventListener('change', (event) => {
+        const checkbox = event.target.closest('.user-checkbox');
+        if (!checkbox) return;
+        const { id } = checkbox.dataset;
+        if (!id) return;
+        if (checkbox.checked) {
+          selectedUserIds.add(id);
+        } else {
+          selectedUserIds.delete(id);
+        }
+        updateSelectionUI();
+      });
+
+      usersBody.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const row = button.closest('tr[data-id]');
+        if (!row) return;
+        const userId = row.dataset.id;
+        const action = button.dataset.action;
+
+        if (action === 'activate') await setUserStatus(userId, true);
+        if (action === 'deactivate') await setUserStatus(userId, false);
+        if (action === 'delete') await deleteUser(userId);
+        if (action === 'details') await showDetails(userId);
+      });
+
+      bulkActivate.addEventListener('click', () => runBulk('activate'));
+      bulkDeactivate.addEventListener('click', () => runBulk('deactivate'));
+      bulkDelete.addEventListener('click', () => runBulk('delete'));
+
+      closeUserModal.addEventListener('click', closeModal);
+      userModal.addEventListener('click', (event) => {
+        if (event.target === userModal) closeModal();
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && userModal.classList.contains('open')) {
+          closeModal();
+        }
+      });
+
+      await loadUsers();
+    })();
+  </script>
+</body>
+</html>
+

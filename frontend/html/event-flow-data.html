@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Flow Data | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/event-flow-data.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <div class="page-title">
+      <h1>Event Flow Data</h1>
+      <p>Monitor your event bookings and attendees</p>
+    </div>
+
+    <div class="data-container">
+      <div class="data-card">
+        <h2>Event Host Details</h2>
+        <div class="info-item">
+          <span class="info-label">Host Name</span>
+          <span class="info-value">Mohamed Elshaboury</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Host Email</span>
+          <span class="info-value">mohamed.320230191@ejust.edu.eg</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Host Phone</span>
+          <span class="info-value">+20-1013077615</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">OC Head Name</span>
+          <span class="info-value">Jane Doe</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">OC Head Email</span>
+          <span class="info-value">oc.head@email.com</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">OC Head Phone</span>
+          <span class="info-value">+20-1XXXXXXXXX</span>
+        </div>
+      </div>
+
+      <div class="data-card">
+        <h2>Available Seats</h2>
+        <div class="seats-counter">
+          <div class="seats-number" id="availableSeats">180</div>
+          <div class="seats-label">Seats Available</div>
+        </div>
+        <div class="info-item" style="margin-top: 20px;">
+          <span class="info-label">Total Capacity</span>
+          <span class="info-value">180 seats</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Booked Seats</span>
+          <span class="info-value" id="bookedSeats">0</span>
+        </div>
+      </div>
+
+      <div class="data-card">
+        <h2>Event Time & Location</h2>
+        <div class="info-item">
+          <span class="info-label">Event Name</span>
+          <span class="info-value">Mediterranean Sunset Gala</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Date</span>
+          <span class="info-value">July 12, 2024</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Start Time</span>
+          <span class="info-value">7:00 PM</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">End Time</span>
+          <span class="info-value">11:00 PM</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Location</span>
+          <span class="info-value">Alexandria, Egypt</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Building Name</span>
+          <span class="info-value">Mediterranean Coast Resort</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Address</span>
+          <span class="info-value">Coastal Road, Alexandria, Egypt</span>
+        </div>
+      </div>
+
+      <div class="data-card">
+        <h2>Other Information</h2>
+        <div class="info-item">
+          <span class="info-label">Event Type</span>
+          <span class="info-value">Gala Dinner</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Dress Code</span>
+          <span class="info-value">Smart Formal</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Sponsors</span>
+          <span class="info-value">Luxury Brands Inc.</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Speakers</span>
+          <span class="info-value">Chef Ahmed Hassan</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Event Status</span>
+          <span class="info-value" style="color: #4ade80;">Active</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Payment Status</span>
+          <span class="info-value" style="color: #4ade80;">Paid</span>
+        </div>
+      </div>
+
+      <div class="data-card" style="grid-column: 1 / -1;">
+        <h2>Booking Users</h2>
+        <div class="booking-users-list" id="bookingUsersList">
+          <div class="empty-state">No bookings yet. Users will appear here when they book seats.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form →</a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun – Thu : 8:00 AM – 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Navigation menu toggle
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => {
+        const isOpen = header.classList.contains('menu-open');
+        setMenuState(!isOpen);
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            setMenuState(false);
+          }
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+          setMenuState(false);
+        }
+      });
+    })();
+
+    // Event booking management
+    let availableSeats = 180;
+    let bookedSeats = 0;
+    let bookingUsers = [];
+
+    // Load data from localStorage if available
+    function loadEventData() {
+      const savedData = localStorage.getItem('eventFlowData');
+      if (savedData) {
+        const data = JSON.parse(savedData);
+        availableSeats = data.availableSeats || 180;
+        bookedSeats = data.bookedSeats || 0;
+        bookingUsers = data.bookingUsers || [];
+        updateDisplay();
+      }
+    }
+
+    // Save data to localStorage
+    function saveEventData() {
+      const data = {
+        availableSeats,
+        bookedSeats,
+        bookingUsers
+      };
+      localStorage.setItem('eventFlowData', JSON.stringify(data));
+    }
+
+    // Update the display
+    function updateDisplay() {
+      const availableSeatsEl = document.getElementById('availableSeats');
+      const bookedSeatsEl = document.getElementById('bookedSeats');
+      const bookingUsersList = document.getElementById('bookingUsersList');
+
+      if (availableSeatsEl) {
+        availableSeatsEl.textContent = availableSeats;
+      }
+
+      if (bookedSeatsEl) {
+        bookedSeatsEl.textContent = bookedSeats;
+      }
+
+      if (bookingUsersList) {
+        if (bookingUsers.length === 0) {
+          bookingUsersList.innerHTML = '<div class="empty-state">No bookings yet. Users will appear here when they book seats.</div>';
+        } else {
+          bookingUsersList.innerHTML = bookingUsers.map((user, index) => `
+            <div class="booking-user-item">
+              <div class="user-info">
+                <span class="user-name">${user.name}</span>
+                <span class="user-email">${user.email}</span>
+              </div>
+              <div class="user-seat">Seat ${user.seat}</div>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    // Simulate booking (this would be called when a user books from another page)
+    function addBooking(userName, userEmail, seatNumber) {
+      if (availableSeats > 0) {
+        availableSeats--;
+        bookedSeats++;
+        bookingUsers.push({
+          name: userName,
+          email: userEmail,
+          seat: seatNumber
+        });
+        saveEventData();
+        updateDisplay();
+      }
+    }
+
+    // Listen for booking events from other pages (via localStorage events)
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'newBooking') {
+        const booking = JSON.parse(e.newValue);
+        addBooking(booking.name, booking.email, booking.seat);
+        localStorage.removeItem('newBooking');
+      }
+    });
+
+    // Check for new bookings periodically (for same-tab updates)
+    setInterval(() => {
+      const newBooking = localStorage.getItem('newBooking');
+      if (newBooking) {
+        const booking = JSON.parse(newBooking);
+        addBooking(booking.name, booking.email, booking.seat);
+        localStorage.removeItem('newBooking');
+      }
+    }, 1000);
+
+    // Initialize
+    loadEventData();
+    updateDisplay();
+
+    // Expose addBooking function globally for testing or external use
+    window.addBooking = addBooking;
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+

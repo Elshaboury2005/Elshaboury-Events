@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallet Top-Up Payment | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/wallet-topup-payment.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main class="payment-page">
+    <section class="payment-shell">
+      <article class="preview-panel">
+        <p class="eyebrow">Secure Card Preview</p>
+        <h1>Wallet Payment</h1>
+        <p class="sub">Your card preview updates live as you type.</p>
+
+        <div class="card-stage">
+          <div class="credit-card">
+            <div class="card-top">
+              <span class="card-chip"></span>
+              <div id="cardBrandDisplay" class="card-brand">
+                <i class="far fa-credit-card" aria-hidden="true"></i>
+                <span>Card</span>
+              </div>
+            </div>
+
+            <div id="previewCardNumber" class="card-number">#### #### #### ####</div>
+
+            <div class="card-bottom">
+              <div>
+                <p class="card-label">Card Holder</p>
+                <p id="previewCardHolder" class="card-value">YOUR NAME</p>
+              </div>
+              <div class="expiry-wrap">
+                <p class="card-label">Expires</p>
+                <p id="previewExpiry" class="card-value">MM/YY</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="form-panel">
+        <div class="page-head">
+          <p class="eyebrow">Wallet Top-Up</p>
+          <h2>Complete Payment</h2>
+          <p class="sub">Enter your card details to add funds securely.</p>
+        </div>
+
+        <div class="summary-box">
+          <span class="summary-icon">&#x1F4B0;</span>
+          <p>Adding <strong id="topupAmountDisplay">0.00 EGP</strong> to your wallet</p>
+        </div>
+
+        <form id="topupPaymentForm" novalidate>
+          <label class="form-label" for="cardNumberInput">Card Number</label>
+          <div class="input-with-badge">
+            <input id="cardNumberInput" class="form-input" type="text" inputmode="numeric" maxlength="19"
+              placeholder="0000 0000 0000 0000" required>
+            <span id="inlineBrandBadge" class="brand-badge">
+              <i class="far fa-credit-card" aria-hidden="true"></i>
+              <span>Card</span>
+            </span>
+          </div>
+
+          <label class="form-label" for="cardHolderInput">Card Holder</label>
+          <input id="cardHolderInput" class="form-input" type="text" placeholder="Name on card" required>
+
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="expiryInput">Expiry</label>
+              <input id="expiryInput" class="form-input" type="text" inputmode="numeric" maxlength="5"
+                placeholder="MM/YY" required>
+            </div>
+            <div>
+              <label class="form-label" for="cvcInput">CVC</label>
+              <input id="cvcInput" class="form-input" type="password" inputmode="numeric" maxlength="4" placeholder="123"
+                required>
+            </div>
+          </div>
+
+          <div class="actions">
+            <a class="btn-secondary" href="/html/wallet.html">Back to Wallet</a>
+            <button id="payTopupBtn" class="btn-primary" type="submit">
+              <span id="payBtnText">Pay 0.00 EGP</span>
+              <span id="payBtnLoader" class="loader hidden"></span>
+            </button>
+          </div>
+
+          <div class="security-row">
+            <span class="security-badge">&#x1F512; SSL Encrypted</span>
+            <span class="security-badge">&#x1F6E1;&#xFE0F; Secure Payment</span>
+            <span class="security-badge">&#x2705; 100% Safe</span>
+          </div>
+
+          <p id="paymentFeedback" class="feedback"></p>
+        </form>
+      </article>
+    </section>
+  </main>
+
+  <script src="../js/wallet-topup-payment.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+

@@ -1,0 +1,369 @@
+:root {
+  --bg-start: #0f2027;
+  --bg-mid: #203a43;
+  --bg-end: #2c5364;
+  --text: #f5f7fa;
+  --muted: #d2dae2;
+  --line: rgba(255, 255, 255, 0.18);
+  --accent: #ff8a00;
+  --accent-2: #e52e71;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--bg-start), var(--bg-mid), var(--bg-end));
+  padding: 18px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.payment-page {
+  min-height: calc(100vh - 36px);
+  display: grid;
+  place-items: center;
+}
+
+.payment-shell {
+  width: min(1080px, 100%);
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(440px, 1fr);
+}
+
+.preview-panel,
+.form-panel {
+  padding: 26px;
+}
+
+.preview-panel {
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255, 138, 0, 0.14), transparent 36%),
+    radial-gradient(circle at 90% 82%, rgba(229, 46, 113, 0.12), transparent 42%);
+}
+
+.page-head {
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+h1,
+h2 {
+  font-size: clamp(1.45rem, 2.5vw, 1.9rem);
+}
+
+.sub {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.card-stage {
+  margin-top: 18px;
+  perspective: 1000px;
+}
+
+.credit-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 18px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(130deg, #1f2a59 0%, #182d74 40%, #522e7d 100%);
+  background-size: 180% 180%;
+  animation: cardGlow 8s ease-in-out infinite;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.card-chip {
+  width: 44px;
+  height: 31px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.card-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 1.05rem;
+}
+
+.card-brand span {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card-number {
+  font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+  letter-spacing: 2px;
+  margin: 12px 0;
+  font-weight: 700;
+}
+
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.card-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.card-value {
+  margin-top: 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.expiry-wrap {
+  text-align: right;
+}
+
+.summary-box {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 11px 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.summary-icon {
+  font-size: 1.15rem;
+}
+
+.summary-box p {
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.summary-box strong {
+  color: var(--text);
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  padding: 11px 12px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: rgba(255, 138, 0, 0.92);
+  box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.22);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.input-with-badge {
+  position: relative;
+}
+
+.input-with-badge .form-input {
+  padding-right: 112px;
+}
+
+.brand-badge {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-60%);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.actions {
+  margin-top: 8px;
+  display: grid;
+  gap: 9px;
+}
+
+.btn-primary,
+.btn-secondary {
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+.btn-primary:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: transparent;
+  color: var(--text);
+}
+
+.security-row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.security-badge {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.73rem;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.loader {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin-left: 8px;
+}
+
+.feedback {
+  min-height: 20px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.feedback.success {
+  color: #4ade80;
+}
+
+.feedback.error {
+  color: #f87171;
+}
+
+@keyframes cardGlow {
+  0% {
+    background-position: 0% 50%;
+    transform: translateY(0);
+  }
+  50% {
+    background-position: 100% 50%;
+    transform: translateY(-3px);
+  }
+  100% {
+    background-position: 0% 50%;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 980px) {
+  .payment-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-panel {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  }
+}
+
+@media (max-width: 620px) {
+  .payment-shell {
+    border-radius: 18px;
+  }
+
+  .preview-panel,
+  .form-panel {
+    padding: 16px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .card-number {
+    letter-spacing: 1px;
+  }
+}

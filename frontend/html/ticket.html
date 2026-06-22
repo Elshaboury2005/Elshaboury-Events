@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Ticket | Elshaboury Events</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../public/css/auth.css">
+    <script src="../public/js/auth-config.js"></script>
+    <script src="../public/js/auth-guard.js"></script>
+    <style>
+        body {
+            background: #0f2027;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .ticket-card {
+            background: #fff;
+            color: #1a1a1a;
+            width: 100%;
+            max-width: 350px;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .ticket-header {
+            background: linear-gradient(135deg, #ff8a00, #e52e71);
+            padding: 24px;
+            color: #fff;
+            text-align: center;
+        }
+
+        .ticket-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .ticket-body {
+            padding: 30px;
+            text-align: left;
+        }
+
+        .event-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .event-date {
+            color: #666;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        .ticket-details {
+            background: #f8f8f8;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+
+        .ticket-details .row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .ticket-details .row:last-child {
+            margin-bottom: 0;
+        }
+
+        .ticket-details .label {
+            color: #666;
+            min-width: 80px;
+        }
+
+        .ticket-details .value {
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+        .ticket-details .description {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            color: #444;
+            line-height: 1.4;
+        }
+
+        .qr-section {
+            text-align: center;
+            margin: 24px 0;
+        }
+
+        .qr-placeholder {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 16px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-placeholder img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .ticket-id {
+            font-family: monospace;
+            color: #888;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .download-btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background: #1a1a1a;
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .download-btn:hover {
+            background: #000;
+        }
+    </style>
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+    <div class="ticket-card" id="ticketContent">
+        <div class="ticket-header">
+            <h2>ADMIT ONE</h2>
+        </div>
+        <div class="ticket-body">
+            <div class="event-name" id="eventName">Loading Event...</div>
+            <div class="event-date" id="eventDate">Loading Date...</div>
+
+            <div class="ticket-details" id="ticketDetails">
+                <div class="row" id="rowLocation"><span class="label">Location</span><span class="value" id="eventLocation">—</span></div>
+                <div class="row" id="rowSeat"><span class="label">Seat</span><span class="value" id="eventSeat">—</span></div>
+                <div class="row" id="rowBookedOn"><span class="label">Booked on</span><span class="value" id="eventBookedOn">—</span></div>
+                <div class="description" id="eventDescription" style="display: none;"></div>
+            </div>
+
+            <div class="qr-section">
+                <div class="qr-placeholder" id="qrContainer">
+                    <!-- QR Code will be injected here -->
+                </div>
+                <div class="ticket-id" id="ticketId">#TICKET-ID</div>
+            </div>
+
+            <p style="margin: 0; font-weight: 600; margin-bottom: 5px; text-align: center;" id="userName">User Name</p>
+        </div>
+        <button class="download-btn" onclick="window.print()">Print Ticket</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventName = urlParams.get('event') || 'Unknown Event';
+        const eventDate = urlParams.get('date') || 'TBA';
+        const ticketId = urlParams.get('id') || '000000';
+        const location = urlParams.get('location') || '';
+        const seat = urlParams.get('seat') || '';
+        const description = urlParams.get('description') || '';
+        const bookedOn = urlParams.get('bookedOn') || '';
+
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        document.getElementById('eventName').innerText = eventName;
+        document.getElementById('eventDate').innerText = eventDate;
+        document.getElementById('eventLocation').innerText = location || '—';
+        document.getElementById('eventSeat').innerText = seat ? `Seat ${seat}` : '—';
+        document.getElementById('eventBookedOn').innerText = bookedOn || '—';
+
+        const descEl = document.getElementById('eventDescription');
+        if (description) {
+            descEl.textContent = description;
+            descEl.style.display = 'block';
+        }
+
+        document.getElementById('ticketId').innerText = '#' + ticketId.substring(0, 8).toUpperCase();
+        document.getElementById('userName').innerText = user.fullName || user.full_name || user.name || 'Guest User';
+
+        // Generate QR Code
+        const qrContainer = document.getElementById('qrContainer');
+        qrContainer.innerHTML = '';
+
+        new QRCode(qrContainer, {
+            text: `TICKET:${ticketId}`,
+            width: 180,
+            height: 180,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    </script>
+</body>
+
+</html>
+
+

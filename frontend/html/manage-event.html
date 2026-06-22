@@ -1,0 +1,1976 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Event | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/manage-event.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header class="dashboard-header">
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div class="brand-text">
+          <strong>Elshaboury Events</strong>
+          <p id="dashboardSubtitle" class="brand-subtitle">Loading dashboard...</p>
+        </div>
+      </a>
+      <nav class="top-nav">
+        <a class="nav-btn nav-btn-gradient" href="/html/my-events.html">Back to My Events</a>
+        <a class="nav-btn nav-btn-gradient" id="publicEventBtn" href="#">Public Event View</a>
+      </nav>
+    </header>
+
+    <section class="content-section stats-section">
+      <div class="section-head">
+        <p class="section-eyebrow">Manage & Stats</p>
+        <h1 id="eventTitle">Loading event...</h1>
+        <p id="eventMeta" class="event-meta">Please wait...</p>
+      </div>
+
+      <div class="occupancy-wrap">
+        <div class="occupancy-line">
+          <span class="occupancy-label">Event Occupancy</span>
+          <span class="occupancy-value" id="occupancyValue">0%</span>
+        </div>
+        <div class="occupancy-bar" role="img" aria-label="Event occupancy progress">
+          <span id="occupancyFill"></span>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-head"><span class="stat-icon" aria-hidden="true">🏟️</span><span class="stat-label">Total Capacity</span></div>
+          <div class="stat-value" id="statCapacity">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-head"><span class="stat-icon" aria-hidden="true">🎟️</span><span class="stat-label">Confirmed Seats</span></div>
+          <div class="stat-value" id="statBooked">-</div>
+        </div>
+        <div class="stat-card stat-card-remaining" id="seatsRemainingCard" role="button" tabindex="0" aria-label="View seats breakdown">
+          <div class="stat-head"><span class="stat-icon" aria-hidden="true">💺</span><span class="stat-label">Seats Remaining</span></div>
+          <div class="stat-value" id="statAvailable">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-head"><span class="stat-icon" aria-hidden="true">✅</span><span class="stat-label">Status</span></div>
+          <div class="stat-value"><span class="workflow-badge" id="statPayment">-</span></div>
+        </div>
+        <div class="stat-card stat-card-revenue">
+          <div class="stat-head"><span class="stat-icon" aria-hidden="true">💰</span><span class="stat-label">Total Revenue</span></div>
+          <div class="stat-value" id="statRevenue">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-head"><span class="stat-icon" aria-hidden="true">❌</span><span class="stat-label">Cancellations</span></div>
+          <div class="stat-value" id="statCancellations">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section vault-section" id="eventVaultSection">
+      <div class="vault-head-row">
+        <div>
+          <p class="section-eyebrow">Escrow Wallet</p>
+          <h2><span aria-hidden="true">💰</span> Event Vault</h2>
+          <p class="vault-subtitle">Held in escrow — released after event ends</p>
+        </div>
+        <span id="vaultStatusBadge" class="vault-status-badge">Loading...</span>
+      </div>
+
+      <div class="vault-balance-card">
+        <p class="vault-balance-label">Current Vault Balance</p>
+        <p class="vault-balance-value" id="vaultBalanceValue">0.00 EGP</p>
+        <p class="vault-balance-hint">Held in escrow — released after event ends</p>
+      </div>
+
+      <div class="vault-mini-grid">
+        <article class="vault-mini-card">
+          <p class="vault-mini-label">💰 Total Collected</p>
+          <p class="vault-mini-value" id="vaultStatCollected">0.00 EGP</p>
+        </article>
+        <article class="vault-mini-card">
+          <p class="vault-mini-label">🔄 Total Refunded</p>
+          <p class="vault-mini-value" id="vaultStatRefunded">0.00 EGP</p>
+        </article>
+        <article class="vault-mini-card">
+          <p class="vault-mini-label">📊 Net Balance</p>
+          <p class="vault-mini-value" id="vaultStatNet">0.00 EGP</p>
+        </article>
+        <article class="vault-mini-card">
+          <p class="vault-mini-label">📅 Withdrawal Available</p>
+          <p class="vault-mini-value" id="vaultStatAvailableDate">-</p>
+        </article>
+      </div>
+
+      <div class="vault-progress-wrap">
+        <div class="vault-progress-head">
+          <span>Collected vs Refunded</span>
+          <span id="vaultProgressMeta">Refunded: 0%</span>
+        </div>
+        <div class="vault-progress-track" role="img" aria-label="Vault collected and refunded ratio">
+          <span id="vaultCollectedBar" class="vault-progress-collected"></span>
+          <span id="vaultRefundedBar" class="vault-progress-refunded"></span>
+        </div>
+      </div>
+
+      <div class="vault-withdraw-wrap">
+        <button class="nav-btn vault-withdraw-btn" id="vaultWithdrawBtn" type="button" disabled>Withdraw to Wallet</button>
+        <p id="vaultWithdrawHint" class="vault-withdraw-hint">Checking withdrawal eligibility...</p>
+        <p id="vaultCountdown" class="vault-countdown"></p>
+        <p id="vaultMessage" class="ops-message" hidden></p>
+      </div>
+
+      <div class="vault-history-wrap">
+        <h3>Vault Transactions</h3>
+        <div class="table-container vault-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Balance After</th>
+              </tr>
+            </thead>
+            <tbody id="vaultTransactionsBody">
+              <tr>
+                <td colspan="5" style="text-align:center;">Loading vault transactions...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="section-title-row">
+        <h2>Attendee Bookings</h2>
+        <div class="bookings-tools">
+          <label class="search-wrap" for="bookingSearchInput">
+            <span aria-hidden="true">🔍</span>
+            <input id="bookingSearchInput" type="search" placeholder="Search attendee name or email" autocomplete="off" />
+          </label>
+          <button class="nav-btn table-tool-btn" id="exportCsvBtn" type="button">Export CSV</button>
+          <button class="nav-btn table-tool-btn" id="exportExcelBtn" type="button">Export Excel</button>
+        </div>
+      </div>
+      <div id="bookingsMessage" class="bookings-message">Loading bookings...</div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Attendee</th>
+              <th>Email</th>
+              <th>Ticket Type</th>
+              <th>Seats</th>
+              <th>Booked At</th>
+              <th>Status</th>
+              <th>Attendance</th>
+              <th>Ticket Action</th>
+            </tr>
+          </thead>
+          <tbody id="bookingsBody">
+            <tr>
+              <td colspan="8" style="text-align: center;">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <h2>Operations</h2>
+      <div class="ops-grid">
+        <div class="ops-card checkin-card">
+          <h3><span aria-hidden="true">📷</span> Quick Attendee Check-in</h3>
+          <p class="ops-note">Enter the ticket code found under the QR code on the attendee ticket.</p>
+          <div class="input-group">
+            <label for="checkinValue">Ticket Code</label>
+            <input id="checkinValue" type="text" placeholder="Enter ticket code from ticket QR section" />
+          </div>
+          <div class="form-actions">
+            <button class="nav-btn gradient-btn" id="quickCheckinBtn" type="button">Check In Attendee</button>
+          </div>
+          <p id="checkinMessage" class="ops-message" hidden></p>
+        </div>
+
+        <div class="ops-card chat-settings-card">
+          <h3><span aria-hidden="true">💬</span> Chat Settings</h3>
+          <p class="ops-note">Choose who can send messages in this event chat.</p>
+          <div id="chatSettingsStatus" class="chat-settings-status open">
+            🟢 Chat is Open — All attendees can send messages
+          </div>
+          <label class="chat-toggle-wrap" for="chatLockToggle">
+            <input id="chatLockToggle" type="checkbox" role="switch" aria-label="Toggle announcement mode" />
+            <span class="chat-toggle-slider" aria-hidden="true"></span>
+            <span id="chatLockLabel" class="chat-toggle-label open">All Members Can Chat</span>
+          </label>
+          <p class="chat-settings-help">
+            When enabled, only you as the host can send messages. Attendees can still read all messages.
+          </p>
+          <p id="chatSettingsMessage" class="ops-message" hidden></p>
+        </div>
+
+        <div class="ops-card promo-card">
+          <h3><span aria-hidden="true">🏷️</span> Promo Codes</h3>
+          <p class="ops-note">Create discount codes for this event and monitor usage.</p>
+          <div class="promo-form-grid">
+            <div class="input-group">
+              <label for="promoCodeInput">Promo Code</label>
+              <input id="promoCodeInput" type="text" placeholder="e.g. EARLYBIRD10" />
+            </div>
+            <div class="input-group">
+              <label for="promoTypeInput">Discount Type</label>
+              <select id="promoTypeInput">
+                <option value="percent">Percent</option>
+                <option value="fixed">Fixed (EGP)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="promoValueInput">Discount Value</label>
+              <input id="promoValueInput" type="number" min="0.01" step="0.01" placeholder="10" />
+            </div>
+            <div class="input-group">
+              <label for="promoMaxUsesInput">Max Uses (optional)</label>
+              <input id="promoMaxUsesInput" type="number" min="1" step="1" placeholder="100" />
+            </div>
+            <div class="input-group full-width">
+              <label for="promoExpiresInput">Expires At (optional)</label>
+              <input id="promoExpiresInput" type="datetime-local" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="nav-btn gradient-btn" id="createPromoBtn" type="button">Create Promo Code</button>
+          </div>
+          <p id="promoMessage" class="ops-message" hidden></p>
+          <div class="promo-codes-list" id="promoCodesList">
+            <p class="promo-empty">Loading promo codes...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section marketing-section" id="marketingSection" hidden>
+      <div class="marketing-header">
+        <h2><span aria-hidden="true">🤖</span> AI Marketing Plan</h2>
+      </div>
+      <p id="marketingInfoText" class="marketing-subtitle">
+        Complete the setup details to generate a professional AI marketing plan for this event.
+      </p>
+
+      <form id="marketingForm" novalidate>
+        <div class="marketing-grid">
+          <div class="input-group">
+            <label for="marketingBudget">Marketing Budget (EGP) <span class="required-mark">*</span></label>
+            <input id="marketingBudget" type="number" min="1" step="0.01" required />
+          </div>
+
+          <div class="input-group">
+            <label for="primaryGoal">Primary Goal <span class="required-mark">*</span></label>
+            <select id="primaryGoal" required>
+              <option value="">Select goal</option>
+              <option value="profit">Profit</option>
+              <option value="brand_awareness">Brand Awareness</option>
+              <option value="community_building">Community Building</option>
+              <option value="lead_generation">Lead Generation</option>
+              <option value="product_launch">Product Launch</option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label for="incomeLevel">Target Audience Income Level <span class="required-mark">*</span></label>
+            <select id="incomeLevel" required>
+              <option value="">Select income level</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label for="expectedTicketSales">Expected Ticket Sales <span class="required-mark">*</span></label>
+            <input id="expectedTicketSales" type="number" min="1" step="1" required />
+          </div>
+
+          <div class="input-group">
+            <label for="estimatedEventCost">Estimated Total Event Cost (excluding marketing) <span class="required-mark">*</span></label>
+            <input id="estimatedEventCost" type="number" min="0" step="0.01" required />
+          </div>
+
+          <div class="input-group">
+            <label for="instagramUrl">Instagram URL <span class="required-mark">*</span></label>
+            <input id="instagramUrl" type="url" placeholder="https://instagram.com/yourpage" required />
+          </div>
+
+          <div class="input-group">
+            <label for="facebookUrl">Facebook URL <span class="required-mark">*</span></label>
+            <input id="facebookUrl" type="url" placeholder="https://facebook.com/yourpage" required />
+          </div>
+
+          <div class="input-group full-width">
+            <label>Audience Interests <span class="required-mark">*</span></label>
+            <div class="interests-grid">
+              <label class="interest-pill"><input type="checkbox" name="audienceInterests" value="Music"><span>Music</span></label>
+              <label class="interest-pill"><input type="checkbox" name="audienceInterests" value="Tech"><span>Tech</span></label>
+              <label class="interest-pill"><input type="checkbox" name="audienceInterests" value="Business"><span>Business</span></label>
+              <label class="interest-pill"><input type="checkbox" name="audienceInterests" value="Sports"><span>Sports</span></label>
+              <label class="interest-pill"><input type="checkbox" name="audienceInterests" value="Fashion"><span>Fashion</span></label>
+              <label class="interest-pill"><input type="checkbox" name="audienceInterests" value="Gaming"><span>Gaming</span></label>
+              <label class="interest-pill"><input type="checkbox" name="audienceInterests" value="Education"><span>Education</span></label>
+              <label class="interest-pill"><input type="checkbox" name="audienceInterests" value="Food"><span>Food</span></label>
+            </div>
+            <p class="field-help">Select one or more interests.</p>
+          </div>
+
+          <div class="input-group full-width">
+            <label>Is this your first event? <span class="required-mark">*</span></label>
+            <div class="radio-line">
+              <label class="choice-pill"><input type="radio" name="isFirstEvent" value="yes"><span>Yes</span></label>
+              <label class="choice-pill"><input type="radio" name="isFirstEvent" value="no"><span>No</span></label>
+            </div>
+          </div>
+
+          <div class="input-group full-width collapse-target" id="previousAttendanceWrap" hidden>
+            <label for="averagePreviousAttendance">Average previous attendance <span class="required-mark">*</span></label>
+            <input id="averagePreviousAttendance" type="number" min="0" step="1" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="nav-btn generate-btn ai-generate-btn" id="generatePlanBtn" type="submit" disabled>
+            <span class="btn-text">Generate AI Marketing Plan</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+        <p id="marketingMessage" class="marketing-message" hidden></p>
+      </form>
+
+      <div class="marketing-plan-result" id="marketingPlanResult" hidden></div>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="seatsModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="seatsBreakdownTitle">
+      <div class="seats-modal-header">
+        <div class="seats-modal-title-wrap">
+          <span class="seats-modal-icon" aria-hidden="true">💺</span>
+          <div>
+            <h3 id="seatsBreakdownTitle">Seats Breakdown</h3>
+            <p id="seatsBreakdownSubtitle" class="seats-modal-subtitle">Loading event capacity...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="breakdown-cards">
+        <article class="breakdown-card" id="breakdownCardStandard">
+          <div class="breakdown-card-head">
+            <div class="breakdown-type-wrap">
+              <span class="breakdown-type-icon" aria-hidden="true">🎫</span>
+              <div>
+                <p class="breakdown-type-name">Standard</p>
+                <p class="breakdown-type-price" id="breakdownStandardPrice">-</p>
+              </div>
+            </div>
+            <span class="fill-badge" id="breakdownStandardFill">-</span>
+          </div>
+          <p class="breakdown-card-text" id="breakdownStandard">-</p>
+          <div class="breakdown-progress"><span id="breakdownStandardBar"></span></div>
+        </article>
+
+        <article class="breakdown-card" id="breakdownCardSpecial">
+          <div class="breakdown-card-head">
+            <div class="breakdown-type-wrap">
+              <span class="breakdown-type-icon" aria-hidden="true">⭐</span>
+              <div>
+                <p class="breakdown-type-name">Special</p>
+                <p class="breakdown-type-price" id="breakdownSpecialPrice">-</p>
+              </div>
+            </div>
+            <span class="fill-badge" id="breakdownSpecialFill">-</span>
+          </div>
+          <p class="breakdown-card-text" id="breakdownSpecial">-</p>
+          <div class="breakdown-progress"><span id="breakdownSpecialBar"></span></div>
+        </article>
+
+        <article class="breakdown-card" id="breakdownCardVip">
+          <div class="breakdown-card-head">
+            <div class="breakdown-type-wrap">
+              <span class="breakdown-type-icon" aria-hidden="true">👑</span>
+              <div>
+                <p class="breakdown-type-name">VIP</p>
+                <p class="breakdown-type-price" id="breakdownVipPrice">-</p>
+              </div>
+            </div>
+            <span class="fill-badge" id="breakdownVipFill">-</span>
+          </div>
+          <p class="breakdown-card-text" id="breakdownVip">-</p>
+          <div class="breakdown-progress"><span id="breakdownVipBar"></span></div>
+        </article>
+      </div>
+
+      <div class="breakdown-summary">
+        <div class="breakdown-summary-row">
+          <span>Total seats sold</span>
+          <strong id="breakdownTotalSold">-</strong>
+        </div>
+        <div class="breakdown-summary-row">
+          <span>Total seats remaining</span>
+          <strong id="breakdownTotalRemaining">-</strong>
+        </div>
+        <div class="breakdown-summary-row">
+          <span>Overall fill</span>
+          <strong id="breakdownOverallFill">-</strong>
+        </div>
+        <div class="breakdown-progress breakdown-progress-overall">
+          <span id="breakdownOverallBar"></span>
+        </div>
+      </div>
+
+      <button class="close-modal-btn gradient-btn" id="closeSeatsModalBtn">Close</button>
+    </div>
+  </div>
+  <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('id');
+
+    const state = {
+      event: null,
+      bookings: [],
+      promoCodes: [],
+      generating: false,
+      marketingAccess: null,
+      bookingSearch: '',
+      chatLocked: false,
+      chatSettingsLoading: false,
+      vaultData: null,
+      vaultLoading: false,
+      vaultCountdownTimer: null
+    };
+
+    function getAuthToken() {
+      return localStorage.getItem('token');
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function toTitleCase(value) {
+      const str = String(value || '').trim();
+      if (!str) return '';
+      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
+
+    function formatEventDateTime(value) {
+      if (!value) return '-';
+      const parsed = new Date(value);
+      if (isNaN(parsed.getTime())) return '-';
+      const datePart = new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(parsed);
+      const timePart = new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit'
+      }).format(parsed);
+      return `${datePart} · ${timePart}`;
+    }
+
+    function parseSeatNumbers(booking) {
+      const seatNumbers = (booking?.seat_numbers || '').toString().trim();
+      if (!seatNumbers) return [];
+      const parsed = seatNumbers
+        .split(',')
+        .map((seat) => parseInt(seat.trim(), 10))
+        .filter((seat) => !isNaN(seat) && seat > 0);
+      return [...new Set(parsed)];
+    }
+
+    function parseSeatCount(booking) {
+      const totalSeats = parseInt(booking?.total_seats, 10);
+      if (!isNaN(totalSeats) && totalSeats > 0) return totalSeats;
+
+      const seats = parseSeatNumbers(booking);
+      if (seats.length) return seats.length;
+
+      const fallbackSeat = parseInt(booking?.seat_number, 10);
+      if (!isNaN(fallbackSeat) && fallbackSeat > 0) return 1;
+      return 1;
+    }
+
+    function parseSeatList(booking) {
+      const seats = parseSeatNumbers(booking);
+      if (seats.length) return seats.join(', ');
+      const fallbackSeat = parseInt(booking?.seat_number, 10);
+      return !isNaN(fallbackSeat) && fallbackSeat > 0 ? String(fallbackSeat) : '-';
+    }
+
+    function formatSeatDisplay(booking) {
+      const count = parseSeatCount(booking);
+      const seatList = parseSeatList(booking);
+      if (seatList === '-') return `${count} seat${count === 1 ? '' : 's'}`;
+      if (seatList === String(count)) return `${count} seat${count === 1 ? '' : 's'}`;
+      return `${count} seat${count === 1 ? '' : 's'} (${seatList})`;
+    }
+
+    function computeTicketLimits(totalSeats) {
+      const max = Number(totalSeats || 0);
+      const standard = Math.floor(max * 0.5);
+      const special = Math.floor(max * (2 / 6));
+      const vip = max - standard - special;
+      return { standard, special, vip };
+    }
+
+    function isEventExpired() {
+      if (!state.event) return false;
+      const eventDate = new Date(state.event.event_date);
+      return state.event.lifecycle_status === 'expired' || eventDate <= new Date();
+    }
+
+    function getBookingSummary() {
+      const event = state.event || {};
+      const limits = computeTicketLimits(event.max_seats);
+      const summary = {
+        Standard: { capacity: limits.standard, booked: 0 },
+        Special: { capacity: limits.special, booked: 0 },
+        Vip: { capacity: limits.vip, booked: 0 }
+      };
+
+      state.bookings.forEach((booking) => {
+        if (booking.status !== 'confirmed') return;
+        const type = toTitleCase(booking.ticket_type || 'Standard');
+        if (!summary[type]) summary[type] = { capacity: 0, booked: 0 };
+        summary[type].booked += parseSeatCount(booking);
+      });
+
+      Object.keys(summary).forEach((type) => {
+        summary[type].remaining = Math.max(0, Number(summary[type].capacity || 0) - Number(summary[type].booked || 0));
+      });
+      return summary;
+    }
+
+    function getWorkflowStatus(event) {
+      if (!event) return '-';
+      const paid = event.payment_status === 'paid';
+      if (!paid) return 'Unpaid';
+      if (event.event_status === 'approved') return 'Published';
+      return 'Paid';
+    }
+
+    function getWorkflowBadgeClass(status) {
+      const key = String(status || '').trim().toLowerCase();
+      if (key === 'published') return 'workflow-badge published';
+      if (key === 'paid') return 'workflow-badge paid';
+      if (key === 'unpaid') return 'workflow-badge unpaid';
+      return 'workflow-badge';
+    }
+
+    function getFilteredBookings() {
+      const query = String(state.bookingSearch || '').trim().toLowerCase();
+      if (!query) return Array.isArray(state.bookings) ? state.bookings : [];
+      return (Array.isArray(state.bookings) ? state.bookings : []).filter((booking) => {
+        const name = String(booking.full_name || booking.username || '').toLowerCase();
+        const email = String(booking.email || '').toLowerCase();
+        return name.includes(query) || email.includes(query);
+      });
+    }
+
+    function setBookingsMessage(message, isError = false) {
+      const el = document.getElementById('bookingsMessage');
+      el.textContent = message;
+      el.style.color = isError ? '#fca5a5' : 'var(--muted)';
+    }
+
+    function setMarketingMessage(message, type = 'info') {
+      const el = document.getElementById('marketingMessage');
+      if (!message) {
+        el.hidden = true;
+        el.textContent = '';
+        el.className = 'marketing-message';
+        return;
+      }
+      el.hidden = false;
+      el.textContent = message;
+      el.className = `marketing-message ${type}`;
+    }
+
+    function setOpsMessage(id, message, type = 'info') {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!message) {
+        el.hidden = true;
+        el.textContent = '';
+        el.className = 'ops-message';
+        return;
+      }
+      el.hidden = false;
+      el.textContent = message;
+      el.className = `ops-message ${type}`;
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const text = String(message || '').trim();
+      if (!container || !text) return;
+
+      const toast = document.createElement('div');
+      toast.className = `ops-toast ${type}`;
+      toast.textContent = text;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.add('show');
+      });
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 220);
+      }, 2600);
+    }
+
+    function applyChatSettingsUI() {
+      const statusEl = document.getElementById('chatSettingsStatus');
+      const toggleEl = document.getElementById('chatLockToggle');
+      const labelEl = document.getElementById('chatLockLabel');
+      if (!statusEl || !toggleEl || !labelEl) return;
+
+      const locked = Boolean(state.chatLocked);
+      const loading = Boolean(state.chatSettingsLoading);
+
+      statusEl.className = `chat-settings-status ${locked ? 'locked' : 'open'}`;
+      statusEl.textContent = locked
+        ? '🔒 Announcement Mode — Only you can send messages'
+        : '🟢 Chat is Open — All attendees can send messages';
+
+      toggleEl.checked = locked;
+      toggleEl.disabled = loading;
+      labelEl.className = `chat-toggle-label ${locked ? 'locked' : 'open'}`;
+      labelEl.textContent = locked ? 'Announcement Mode ON' : 'All Members Can Chat';
+
+      const wrap = toggleEl.closest('.chat-toggle-wrap');
+      if (wrap) {
+        wrap.classList.toggle('is-disabled', loading);
+      }
+    }
+
+    function formatCurrency(value) {
+      return `${Number(value || 0).toLocaleString()} EGP`;
+    }
+
+    function formatCurrencyPrecise(value) {
+      const amount = Number(value || 0);
+      return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
+    }
+
+    function isEventEndedForVault() {
+      if (!state.event) return false;
+      const lifecycle = String(state.event.lifecycle_status || '').trim().toLowerCase();
+      const eventDate = new Date(state.event.event_date);
+      return lifecycle === 'expired' || (!isNaN(eventDate.getTime()) && eventDate.getTime() <= Date.now());
+    }
+
+    function stopVaultCountdownTimer() {
+      if (state.vaultCountdownTimer) {
+        clearInterval(state.vaultCountdownTimer);
+        state.vaultCountdownTimer = null;
+      }
+    }
+
+    function buildVaultCountdownText(eventDateRaw) {
+      const eventDate = new Date(eventDateRaw);
+      if (isNaN(eventDate.getTime())) return '';
+      const diffMs = eventDate.getTime() - Date.now();
+      if (diffMs <= 0) return 'Available now';
+
+      const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (days > 0) {
+        return `Available in ${days} day${days === 1 ? '' : 's'}, ${hours} hour${hours === 1 ? '' : 's'}`;
+      }
+      return `Available in ${hours} hour${hours === 1 ? '' : 's'}, ${minutes} minute${minutes === 1 ? '' : 's'}`;
+    }
+
+    function getVaultTypeLabel(type) {
+      const normalized = String(type || '').trim().toLowerCase();
+      if (normalized === 'booking_payment') return 'Booking Payment';
+      if (normalized === 'refund') return 'Refund';
+      if (normalized === 'withdrawal') return 'Withdrawal';
+      return 'Transaction';
+    }
+
+    function getVaultTypeClass(type) {
+      const normalized = String(type || '').trim().toLowerCase();
+      if (normalized === 'booking_payment') return 'vault-tx-credit';
+      if (normalized === 'refund' || normalized === 'withdrawal') return 'vault-tx-debit';
+      return '';
+    }
+
+    function renderVaultTransactions() {
+      const tbody = document.getElementById('vaultTransactionsBody');
+      if (!tbody) return;
+
+      const transactions = Array.isArray(state.vaultData?.transactions) ? state.vaultData.transactions : [];
+      if (transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No vault transactions yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = transactions.map((tx) => {
+        const type = String(tx.type || '').trim().toLowerCase();
+        const isCredit = type === 'booking_payment';
+        const amount = Number(tx.amount || 0);
+        const amountClass = getVaultTypeClass(type);
+        const sign = isCredit ? '+' : '-';
+        const description = tx.description || `${getVaultTypeLabel(type)} transaction`;
+
+        return `
+          <tr>
+            <td>${formatEventDateTime(tx.createdAt)}</td>
+            <td><span class="vault-tx-type ${amountClass}">${escapeHtml(getVaultTypeLabel(type))}</span></td>
+            <td>${escapeHtml(description)}</td>
+            <td class="${amountClass}">${sign}${formatCurrencyPrecise(Math.abs(amount))}</td>
+            <td>${formatCurrencyPrecise(tx.balanceAfter)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function applyVaultUI() {
+      const section = document.getElementById('eventVaultSection');
+      const statusBadge = document.getElementById('vaultStatusBadge');
+      const balanceEl = document.getElementById('vaultBalanceValue');
+      const collectedEl = document.getElementById('vaultStatCollected');
+      const refundedEl = document.getElementById('vaultStatRefunded');
+      const netEl = document.getElementById('vaultStatNet');
+      const availableDateEl = document.getElementById('vaultStatAvailableDate');
+      const progressMetaEl = document.getElementById('vaultProgressMeta');
+      const collectedBarEl = document.getElementById('vaultCollectedBar');
+      const refundedBarEl = document.getElementById('vaultRefundedBar');
+      const buttonEl = document.getElementById('vaultWithdrawBtn');
+      const hintEl = document.getElementById('vaultWithdrawHint');
+      const countdownEl = document.getElementById('vaultCountdown');
+      if (!section || !statusBadge || !balanceEl || !collectedEl || !refundedEl || !netEl || !availableDateEl || !progressMetaEl || !collectedBarEl || !refundedBarEl || !buttonEl || !hintEl || !countdownEl) {
+        return;
+      }
+
+      const vault = state.vaultData?.vault || {};
+      const canWithdraw = Boolean(state.vaultData?.canWithdraw);
+      const withdrawAmount = Number(state.vaultData?.withdrawAmount || vault.balance || 0);
+      const withdrawReason = String(state.vaultData?.withdrawReason || '').trim();
+      const loading = Boolean(state.vaultLoading);
+      const status = String(vault.status || '').trim().toLowerCase();
+      const isWithdrawn = status === 'withdrawn';
+      const eventDateRaw = state.event?.event_date || state.vaultData?.event?.eventDate;
+      const eventEnded = isEventEndedForVault();
+
+      const totalCollected = Number(vault.totalCollected || 0);
+      const totalRefunded = Number(vault.totalRefunded || 0);
+      const totalWithdrawn = Number(vault.totalWithdrawn || 0);
+      const existingTicketsRevenue = Math.max(0, totalCollected - totalRefunded);
+      const revenueMirrorValue = existingTicketsRevenue;
+      const netBalance = Number(vault.balance || 0);
+
+      balanceEl.textContent = formatCurrencyPrecise(revenueMirrorValue);
+      collectedEl.textContent = formatCurrencyPrecise(totalCollected);
+      refundedEl.textContent = formatCurrencyPrecise(totalRefunded);
+      netEl.textContent = formatCurrencyPrecise(netBalance > 0 || totalWithdrawn > 0 ? netBalance : revenueMirrorValue);
+      availableDateEl.textContent = formatEventDateTime(eventDateRaw);
+
+      const refundedPercent = totalCollected > 0 ? Math.min(100, (totalRefunded / totalCollected) * 100) : 0;
+      progressMetaEl.textContent = `Refunded: ${refundedPercent.toFixed(1)}%`;
+      collectedBarEl.style.width = '100%';
+      refundedBarEl.style.width = `${refundedPercent}%`;
+
+      section.classList.toggle('is-loading', loading);
+      buttonEl.disabled = loading;
+
+      if (loading) {
+        statusBadge.className = 'vault-status-badge';
+        statusBadge.textContent = 'Updating...';
+      } else if (isWithdrawn) {
+        statusBadge.className = 'vault-status-badge withdrawn';
+        statusBadge.textContent = '✅ Withdrawn';
+      } else if (canWithdraw && withdrawAmount > 0) {
+        statusBadge.className = 'vault-status-badge ready';
+        statusBadge.textContent = '✅ Withdrawal Ready';
+      } else if (eventEnded) {
+        statusBadge.className = 'vault-status-badge ended';
+        statusBadge.textContent = '⏳ Awaiting Withdrawal';
+      } else {
+        statusBadge.className = 'vault-status-badge locked';
+        statusBadge.textContent = '🔒 Escrow Locked';
+      }
+
+      stopVaultCountdownTimer();
+
+      if (isWithdrawn) {
+        buttonEl.textContent = 'Already Withdrawn';
+        buttonEl.disabled = true;
+        buttonEl.classList.remove('ready');
+        hintEl.textContent = `✅ Withdrawn on ${formatEventDateTime(vault.withdrawnAt)} — ${formatCurrencyPrecise(totalWithdrawn)} transferred to your wallet`;
+        countdownEl.textContent = '';
+      } else if (!eventEnded) {
+        buttonEl.textContent = 'Withdraw to Wallet';
+        buttonEl.disabled = true;
+        buttonEl.classList.remove('ready');
+        hintEl.textContent = `🔒 Available after event ends on ${formatEventDateTime(eventDateRaw)}`;
+
+        const refreshCountdown = () => {
+          countdownEl.textContent = buildVaultCountdownText(eventDateRaw);
+        };
+        refreshCountdown();
+        state.vaultCountdownTimer = setInterval(refreshCountdown, 60000);
+      } else if (canWithdraw && withdrawAmount > 0) {
+        buttonEl.textContent = `Withdraw ${formatCurrencyPrecise(withdrawAmount)} to Wallet`;
+        buttonEl.disabled = loading;
+        buttonEl.classList.add('ready');
+        hintEl.textContent = '✅ Event has ended — funds are ready for withdrawal';
+        countdownEl.textContent = '';
+      } else {
+        buttonEl.textContent = 'Withdraw to Wallet';
+        buttonEl.disabled = true;
+        buttonEl.classList.remove('ready');
+        hintEl.textContent = withdrawReason || 'No balance available for withdrawal';
+        countdownEl.textContent = '';
+      }
+
+      renderVaultTransactions();
+    }
+
+    function applyStats() {
+      const event = state.event;
+      if (!event) return;
+      const confirmedSeatCount = state.bookings
+        .filter((booking) => booking.status === 'confirmed')
+        .reduce((sum, booking) => sum + parseSeatCount(booking), 0);
+      const priceMap = {
+        standard: Number(event.price_standard || 0),
+        special: Number(event.price_special || 0),
+        vip: Number(event.price_vip || 0)
+      };
+      const revenueFromBookings = state.bookings
+        .filter((booking) => booking.status === 'confirmed')
+        .reduce((sum, booking) => {
+          const type = String(booking.ticket_type || 'standard').trim().toLowerCase();
+          const unitPrice = priceMap[type] ?? priceMap.standard;
+          return sum + parseSeatCount(booking) * Number(unitPrice || 0);
+        }, 0);
+      const vault = state.vaultData?.vault || null;
+      const hasVaultRevenue = Boolean(vault) && (vault.totalCollected != null || vault.totalRefunded != null);
+      const revenueFromVault = hasVaultRevenue
+        ? Math.max(0, Number(vault.totalCollected || 0) - Number(vault.totalRefunded || 0))
+        : NaN;
+      const totalRevenue = Number.isFinite(revenueFromVault) ? revenueFromVault : revenueFromBookings;
+
+      const available = Number(event.available_seats || 0);
+      const capacity = Number(event.max_seats || 0);
+      const cancellations = state.bookings.filter((booking) => String(booking.status || '').toLowerCase() === 'cancelled').length;
+      const workflowStatus = getWorkflowStatus(event);
+      const occupancyPercent = capacity > 0 ? Math.min(100, Math.round((confirmedSeatCount / capacity) * 100)) : 0;
+      const subtitle = event.title ? `${event.title}` : 'Host Management Dashboard';
+      const workflowEl = document.getElementById('statPayment');
+
+      document.getElementById('eventTitle').textContent = event.title || 'Manage Event';
+      document.getElementById('dashboardSubtitle').textContent = subtitle;
+      document.getElementById('eventMeta').textContent = `${formatEventDateTime(event.event_date)} · ${event.location || 'TBA'}`;
+      document.getElementById('statCapacity').textContent = capacity.toLocaleString();
+      document.getElementById('statBooked').textContent = confirmedSeatCount.toLocaleString();
+      document.getElementById('statAvailable').textContent = available.toLocaleString();
+      workflowEl.textContent = workflowStatus;
+      workflowEl.className = getWorkflowBadgeClass(workflowStatus);
+      document.getElementById('statRevenue').textContent = formatCurrency(totalRevenue);
+      document.getElementById('statCancellations').textContent = cancellations.toLocaleString();
+      document.getElementById('occupancyValue').textContent = `${occupancyPercent}% filled`;
+      document.getElementById('occupancyFill').style.width = `${occupancyPercent}%`;
+    }
+
+    function renderBookingsTable() {
+      const tbody = document.getElementById('bookingsBody');
+      const allBookings = Array.isArray(state.bookings) ? state.bookings : [];
+      const filteredBookings = getFilteredBookings();
+
+      if (allBookings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No bookings yet.</td></tr>';
+        setBookingsMessage('No bookings recorded for this event yet.');
+        return;
+      }
+
+      if (filteredBookings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No bookings match your search.</td></tr>';
+        setBookingsMessage(`No results for "${state.bookingSearch}".`, true);
+        return;
+      }
+
+      const rows = filteredBookings.map((booking) => {
+        const status = String(booking.status || 'pending').toLowerCase();
+        const statusClass = status === 'confirmed' ? 'status-confirmed' : status === 'cancelled' ? 'status-cancelled' : 'status-pending';
+        const seatDisplay = formatSeatDisplay(booking);
+        const ticketType = toTitleCase(booking.ticket_type || 'Standard');
+        const totalSeats = parseSeatCount(booking);
+        const checkedInSeats = Number(
+          booking.checked_in_seats != null
+            ? booking.checked_in_seats
+            : (booking.attended ? totalSeats : 0)
+        );
+        const attendance = status === 'cancelled' ? 'Cancelled booking' : `${checkedInSeats} / ${totalSeats} checked-in`;
+        const ticketCode = String(booking.ticket_code || booking.ticketCode || '').trim().toUpperCase();
+        const ticketCodeAttr = escapeHtml(ticketCode);
+
+        return `
+          <tr>
+            <td>${escapeHtml(booking.full_name || booking.username || 'User')}</td>
+            <td>${escapeHtml(booking.email || '-')}</td>
+            <td>${escapeHtml(ticketType)}</td>
+            <td>${escapeHtml(seatDisplay)}</td>
+            <td>${booking.booking_date ? formatEventDateTime(booking.booking_date) : '-'}</td>
+            <td><span class="status-badge ${statusClass}">${escapeHtml(status.toUpperCase())}</span></td>
+            <td>${attendance}</td>
+            <td>
+              <button
+                type="button"
+                class="table-action-btn"
+                data-ticket-code="${ticketCodeAttr}"
+                ${ticketCode ? '' : 'disabled title="Ticket code unavailable"'}
+              >
+                Use Ticket Code
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.innerHTML = rows;
+      if (String(state.bookingSearch || '').trim()) {
+        setBookingsMessage(`Showing ${filteredBookings.length} of ${allBookings.length} booking record(s).`);
+      } else {
+        setBookingsMessage(`Loaded ${allBookings.length} booking record(s).`);
+      }
+    }
+
+    function renderPromoCodes() {
+      const container = document.getElementById('promoCodesList');
+      if (!container) return;
+      if (!Array.isArray(state.promoCodes) || state.promoCodes.length === 0) {
+        container.innerHTML = '<p class="promo-empty">No promo codes yet.</p>';
+        return;
+      }
+
+      container.innerHTML = state.promoCodes.map((promo) => {
+        const typeLabel = promo.discount_type === 'fixed' ? 'Fixed' : 'Percent';
+        const valueLabel = promo.discount_type === 'fixed'
+          ? `${Number(promo.discount_value || 0).toLocaleString()} EGP`
+          : `${Number(promo.discount_value || 0)}%`;
+        const used = Number(promo.used_count || 0);
+        const max = promo.max_uses == null ? 'Unlimited' : Number(promo.max_uses);
+        const expires = promo.expires_at ? formatEventDateTime(promo.expires_at) : 'No expiry';
+        const status = promo.is_active ? 'Active' : 'Inactive';
+        const statusClass = promo.is_active ? 'status-confirmed' : 'status-pending';
+        const promoId = escapeHtml(promo.id || '');
+        const code = escapeHtml(promo.code || '');
+        const toggleAction = promo.is_active ? 'deactivate' : 'activate';
+        const toggleClass = promo.is_active ? 'deactivate' : 'activate';
+        const toggleLabel = promo.is_active ? 'Deactivate' : 'Activate';
+        return `
+          <article class="promo-code-card ${promo.is_active ? 'is-active' : 'is-inactive'}">
+            <div class="promo-card-top">
+              <div>
+                <p class="promo-code-name">${code}</p>
+                <p class="promo-type-label">${typeLabel} discount</p>
+              </div>
+              <span class="status-badge ${statusClass}">${status}</span>
+            </div>
+            <div class="promo-card-grid">
+              <div class="promo-metric">
+                <span>Discount</span>
+                <strong>${valueLabel}</strong>
+              </div>
+              <div class="promo-metric">
+                <span>Usage</span>
+                <strong>${used} / ${max}</strong>
+              </div>
+              <div class="promo-metric">
+                <span>Expires</span>
+                <strong>${expires}</strong>
+              </div>
+            </div>
+            <div class="promo-actions">
+              <button
+                type="button"
+                class="promo-action-btn copy"
+                data-promo-action="copy"
+                data-promo-id="${promoId}"
+                data-promo-code="${code}"
+              >
+                Copy Code
+              </button>
+              <button
+                type="button"
+                class="promo-action-btn ${toggleClass}"
+                data-promo-action="${toggleAction}"
+                data-promo-id="${promoId}"
+                data-promo-code="${code}"
+              >
+                ${toggleLabel}
+              </button>
+              <button
+                type="button"
+                class="promo-action-btn delete"
+                data-promo-action="delete"
+                data-promo-id="${promoId}"
+                data-promo-code="${code}"
+              >
+                Delete
+              </button>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function sanitizeFileName(value) {
+      const cleaned = String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      return cleaned || 'event-bookings';
+    }
+
+    function csvEscape(value) {
+      return `"${String(value == null ? '' : value).replace(/"/g, '""')}"`;
+    }
+
+    async function copyTextToClipboard(rawValue) {
+      const value = String(rawValue || '').trim();
+      if (!value) return false;
+      try {
+        await navigator.clipboard.writeText(value);
+        return true;
+      } catch (_) {
+        const helper = document.createElement('textarea');
+        helper.value = value;
+        helper.setAttribute('readonly', '');
+        helper.style.position = 'absolute';
+        helper.style.left = '-9999px';
+        document.body.appendChild(helper);
+        helper.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(helper);
+        return copied;
+      }
+    }
+
+    function exportBookings(format = 'csv') {
+      const filteredBookings = getFilteredBookings();
+      if (!filteredBookings.length) {
+        setBookingsMessage('No bookings available to export.', true);
+        return;
+      }
+
+      const headers = [
+        'Attendee',
+        'Email',
+        'Ticket Type',
+        'Seat Count',
+        'Seat Numbers',
+        'Booked At',
+        'Status',
+        'Checked-In Seats',
+        'Total Seats'
+      ];
+      const rows = filteredBookings.map((booking) => {
+        const ticketType = toTitleCase(booking.ticket_type || 'Standard');
+        const seatCount = parseSeatCount(booking);
+        const seatList = parseSeatList(booking);
+        const totalSeats = seatCount;
+        const checkedInSeats = Number(
+          booking.checked_in_seats != null
+            ? booking.checked_in_seats
+            : (booking.attended ? totalSeats : 0)
+        );
+        return [
+          booking.full_name || booking.username || 'User',
+          booking.email || '',
+          ticketType,
+          seatCount,
+          seatList,
+          booking.booking_date ? formatEventDateTime(booking.booking_date) : '-',
+          String(booking.status || 'pending').toUpperCase(),
+          checkedInSeats,
+          totalSeats
+        ];
+      });
+
+      const isExcel = format === 'excel';
+      const separator = isExcel ? '\t' : ',';
+      const mimeType = isExcel ? 'application/vnd.ms-excel;charset=utf-8;' : 'text/csv;charset=utf-8;';
+      const ext = isExcel ? 'xls' : 'csv';
+      const lines = [
+        headers.map((header) => (isExcel ? header : csvEscape(header))).join(separator),
+        ...rows.map((row) => row.map((value) => (isExcel ? String(value).replace(/\t/g, ' ') : csvEscape(value))).join(separator))
+      ];
+
+      const fileName = `${sanitizeFileName(state.event?.title || 'event-bookings')}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+      const blob = new Blob([lines.join('\n')], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setBookingsMessage(`Exported ${rows.length} booking record(s) as ${ext.toUpperCase()}.`);
+    }
+
+
+    function getRemainingStateClass(remainingRatio) {
+      if (remainingRatio > 0.5) return 'state-high';
+      if (remainingRatio >= 0.2) return 'state-medium';
+      return 'state-low';
+    }
+
+    function openSeatsBreakdown() {
+      const breakdown = getBookingSummary();
+      const event = state.event || {};
+      const totalCapacity = Number(event.max_seats || 0);
+      const subtitle = `${event.title || 'Current Event'} · Total Capacity: ${totalCapacity.toLocaleString()} seats`;
+      document.getElementById('seatsBreakdownSubtitle').textContent = subtitle;
+
+      const ticketRows = [
+        {
+          key: 'Standard',
+          textId: 'breakdownStandard',
+          fillId: 'breakdownStandardFill',
+          barId: 'breakdownStandardBar',
+          cardId: 'breakdownCardStandard',
+          priceId: 'breakdownStandardPrice',
+          price: event.price_standard
+        },
+        {
+          key: 'Special',
+          textId: 'breakdownSpecial',
+          fillId: 'breakdownSpecialFill',
+          barId: 'breakdownSpecialBar',
+          cardId: 'breakdownCardSpecial',
+          priceId: 'breakdownSpecialPrice',
+          price: event.price_special
+        },
+        {
+          key: 'Vip',
+          textId: 'breakdownVip',
+          fillId: 'breakdownVipFill',
+          barId: 'breakdownVipBar',
+          cardId: 'breakdownCardVip',
+          priceId: 'breakdownVipPrice',
+          price: event.price_vip
+        }
+      ];
+
+      let totalSold = 0;
+      let totalRemaining = 0;
+
+      ticketRows.forEach((row) => {
+        const current = breakdown[row.key] || { capacity: 0, booked: 0, remaining: 0 };
+        const capacity = Math.max(0, Number(current.capacity || 0));
+        const booked = Math.max(0, Number(current.booked || 0));
+        const remaining = Math.max(0, Number(current.remaining || 0));
+        const remainingRatio = capacity > 0 ? remaining / capacity : 0;
+        const filledPercent = capacity > 0 ? (booked / capacity) * 100 : 0;
+        const stateClass = getRemainingStateClass(remainingRatio);
+        const barWidth = Math.max(0, Math.min(100, remainingRatio * 100));
+        const card = document.getElementById(row.cardId);
+        const bar = document.getElementById(row.barId);
+        const price = Number(row.price || 0);
+
+        document.getElementById(row.textId).textContent = `${remaining.toLocaleString()} remaining out of ${capacity.toLocaleString()} total`;
+        document.getElementById(row.fillId).textContent = `${filledPercent.toFixed(1)}% filled`;
+        document.getElementById(row.priceId).textContent = price > 0 ? `Price: ${formatCurrency(price)}` : 'Price: Free';
+        bar.style.width = `${barWidth}%`;
+
+        card.classList.remove('state-high', 'state-medium', 'state-low');
+        bar.classList.remove('state-high', 'state-medium', 'state-low');
+        card.classList.add(stateClass);
+        bar.classList.add(stateClass);
+
+        totalSold += booked;
+        totalRemaining += remaining;
+      });
+
+      const overallFillPercent = totalCapacity > 0 ? (totalSold / totalCapacity) * 100 : 0;
+      document.getElementById('breakdownTotalSold').textContent = totalSold.toLocaleString();
+      document.getElementById('breakdownTotalRemaining').textContent = totalRemaining.toLocaleString();
+      document.getElementById('breakdownOverallFill').textContent = `${overallFillPercent.toFixed(1)}% filled`;
+      document.getElementById('breakdownOverallBar').style.width = `${Math.max(0, Math.min(100, overallFillPercent))}%`;
+
+      const modal = document.getElementById('seatsModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeSeatsBreakdown() {
+      const modal = document.getElementById('seatsModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function getCheckedInterests() {
+      return Array.from(document.querySelectorAll('input[name="audienceInterests"]:checked'))
+        .map((input) => String(input.value || '').trim())
+        .filter(Boolean);
+    }
+
+    function parseBooleanChoice(value) {
+      if (value === 'yes') return true;
+      if (value === 'no') return false;
+      return null;
+    }
+
+    function isValidHttpUrl(raw) {
+      if (!raw) return false;
+      try {
+        const parsed = new URL(raw);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function collectMarketingPayload() {
+      const isFirstChoice = document.querySelector('input[name="isFirstEvent"]:checked')?.value || '';
+      const isFirstEvent = parseBooleanChoice(isFirstChoice);
+      const averagePreviousAttendance = document.getElementById('averagePreviousAttendance').value;
+
+      return {
+        marketingBudget: Number(document.getElementById('marketingBudget').value),
+        primaryGoal: document.getElementById('primaryGoal').value,
+        incomeLevel: document.getElementById('incomeLevel').value,
+        audienceInterests: getCheckedInterests(),
+        expectedTicketSales: Number(document.getElementById('expectedTicketSales').value),
+        estimatedEventCost: Number(document.getElementById('estimatedEventCost').value),
+        instagramUrl: document.getElementById('instagramUrl').value.trim(),
+        facebookUrl: document.getElementById('facebookUrl').value.trim(),
+        isFirstEvent,
+        averagePreviousAttendance: isFirstEvent === false ? Number(averagePreviousAttendance) : null
+      };
+    }
+
+    function validateMarketingPayload(payload) {
+      const errors = [];
+      if (!Number.isFinite(payload.marketingBudget) || payload.marketingBudget <= 0) errors.push('Marketing Budget must be a positive number.');
+      if (!payload.primaryGoal) errors.push('Primary Goal is required.');
+      if (!payload.incomeLevel) errors.push('Target Audience Income Level is required.');
+      if (!Array.isArray(payload.audienceInterests) || payload.audienceInterests.length === 0) errors.push('Audience Interests is required.');
+      if (!Number.isFinite(payload.expectedTicketSales) || payload.expectedTicketSales < 1) errors.push('Expected Ticket Sales must be at least 1.');
+      if (!Number.isFinite(payload.estimatedEventCost) || payload.estimatedEventCost < 0) errors.push('Estimated Total Event Cost must be zero or greater.');
+      if (!payload.instagramUrl) errors.push('Instagram URL is required.');
+      if (!payload.facebookUrl) errors.push('Facebook URL is required.');
+      if (payload.instagramUrl && !isValidHttpUrl(payload.instagramUrl)) errors.push('Instagram URL must be valid.');
+      if (payload.facebookUrl && !isValidHttpUrl(payload.facebookUrl)) errors.push('Facebook URL must be valid.');
+      if (payload.isFirstEvent === null) errors.push('Please select if this is your first event.');
+      if (payload.isFirstEvent === false && (!Number.isFinite(payload.averagePreviousAttendance) || payload.averagePreviousAttendance < 0)) {
+        errors.push('Average previous attendance is required and must be zero or greater.');
+      }
+      return errors;
+    }
+
+    function togglePreviousAttendance() {
+      const choice = document.querySelector('input[name="isFirstEvent"]:checked')?.value || '';
+      const wrap = document.getElementById('previousAttendanceWrap');
+      const input = document.getElementById('averagePreviousAttendance');
+      const show = choice === 'no';
+      wrap.hidden = !show;
+      wrap.classList.toggle('is-visible', show);
+      input.required = show;
+      if (!show) input.value = '';
+    }
+
+    function updateSelectionPills() {
+      document.querySelectorAll('.interest-pill').forEach((pill) => {
+        const input = pill.querySelector('input[type="checkbox"]');
+        pill.classList.toggle('is-selected', Boolean(input?.checked));
+      });
+      document.querySelectorAll('.choice-pill').forEach((pill) => {
+        const input = pill.querySelector('input[type="radio"]');
+        pill.classList.toggle('is-selected', Boolean(input?.checked));
+      });
+    }
+
+    function setMarketingFormDisabled(disabled) {
+      const form = document.getElementById('marketingForm');
+      if (!form) return;
+      form.querySelectorAll('input, select, textarea, button').forEach((element) => {
+        element.disabled = Boolean(disabled);
+      });
+    }
+
+    function refreshGenerateButtonState() {
+      const btn = document.getElementById('generatePlanBtn');
+      if (!btn) return;
+      const textEl = btn.querySelector('.btn-text');
+      const setBtnText = (value) => {
+        if (textEl) textEl.textContent = value;
+      };
+      if (!state.marketingAccess || !state.marketingAccess.canAccessSetup) {
+        btn.disabled = true;
+        btn.classList.remove('is-loading');
+        setBtnText('Generate AI Marketing Plan');
+        return;
+      }
+      const payload = collectMarketingPayload();
+      const errors = validateMarketingPayload(payload);
+      btn.disabled = state.generating || errors.length > 0;
+      btn.classList.toggle('is-loading', state.generating);
+      setBtnText(state.generating ? 'Generating Plan...' : 'Generate AI Marketing Plan');
+    }
+
+    function fillMarketingForm(setup) {
+      if (!setup) return;
+      document.getElementById('marketingBudget').value = setup.marketingBudget ?? '';
+      document.getElementById('primaryGoal').value = setup.primaryGoal || '';
+      document.getElementById('incomeLevel').value = setup.incomeLevel || '';
+      document.getElementById('expectedTicketSales').value = setup.expectedTicketSales ?? '';
+      document.getElementById('estimatedEventCost').value = setup.estimatedEventCost ?? '';
+      document.getElementById('instagramUrl').value = setup.instagramUrl || '';
+      document.getElementById('facebookUrl').value = setup.facebookUrl || '';
+
+      const selectedInterests = Array.isArray(setup.audienceInterests) ? setup.audienceInterests : [];
+      document.querySelectorAll('input[name="audienceInterests"]').forEach((input) => {
+        input.checked = selectedInterests.includes(input.value);
+      });
+
+      if (setup.isFirstEvent === true) {
+        document.querySelector('input[name="isFirstEvent"][value="yes"]').checked = true;
+      } else if (setup.isFirstEvent === false) {
+        document.querySelector('input[name="isFirstEvent"][value="no"]').checked = true;
+        document.getElementById('averagePreviousAttendance').value = setup.averagePreviousAttendance ?? '';
+      }
+
+      togglePreviousAttendance();
+      updateSelectionPills();
+      refreshGenerateButtonState();
+    }
+
+    function renderMarketingPlan(plan) {
+      const container = document.getElementById('marketingPlanResult');
+      const channels = (Array.isArray(plan.channels) ? plan.channels : [])
+        .map((line) => `<li>${escapeHtml(line)}</li>`)
+        .join('');
+      const advantages = (Array.isArray(plan.advantages) ? plan.advantages : [])
+        .map((line) => `<li>${escapeHtml(line)}</li>`)
+        .join('');
+      const risks = (Array.isArray(plan.risks) ? plan.risks : [])
+        .map((line) => `<li>${escapeHtml(line)}</li>`)
+        .join('');
+      const recommendations = (Array.isArray(plan.recommendations) ? plan.recommendations : [])
+        .map((line) => `<li>${escapeHtml(line)}</li>`)
+        .join('');
+
+      container.innerHTML = `
+        <div class="plan-title-row">
+          <h3>Generated AI Marketing Plan</h3>
+          <span class="plan-chip">AI Powered</span>
+        </div>
+        <div class="plan-card plan-spotlight">
+          <h4>Marketing Strategy</h4>
+          <p>${escapeHtml(plan.strategy || '-')}</p>
+        </div>
+
+        <div class="plan-grid">
+          <div class="plan-card">
+            <h4>Recommended Channels</h4>
+            <ul>${channels || '<li>No channels provided.</li>'}</ul>
+          </div>
+          <div class="plan-card">
+            <h4>Estimated ROI</h4>
+            <p>${escapeHtml(plan.estimated_roi || '-')}</p>
+          </div>
+        </div>
+
+        <div class="plan-grid">
+          <div class="plan-card">
+            <h4>Advantages</h4>
+            <ul>${advantages || '<li>No advantages provided.</li>'}</ul>
+          </div>
+          <div class="plan-card">
+            <h4>Risks</h4>
+            <ul>${risks || '<li>No risks provided.</li>'}</ul>
+          </div>
+        </div>
+
+        <div class="plan-card">
+          <h4>Recommendations</h4>
+          <ul>${recommendations || '<li>No recommendations provided.</li>'}</ul>
+        </div>
+      `;
+      container.hidden = false;
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+      const token = getAuthToken();
+      const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`
+      };
+      const response = await fetch(url, { ...options, headers });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        window.location.href = '/html/signin.html';
+        throw new Error('Session expired. Please sign in again.');
+      }
+      return { response, data };
+    }
+
+    async function loadEvent() {
+      const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}`);
+      if (!response.ok || !data.success || !data.event) {
+        throw new Error(data.message || 'Failed to load event');
+      }
+      state.event = data.event;
+      document.getElementById('publicEventBtn').href = `event-details.html?id=${encodeURIComponent(eventId)}`;
+      applyStats();
+    }
+
+    async function loadBookings() {
+      const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Bookings/event/${eventId}`, { cache: 'no-store' });
+      if (!response.ok || !data.success || !Array.isArray(data.bookings)) {
+        throw new Error(data.message || 'Failed to load bookings');
+      }
+      state.bookings = data.bookings;
+      applyStats();
+      renderBookingsTable();
+    }
+
+    async function loadPromoCodes() {
+      const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/promo-codes`, { cache: 'no-store' });
+      if (!response.ok || !data.success || !Array.isArray(data.promoCodes)) {
+        throw new Error(data.message || 'Failed to load promo codes');
+      }
+      state.promoCodes = data.promoCodes;
+      renderPromoCodes();
+    }
+
+    async function loadChatSettings() {
+      state.chatSettingsLoading = true;
+      applyChatSettingsUI();
+      setOpsMessage('chatSettingsMessage', '');
+
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/chat/${encodeURIComponent(eventId)}/status`, {
+          cache: 'no-store'
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to load chat settings');
+        }
+
+        state.chatLocked = Boolean(data.chat_locked);
+      } catch (error) {
+        setOpsMessage('chatSettingsMessage', error.message || 'Unable to load chat settings.', 'error');
+      } finally {
+        state.chatSettingsLoading = false;
+        applyChatSettingsUI();
+      }
+    }
+
+    async function loadVaultData() {
+      state.vaultLoading = true;
+      applyVaultUI();
+      setOpsMessage('vaultMessage', '');
+
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/vault`, {
+          cache: 'no-store'
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to load event vault');
+        }
+        state.vaultData = data;
+      } catch (error) {
+        state.vaultData = {
+          vault: {
+            balance: 0,
+            totalCollected: 0,
+            totalRefunded: 0,
+            totalWithdrawn: 0,
+            status: 'active',
+            withdrawnAt: null
+          },
+          canWithdraw: false,
+          withdrawReason: error.message || 'Unable to load event vault',
+          withdrawAmount: 0,
+          transactions: []
+        };
+        setOpsMessage('vaultMessage', error.message || 'Unable to load event vault.', 'error');
+      } finally {
+        state.vaultLoading = false;
+        applyVaultUI();
+        applyStats();
+      }
+    }
+
+    function applyMarketingAccess(access) {
+      const section = document.getElementById('marketingSection');
+      const form = document.getElementById('marketingForm');
+      const infoText = document.getElementById('marketingInfoText');
+
+      if (!access) {
+        section.hidden = true;
+        return;
+      }
+
+      section.hidden = false;
+      section.classList.add('is-visible');
+      form.hidden = false;
+      if (!access.canAccessSetup) {
+        setMarketingFormDisabled(true);
+        infoText.textContent = access.lockedMessage || 'AI Marketing Plan is locked until payment is completed.';
+        setMarketingMessage(access.lockedMessage || 'AI Marketing Plan is locked until payment is completed.', 'error');
+        return;
+      }
+
+      setMarketingFormDisabled(false);
+      setMarketingMessage('');
+      infoText.textContent = 'Provide the required details and generate your AI marketing plan.';
+    }
+
+    async function loadMarketingAccess() {
+      const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/marketing/access`, { cache: 'no-store' });
+      if (!response.ok || !data.success || !data.marketing) {
+        throw new Error(data.message || 'Failed to check marketing access');
+      }
+      state.marketingAccess = data.marketing;
+      applyMarketingAccess(data.marketing);
+      const setupRes = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/marketing/setup`, { cache: 'no-store' });
+      if (setupRes.response.ok && setupRes.data.success && setupRes.data.setup) {
+        fillMarketingForm(setupRes.data.setup);
+      } else if (!setupRes.response.ok && setupRes.response.status !== 404) {
+        throw new Error(setupRes.data.message || 'Failed to load saved marketing setup');
+      }
+      refreshGenerateButtonState();
+    }
+
+    async function handleGeneratePlan(event) {
+      event.preventDefault();
+      setMarketingMessage('');
+      if (!state.marketingAccess || !state.marketingAccess.canAccessSetup) {
+        setMarketingMessage('AI Marketing Plan is locked until payment is completed.', 'error');
+        return;
+      }
+      const payload = collectMarketingPayload();
+      const errors = validateMarketingPayload(payload);
+      if (errors.length > 0) {
+        setMarketingMessage(errors[0], 'error');
+        refreshGenerateButtonState();
+        return;
+      }
+
+      state.generating = true;
+      setMarketingMessage('Generating your AI marketing plan...', 'info');
+      document.getElementById('marketingPlanResult').hidden = true;
+      refreshGenerateButtonState();
+
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/generate-marketing-plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, eventId })
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to generate marketing plan');
+        }
+        setMarketingMessage('Marketing plan generated successfully.', 'success');
+        if (data.plan) renderMarketingPlan(data.plan);
+      } catch (error) {
+        setMarketingMessage(error.message || 'Failed to generate marketing plan.', 'error');
+      } finally {
+        state.generating = false;
+        refreshGenerateButtonState();
+      }
+    }
+
+    async function handleQuickCheckin() {
+      setOpsMessage('checkinMessage', '');
+      if (isEventExpired()) {
+        setOpsMessage('checkinMessage', 'Check-in is available only for active events.', 'error');
+        return;
+      }
+      const ticketCode = document.getElementById('checkinValue').value.trim().toUpperCase();
+      if (!ticketCode) {
+        setOpsMessage('checkinMessage', 'Please enter a ticket code.', 'error');
+        return;
+      }
+
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Bookings/check-in-ticket`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId, ticketCode })
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Ticket check-in failed');
+        }
+        await loadBookings();
+        const seat = data.ticket?.seatNumber != null ? `seat ${data.ticket.seatNumber}` : 'ticket';
+        setOpsMessage('checkinMessage', `Checked-in successfully for ${seat}.`, 'success');
+      } catch (error) {
+        setOpsMessage('checkinMessage', error.message || 'Quick check-in failed.', 'error');
+      }
+    }
+
+    async function handleCreatePromoCode() {
+      setOpsMessage('promoMessage', '');
+      const code = document.getElementById('promoCodeInput').value.trim().toUpperCase();
+      const discountType = document.getElementById('promoTypeInput').value;
+      const discountValue = Number(document.getElementById('promoValueInput').value);
+      const maxUsesRaw = document.getElementById('promoMaxUsesInput').value.trim();
+      const expiresAtRaw = document.getElementById('promoExpiresInput').value;
+
+      if (!code) {
+        setOpsMessage('promoMessage', 'Promo code is required.', 'error');
+        return;
+      }
+      if (!Number.isFinite(discountValue) || discountValue <= 0) {
+        setOpsMessage('promoMessage', 'Discount value must be a positive number.', 'error');
+        return;
+      }
+      if (discountType === 'percent' && discountValue > 100) {
+        setOpsMessage('promoMessage', 'Percent discount cannot exceed 100.', 'error');
+        return;
+      }
+
+      const payload = {
+        code,
+        discountType,
+        discountValue
+      };
+      if (maxUsesRaw) {
+        const maxUses = parseInt(maxUsesRaw, 10);
+        if (isNaN(maxUses) || maxUses < 1) {
+          setOpsMessage('promoMessage', 'Max uses must be at least 1.', 'error');
+          return;
+        }
+        payload.maxUses = maxUses;
+      }
+      if (expiresAtRaw) {
+        payload.expiresAt = `${expiresAtRaw.replace('T', ' ')}:00`;
+      }
+
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/promo-codes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to create promo code');
+        }
+        setOpsMessage('promoMessage', 'Promo code created successfully.', 'success');
+        document.getElementById('promoCodeInput').value = '';
+        document.getElementById('promoValueInput').value = '';
+        document.getElementById('promoMaxUsesInput').value = '';
+        document.getElementById('promoExpiresInput').value = '';
+        await loadPromoCodes();
+      } catch (error) {
+        setOpsMessage('promoMessage', error.message || 'Failed to create promo code.', 'error');
+      }
+    }
+
+    async function handleDeactivatePromoCode(promoId) {
+      setOpsMessage('promoMessage', '');
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/promo-codes/${encodeURIComponent(promoId)}/deactivate`, {
+          method: 'PATCH'
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to deactivate promo code');
+        }
+        setOpsMessage('promoMessage', data.message || 'Promo code deactivated successfully.', 'success');
+        await loadPromoCodes();
+      } catch (error) {
+        setOpsMessage('promoMessage', error.message || 'Failed to deactivate promo code.', 'error');
+      }
+    }
+
+    async function handleActivatePromoCode(promoId) {
+      setOpsMessage('promoMessage', '');
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/promo-codes/${encodeURIComponent(promoId)}/activate`, {
+          method: 'PATCH'
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to activate promo code');
+        }
+        setOpsMessage('promoMessage', data.message || 'Promo code activated successfully.', 'success');
+        await loadPromoCodes();
+      } catch (error) {
+        setOpsMessage('promoMessage', error.message || 'Failed to activate promo code.', 'error');
+      }
+    }
+
+    async function handleDeletePromoCode(promoId, promoCode) {
+      setOpsMessage('promoMessage', '');
+      if (!confirm(`Delete promo code "${promoCode}"? This action cannot be undone.`)) {
+        return;
+      }
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/promo-codes/${encodeURIComponent(promoId)}`, {
+          method: 'DELETE'
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to delete promo code');
+        }
+        setOpsMessage('promoMessage', data.message || 'Promo code deleted successfully.', 'success');
+        await loadPromoCodes();
+      } catch (error) {
+        setOpsMessage('promoMessage', error.message || 'Failed to delete promo code.', 'error');
+      }
+    }
+
+    async function handleChatLockToggleChange(event) {
+      const requestedLocked = Boolean(event?.target?.checked);
+      if (requestedLocked === Boolean(state.chatLocked) || state.chatSettingsLoading) {
+        applyChatSettingsUI();
+        return;
+      }
+
+      const prompt = requestedLocked
+        ? 'Enable Announcement Mode? Attendees will not be able to send messages.'
+        : 'Disable Announcement Mode? All attendees will be able to send messages again.';
+      if (!confirm(prompt)) {
+        applyChatSettingsUI();
+        return;
+      }
+
+      state.chatSettingsLoading = true;
+      applyChatSettingsUI();
+      setOpsMessage('chatSettingsMessage', '');
+
+      try {
+        const endpoint = requestedLocked ? 'lock' : 'unlock';
+        const { response, data } = await fetchWithAuth(
+          `${API_BASE_URL}/chat/${encodeURIComponent(eventId)}/${endpoint}`,
+          { method: 'POST' }
+        );
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to update chat settings');
+        }
+
+        state.chatLocked = Boolean(data.chat_locked);
+        showToast(requestedLocked ? 'Chat locked successfully' : 'Chat unlocked successfully', 'success');
+      } catch (error) {
+        setOpsMessage('chatSettingsMessage', error.message || 'Failed to update chat settings.', 'error');
+      } finally {
+        state.chatSettingsLoading = false;
+        applyChatSettingsUI();
+      }
+    }
+
+    async function handleVaultWithdrawClick() {
+      if (state.vaultLoading) return;
+
+      const vault = state.vaultData?.vault || {};
+      const status = String(vault.status || '').trim().toLowerCase();
+      const withdrawAmount = Number(state.vaultData?.withdrawAmount || vault.balance || 0);
+      const canWithdraw = Boolean(state.vaultData?.canWithdraw) && status !== 'withdrawn' && withdrawAmount > 0;
+
+      if (!canWithdraw) {
+        setOpsMessage('vaultMessage', state.vaultData?.withdrawReason || 'Withdrawal is not available yet.', 'error');
+        return;
+      }
+
+      const confirmation = confirm(
+        `Are you sure you want to transfer ${formatCurrencyPrecise(withdrawAmount)} to your personal wallet?\nThis action cannot be undone.`
+      );
+      if (!confirmation) return;
+
+      state.vaultLoading = true;
+      applyVaultUI();
+      setOpsMessage('vaultMessage', '');
+
+      try {
+        const { response, data } = await fetchWithAuth(`${API_BASE_URL}/Events/${eventId}/vault/withdraw`, {
+          method: 'POST'
+        });
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to withdraw event vault');
+        }
+
+        showToast('Vault withdrawn successfully', 'success');
+        setOpsMessage('vaultMessage', data.message || 'Vault withdrawn successfully.', 'success');
+        await loadVaultData();
+      } catch (error) {
+        setOpsMessage('vaultMessage', error.message || 'Failed to withdraw event vault.', 'error');
+      } finally {
+        state.vaultLoading = false;
+        applyVaultUI();
+      }
+    }
+
+    function bindEvents() {
+      document.getElementById('seatsRemainingCard').addEventListener('click', openSeatsBreakdown);
+      document.getElementById('seatsRemainingCard').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openSeatsBreakdown();
+        }
+      });
+      document.getElementById('closeSeatsModalBtn').addEventListener('click', closeSeatsBreakdown);
+      document.getElementById('seatsModal').addEventListener('click', (e) => {
+        if (e.target.id === 'seatsModal') closeSeatsBreakdown();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeSeatsBreakdown();
+      });
+
+      document.getElementById('bookingSearchInput').addEventListener('input', (event) => {
+        state.bookingSearch = event.target.value || '';
+        renderBookingsTable();
+      });
+      document.getElementById('exportCsvBtn').addEventListener('click', () => exportBookings('csv'));
+      document.getElementById('exportExcelBtn').addEventListener('click', () => exportBookings('excel'));
+      document.getElementById('bookingsBody').addEventListener('click', async (event) => {
+        const actionBtn = event.target.closest('button[data-ticket-code]');
+        if (!actionBtn || actionBtn.disabled) return;
+        const ticketCode = actionBtn.getAttribute('data-ticket-code') || '';
+        if (!ticketCode) {
+          setBookingsMessage('Ticket code is unavailable for this booking.', true);
+          return;
+        }
+        const copied = await copyTextToClipboard(ticketCode);
+        if (copied) {
+          setBookingsMessage(`Ticket code ${ticketCode} copied to clipboard.`);
+        } else {
+          setBookingsMessage('Unable to copy ticket code to clipboard.', true);
+        }
+      });
+
+      const marketingInputs = document.querySelectorAll(
+        '#marketingForm input, #marketingForm select, #marketingForm textarea'
+      );
+      marketingInputs.forEach((input) => {
+        input.addEventListener('input', () => {
+          updateSelectionPills();
+          refreshGenerateButtonState();
+        });
+        input.addEventListener('change', () => {
+          updateSelectionPills();
+          refreshGenerateButtonState();
+        });
+      });
+
+      document.querySelectorAll('input[name="isFirstEvent"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+          togglePreviousAttendance();
+          updateSelectionPills();
+          refreshGenerateButtonState();
+        });
+      });
+
+      updateSelectionPills();
+      document.getElementById('marketingForm').addEventListener('submit', handleGeneratePlan);
+      document.getElementById('quickCheckinBtn').addEventListener('click', handleQuickCheckin);
+      document.getElementById('createPromoBtn').addEventListener('click', handleCreatePromoCode);
+      document.getElementById('chatLockToggle').addEventListener('change', handleChatLockToggleChange);
+      document.getElementById('vaultWithdrawBtn').addEventListener('click', handleVaultWithdrawClick);
+      applyChatSettingsUI();
+      applyVaultUI();
+      document.getElementById('promoCodesList').addEventListener('click', async (event) => {
+        const btn = event.target.closest('button[data-promo-action][data-promo-id]');
+        if (!btn) return;
+
+        const action = btn.getAttribute('data-promo-action');
+        const promoId = btn.getAttribute('data-promo-id');
+        const promoCode = btn.getAttribute('data-promo-code') || 'this promo code';
+
+        if (!promoId) return;
+        if (action === 'copy') {
+          const copied = await copyTextToClipboard(promoCode);
+          if (copied) {
+            setOpsMessage('promoMessage', `Promo code "${promoCode}" copied to clipboard.`, 'success');
+          } else {
+            setOpsMessage('promoMessage', 'Unable to copy promo code.', 'error');
+          }
+          return;
+        }
+        if (action === 'deactivate') {
+          await handleDeactivatePromoCode(promoId);
+          return;
+        }
+        if (action === 'activate') {
+          await handleActivatePromoCode(promoId);
+          return;
+        }
+        if (action === 'delete') {
+          await handleDeletePromoCode(promoId, promoCode);
+        }
+      });
+    }
+
+    async function init() {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = '/html/signin.html';
+        return;
+      }
+      if (!eventId) {
+        alert('Event id is required.');
+        window.location.href = 'my-events.html';
+        return;
+      }
+
+      bindEvents();
+      try {
+        await Promise.all([loadEvent(), loadBookings()]);
+        const optionalResults = await Promise.allSettled([loadMarketingAccess(), loadPromoCodes(), loadChatSettings(), loadVaultData()]);
+        optionalResults.forEach((result) => {
+          if (result.status === 'rejected') {
+            console.warn('Optional dashboard module failed:', result.reason?.message || result.reason);
+          }
+        });
+      } catch (error) {
+        console.error('Manage event load error:', error);
+        document.querySelector('main').innerHTML = `
+          <section class="content-section">
+            <h1>Unable to load event dashboard</h1>
+            <p style="margin-top: 10px; color: var(--muted);">${escapeHtml(error.message || 'Unexpected error')}</p>
+            <a class="nav-btn" href="/html/my-events.html" style="margin-top: 14px; display:inline-flex;">Back to My Events</a>
+          </section>
+        `;
+      }
+    }
+
+    window.addEventListener('beforeunload', stopVaultCountdownTimer);
+    init();
+  </script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+

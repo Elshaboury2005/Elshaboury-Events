@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserve Seats | Elshaboury Events</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../public/css/auth.css">
+    <script src="../public/js/auth-config.js"></script>
+    <script src="../public/js/auth-guard.js"></script>
+
+    <link rel="stylesheet" href="../css/reserve-seat.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+    <div class="page-shell">
+        <div class="event-summary-bar">
+            <div class="summary-title-block">
+                <div class="summary-kicker">Booking Session</div>
+                <h1 id="summaryEventTitle" class="summary-event-title">Loading event...</h1>
+                <p id="summaryEventMeta" class="summary-event-meta">Event details are being prepared.</p>
+            </div>
+            <div class="summary-pills">
+                <div class="summary-pill">
+                    <span>Ticket Type</span>
+                    <strong id="summaryTicketType">Standard</strong>
+                </div>
+                <div class="summary-pill">
+                    <span>Selected Seats</span>
+                    <strong id="summarySeatCount">0</strong>
+                </div>
+                <div class="summary-pill">
+                    <span>Current Total</span>
+                    <strong id="summaryTotal">0.00 EGP</strong>
+                </div>
+            </div>
+        </div>
+
+        <main class="booking-flow">
+            <div class="flow-head">
+                <h2 class="flow-title">Reserve Seats & Secure Payment</h2>
+                <div class="step-progress" id="stepProgress">
+                    <div class="progress-step current" data-step="1">
+                        <div class="progress-check" data-check="1">1</div>
+                        <div>
+                            <span class="progress-step-label">Step 1</span>
+                            <span class="progress-step-title">Your Details</span>
+                        </div>
+                    </div>
+                    <div class="progress-step" data-step="2">
+                        <div class="progress-check" data-check="2">2</div>
+                        <div>
+                            <span class="progress-step-label">Step 2</span>
+                            <span class="progress-step-title">Choose Seats</span>
+                        </div>
+                    </div>
+                    <div class="progress-step" data-step="3">
+                        <div class="progress-check" data-check="3">3</div>
+                        <div>
+                            <span class="progress-step-label">Step 3</span>
+                            <span class="progress-step-title">Payment</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-body">
+                <section id="step1Panel" class="step-panel active" data-step-panel="1">
+                    <div class="step-layout details">
+                        <div class="panel-card">
+                            <h3 class="panel-title">Step 1: Your Details</h3>
+                            <p class="panel-subtitle">Confirm your contact details and choose the ticket type before moving to seat selection.</p>
+
+                            <form id="bookingForm" novalidate>
+                                <div class="form-grid">
+                                    <div class="form-field">
+                                        <label class="form-label" for="fullname">Full Name</label>
+                                        <div class="input-wrap">
+                                            <i class="fas fa-user input-icon"></i>
+                                            <input type="text" id="fullname" required class="custom-input with-icon" placeholder="Enter your full name">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field">
+                                        <label class="form-label" for="email">Email Address</label>
+                                        <div class="input-wrap">
+                                            <i class="fas fa-envelope input-icon"></i>
+                                            <input type="email" id="email" required class="custom-input with-icon" placeholder="Enter your email">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field full">
+                                        <label class="form-label" for="phone">Phone Number</label>
+                                        <div class="input-wrap">
+                                            <i class="fas fa-phone input-icon"></i>
+                                            <input type="tel" id="phone" required class="custom-input with-icon" placeholder="Enter your phone number">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-field full" style="margin-top: 12px;">
+                                    <label class="form-label">Ticket Type</label>
+                                    <div id="ticketCards" class="ticket-cards">
+                                        <button type="button" class="ticket-card active" data-type="standard">
+                                            <div class="ticket-name">Standard</div>
+                                            <div class="ticket-price" data-price="standard">0.00 EGP</div>
+                                            <div class="ticket-remaining" data-remaining="standard">0 seats left</div>
+                                            <div class="ticket-description">General access seating.</div>
+                                        </button>
+
+                                        <button type="button" class="ticket-card" data-type="special">
+                                            <div class="ticket-name">Special</div>
+                                            <div class="ticket-price" data-price="special">0.00 EGP</div>
+                                            <div class="ticket-remaining" data-remaining="special">0 seats left</div>
+                                            <div class="ticket-description">Closer viewing area with added perks.</div>
+                                        </button>
+
+                                        <button type="button" class="ticket-card" data-type="vip">
+                                            <div class="ticket-name">VIP</div>
+                                            <div class="ticket-price" data-price="vip">0.00 EGP</div>
+                                            <div class="ticket-remaining" data-remaining="vip">0 seats left</div>
+                                            <div class="ticket-description">Premium placement and priority access.</div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <select id="seatType" class="hidden" aria-hidden="true">
+                                    <option value="standard">Standard</option>
+                                    <option value="special">Special</option>
+                                    <option value="vip">VIP</option>
+                                </select>
+
+                                <div class="flow-actions">
+                                    <button type="button" id="goToSeatsBtn" class="btn btn-primary">Next: Choose Seats</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="panel-card">
+                            <h3 class="panel-title">Event Summary</h3>
+                            <p class="panel-subtitle">Review the booking details as you make your selections.</p>
+                            <div class="event-summary-list">
+                                <div class="summary-row">
+                                    <span>Event Name</span>
+                                    <strong id="eventSummaryTitle">-</strong>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Date</span>
+                                    <strong id="eventSummaryDate">-</strong>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Location</span>
+                                    <strong id="eventSummaryLocation">-</strong>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Selected Ticket Type</span>
+                                    <strong id="eventSummaryTicketType">Standard</strong>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Price Per Seat</span>
+                                    <strong id="eventSummaryPrice">0.00 EGP</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="step2Panel" class="step-panel" data-step-panel="2">
+                    <div class="step-layout seats">
+                        <div class="panel-card">
+                            <h3 class="panel-title">Step 2: Choose Seats</h3>
+                            <p class="panel-subtitle">Select your preferred seat numbers for the selected ticket type.</p>
+
+                            <div class="seat-legend">
+                                <span class="legend-item"><span class="legend-box legend-available"></span>Available</span>
+                                <span class="legend-item"><span class="legend-box legend-selected"></span>Selected</span>
+                                <span class="legend-item"><span class="legend-box legend-booked"></span>Booked</span>
+                            </div>
+
+                            <div id="seatMapContainer" class="panel-card" style="padding: 10px; margin-bottom: 10px;">
+                                <p id="seatMapInfo" class="panel-subtitle" style="margin-bottom: 8px;">Loading seat availability...</p>
+                                <div id="seatMapGrid" class="seat-map-grid"></div>
+                            </div>
+
+                            <div class="selected-seats-card">
+                                <strong>Selected Seats</strong>
+                                <div id="selectedSeatsList" class="selected-seats-list">No seats selected yet.</div>
+                                <p id="maxSeatsWarning" class="max-warning hidden"></p>
+                            </div>
+
+                            <input type="hidden" id="selectedSeatsInput" name="selectedSeats" value="">
+
+                            <div class="flow-actions">
+                                <button type="button" id="backToDetailsBtn" class="btn">Back</button>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <h3 class="panel-title">Booking Summary</h3>
+                            <p class="panel-subtitle">Review order details before moving to payment.</p>
+
+                            <div id="orderSeatLines" class="order-lines"></div>
+
+                            <div class="totals-box">
+                                <div class="totals-row">
+                                    <span>Subtotal</span>
+                                    <strong id="subtotalValue">0.00 EGP</strong>
+                                </div>
+                                <div id="discountRow" class="totals-row discount hidden">
+                                    <span>Promo Discount</span>
+                                    <strong id="discountValue">-0.00 EGP</strong>
+                                </div>
+                                <div class="totals-row final">
+                                    <span>Final Total</span>
+                                    <strong id="finalTotalValue">0.00 EGP</strong>
+                                </div>
+                            </div>
+
+                            <div id="promoAppliedBadge" class="promo-badge hidden">Promo Applied &#10003;</div>
+
+                            <div class="promo-row">
+                                <input type="text" id="promoCodeInput" class="custom-input" placeholder="Promo code">
+                                <button type="button" id="applyPromoBtn" class="promo-apply-btn">Apply</button>
+                            </div>
+                            <p id="promoMsg" class="promo-message"></p>
+
+                            <button type="button" id="waitlistBtn" class="btn waitlist-btn hidden">Join Waitlist (if full)</button>
+                            <button type="button" id="proceedToPaymentBtn" class="btn btn-primary btn-wide" style="margin-top: 10px;">
+                                &#128274; Complete Process
+                            </button>
+                        </div>
+                    </div>
+                </section>
+                <section id="step3Panel" class="step-panel" data-step-panel="3">
+                    <div class="panel-card" style="margin-bottom: 10px;">
+                        <div class="flow-actions" style="margin-top: 0;">
+                            <button type="button" id="backToSeatsFromPayment" class="btn">Back to Seats</button>
+                        </div>
+                    </div>
+
+                    <div id="paymentView" class="payment-wrapper">
+                        <div class="col-left">
+                            <div class="perspective-container">
+                                <div class="card-inner" id="cardInner">
+                                    <div class="card-face">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                            <div class="chip"></div>
+                                            <div id="cardBrandLogo" class="card-brand">VISA</div>
+                                        </div>
+                                        <div>
+                                            <span class="card-label">Card Number</span>
+                                            <div class="font-mono-credit card-number" id="displayCardNumber">#### #### #### ####</div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                                            <div>
+                                                <span class="card-label">Card Holder</span>
+                                                <div class="font-mono-credit" id="displayCardName">YOUR NAME</div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <span class="card-label">Expires</span>
+                                                <div class="font-mono-credit" id="displayExpiry">MM/YY</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-face card-back">
+                                        <div style="height: 30px; background: #03131c; margin: 0 -14px;"></div>
+                                        <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                                            <div style="min-width: 90px; background: #fff; color: #1b1b1b; border-radius: 4px; text-align: right; padding: 4px 8px;">
+                                                <span class="card-label" style="color: #515151;">CVV</span>
+                                                <div class="font-mono-credit" id="displayCvc">***</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="secure-note">Animated card preview updates in real time as you type.</p>
+                        </div>
+
+                        <div class="col-right">
+                            <h3 class="panel-title" style="margin-bottom: 4px;">Step 3: Payment</h3>
+                            <p class="panel-subtitle">Choose payment method and complete checkout securely.</p>
+
+                            <form id="paymentForm" autocomplete="off" novalidate>
+                                <div class="wallet-balance-banner">
+                                    <span>Wallet Balance</span>
+                                    <strong id="walletBalanceDisplay">0.00 EGP</strong>
+                                </div>
+
+                                <div class="payment-option-group">
+                                    <label class="payment-option-card" id="paymentOptionWalletCard">
+                                        <input type="radio" name="paymentOption" value="wallet" id="paymentOptionWallet">
+                                        <div>
+                                            <span class="payment-option-title">&#128717; Pay with Wallet Only</span>
+                                            <p class="payment-option-desc">Deduct full amount from wallet balance.</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="payment-option-card" id="paymentOptionCardCard">
+                                        <input type="radio" name="paymentOption" value="card" id="paymentOptionCard" checked>
+                                        <div>
+                                            <span class="payment-option-title">&#128179; Pay with Card Only</span>
+                                            <p class="payment-option-desc">Use your bank card for the full amount.</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="payment-option-card" id="paymentOptionSplitCard">
+                                        <input type="radio" name="paymentOption" value="split" id="paymentOptionSplit">
+                                        <div>
+                                            <span class="payment-option-title">&#128155; Pay with Wallet + Card</span>
+                                            <p class="payment-option-desc">Split amount between wallet and card.</p>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <p id="walletOnlyHint" class="payment-hint hidden">Wallet-only is unavailable because balance is lower than final total.</p>
+
+                                <div id="splitAmountSection" class="split-section hidden">
+                                    <label class="form-label" for="walletSplitRange">Wallet Amount To Use</label>
+                                    <input type="range" id="walletSplitRange" class="split-range" min="0" max="0" step="0.01" value="0">
+                                    <div class="split-input-row">
+                                        <input type="number" id="walletSplitAmount" class="pay-input" min="0" step="0.01" value="0">
+                                    </div>
+                                    <p id="splitCalculationLine" class="split-calc-line">Wallet: 0.00 EGP + Card: 0.00 EGP = Total: 0.00 EGP</p>
+                                </div>
+
+                                <div id="cardFields" class="payment-grid">
+                                    <div class="form-field full">
+                                        <label class="form-label" for="cardNumberInput">Card Number</label>
+                                        <div class="input-wrap">
+                                            <i class="far fa-credit-card input-icon"></i>
+                                            <input type="text" id="cardNumberInput" class="pay-input with-icon" placeholder="0000 0000 0000 0000" maxlength="19" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field full">
+                                        <label class="form-label" for="cardNameInput">Card Holder</label>
+                                        <input type="text" id="cardNameInput" class="pay-input" placeholder="Name on card" required>
+                                    </div>
+
+                                    <div class="form-field">
+                                        <label class="form-label" for="expiryInput">Expiry (MM/YY)</label>
+                                        <input type="text" id="expiryInput" class="pay-input" placeholder="MM/YY" maxlength="5" required>
+                                    </div>
+
+                                    <div class="form-field">
+                                        <label class="form-label" for="cvcInput">CVC</label>
+                                        <input type="text" id="cvcInput" class="pay-input" placeholder="123" maxlength="4" required>
+                                    </div>
+                                </div>
+
+                                <button type="submit" id="payButton" class="btn btn-primary btn-wide" style="margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                    <span id="btnText">Pay 0.00 EGP</span>
+                                    <span id="btnLoader" class="loader"></span>
+                                </button>
+
+                                <div class="security-badges">
+                                    <span class="security-badge">&#128274; SSL Encrypted</span>
+                                    <span class="security-badge">&#128737;&#65039; Secure Payment</span>
+                                    <span class="security-badge">&#9989; PCI Compliant</span>
+                                </div>
+
+                                <p id="paymentStatusMsg" class="payment-status-msg"></p>
+
+                                <a href="#" id="cancelPaymentLink" class="btn-link">Cancel Transaction</a>
+                            </form>
+                        </div>
+
+                        <div id="successOverlay" class="success-overlay">
+                            <h3 style="font-size: 1.3rem;">Payment Successful</h3>
+                            <p id="transactionInfo">Redirecting...</p>
+                            <button id="makeAnotherBookingBtn" class="btn">Make Another Booking</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/reserve-seat-flow.js"></script>
+    <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+

@@ -1,0 +1,390 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Support Tickets</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="senderModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="senderModalTitle">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div id="senderAvatar" class="avatar avatar-lg">NA</div>
+          <div>
+            <h3 id="senderModalTitle">Sender Details</h3>
+            <p id="senderModalSub" class="section-meta">Loading...</p>
+          </div>
+        </div>
+        <button id="closeSenderModal" class="modal-close">Close</button>
+      </div>
+      <div id="senderModalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Support Messages');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Support Inbox</h3>
+              <p class="section-meta">Review support requests, reply, and manage resolution status.</p>
+            </div>
+            <div class="inline-actions">
+              <button id="markAllRead" class="btn btn-outline-primary">Mark All Read</button>
+              <button id="deleteAllTickets" class="btn btn-outline-danger">Delete All</button>
+            </div>
+          </div>
+          <div class="stats-grid cols-4" id="supportStats"></div>
+        </div>
+
+        <div class="card">
+          <div class="tabs" id="supportTabs">
+            <button class="tab-btn active" data-filter="all">All</button>
+            <button class="tab-btn" data-filter="unread">Unread</button>
+            <button class="tab-btn" data-filter="open">Open</button>
+            <button class="tab-btn" data-filter="resolved">Resolved</button>
+          </div>
+          <div id="supportList" class="message-list"></div>
+        </div>
+      `;
+
+      const supportStats = document.getElementById('supportStats');
+      const supportTabs = document.getElementById('supportTabs');
+      const supportList = document.getElementById('supportList');
+
+      const senderModal = document.getElementById('senderModal');
+      const senderAvatar = document.getElementById('senderAvatar');
+      const senderModalTitle = document.getElementById('senderModalTitle');
+      const senderModalSub = document.getElementById('senderModalSub');
+      const senderModalBody = document.getElementById('senderModalBody');
+
+      let tickets = [];
+      let currentFilter = 'all';
+
+      function toDisplayStatus(rawStatus) {
+        return String(rawStatus || '').toLowerCase() === 'closed' ? 'resolved' : 'open';
+      }
+
+      function toApiStatus(displayStatus) {
+        if (displayStatus === 'resolved' || displayStatus === 'closed') return 'closed';
+        return 'open';
+      }
+
+      function getSupportBadge(displayStatus) {
+        if (displayStatus === 'resolved') {
+          return '<span class="status-badge status-success">Resolved</span>';
+        }
+        if (displayStatus === 'closed') {
+          return '<span class="status-badge status-closed">Closed</span>';
+        }
+        return '<span class="status-badge status-warning">Open</span>';
+      }
+
+      function updateStats() {
+        const total = tickets.length;
+        const unread = tickets.filter((ticket) => !ticket.is_read).length;
+        const open = tickets.filter((ticket) => toDisplayStatus(ticket.status) === 'open').length;
+        const resolved = tickets.filter((ticket) => toDisplayStatus(ticket.status) === 'resolved').length;
+
+        supportStats.innerHTML = `
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Total Messages</span><span class="stat-icon">&#128172;</span></div><div class="stat-value">${AdminApp.formatNumber(total)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Unread</span><span class="stat-icon">&#128309;</span></div><div class="stat-value">${AdminApp.formatNumber(unread)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Open</span><span class="stat-icon">&#128237;</span></div><div class="stat-value">${AdminApp.formatNumber(open)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Resolved</span><span class="stat-icon">?</span></div><div class="stat-value">${AdminApp.formatNumber(resolved)}</div></div>
+        `;
+      }
+
+      function applyFilter(items) {
+        if (currentFilter === 'unread') {
+          return items.filter((ticket) => !ticket.is_read);
+        }
+        if (currentFilter === 'open') {
+          return items.filter((ticket) => toDisplayStatus(ticket.status) === 'open');
+        }
+        if (currentFilter === 'resolved') {
+          return items.filter((ticket) => toDisplayStatus(ticket.status) === 'resolved');
+        }
+        return items;
+      }
+
+      function statusSelectClass(value) {
+        if (value === 'resolved') return 'status-success';
+        if (value === 'closed') return 'status-closed';
+        return 'status-warning';
+      }
+
+      function renderList() {
+        const visible = applyFilter(tickets);
+        if (!visible.length) {
+          supportList.innerHTML = '<div class="empty-state">No support messages in this filter.</div>';
+          return;
+        }
+
+        supportList.innerHTML = visible.map((ticket) => {
+          const displayStatus = toDisplayStatus(ticket.status);
+          const preview = String(ticket.message || '').slice(0, 180);
+
+          return `
+            <article class="message-card" data-id="${ticket.id}">
+              <div class="message-head">
+                <div class="message-sender">
+                  ${ticket.is_read ? '' : '<span class="unread-dot" title="Unread"></span>'}
+                  <div>
+                    <div><strong>${AdminApp.escapeHtml(ticket.full_name || ticket.name || 'Unknown User')}</strong></div>
+                    <div class="user-sub">${AdminApp.escapeHtml(ticket.email || '-')}</div>
+                  </div>
+                </div>
+                <div class="section-meta">${AdminApp.formatDateTime(ticket.created_at)}</div>
+              </div>
+
+              <div class="message-subject">${AdminApp.escapeHtml(ticket.subject || '(No subject)')}</div>
+              <div class="message-preview">${AdminApp.escapeHtml(preview || 'No message content')}</div>
+
+              <div class="message-controls">
+                ${getSupportBadge(displayStatus)}
+                <button class="btn btn-outline-primary" data-action="toggle-reply">Reply</button>
+                ${ticket.is_read ? '' : '<button class="btn btn-outline-warning" data-action="mark-read">Mark as Read</button>'}
+                <button class="btn btn-outline-primary" data-action="view-sender">View Sender Details</button>
+                <button class="btn btn-outline-danger" data-action="delete">Delete</button>
+              </div>
+
+              <div class="expand-panel" id="reply-panel-${ticket.id}">
+                <label class="label-stack" style="margin-bottom:8px;">Reply Message
+                  <textarea id="reply-${ticket.id}" rows="3">${AdminApp.escapeHtml(ticket.admin_reply || '')}</textarea>
+                </label>
+                <div class="inline-actions">
+                  <select id="status-${ticket.id}" class="${statusSelectClass(displayStatus)}" style="max-width:180px;">
+                    <option value="open" ${displayStatus === 'open' ? 'selected' : ''}>Open</option>
+                    <option value="resolved" ${displayStatus === 'resolved' ? 'selected' : ''}>Resolved</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                  <button class="btn btn-gradient" data-action="send-reply">Send Reply</button>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join('');
+
+        visible.forEach((ticket) => {
+          const select = document.getElementById(`status-${ticket.id}`);
+          if (!select) return;
+          select.addEventListener('change', () => {
+            select.classList.remove('status-warning', 'status-success', 'status-closed');
+            select.classList.add(statusSelectClass(select.value));
+          });
+        });
+      }
+
+      async function loadTickets() {
+        const response = await AdminApp.request('/Admin/support');
+        const data = await response.json().catch(() => ({}));
+        tickets = data.tickets || [];
+        updateStats();
+        renderList();
+      }
+
+      async function sendReply(ticketId) {
+        const replyEl = document.getElementById(`reply-${ticketId}`);
+        const statusEl = document.getElementById(`status-${ticketId}`);
+        const reply = replyEl ? replyEl.value.trim() : '';
+        const status = statusEl ? statusEl.value : 'open';
+
+        if (!reply) {
+          window.alert('Reply message is required.');
+          return;
+        }
+
+        const response = await AdminApp.request(`/Admin/support/${ticketId}/reply`, {
+          method: 'POST',
+          body: JSON.stringify({
+            reply,
+            status: toApiStatus(status)
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          window.alert(error.message || 'Failed to send reply.');
+          return;
+        }
+
+        await loadTickets();
+      }
+
+      async function markRead(ticketId) {
+        const response = await AdminApp.request(`/Admin/support/${ticketId}/read`, { method: 'PUT' });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          window.alert(error.message || 'Failed to mark message as read.');
+          return;
+        }
+        await loadTickets();
+      }
+
+      async function deleteTicket(ticketId) {
+        if (!window.confirm('Delete this support message?')) return;
+        const response = await AdminApp.request(`/Admin/support/${ticketId}`, { method: 'DELETE' });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          window.alert(error.message || 'Failed to delete support message.');
+          return;
+        }
+        await loadTickets();
+      }
+
+      async function viewSenderDetails(userId) {
+        if (!userId) {
+          window.alert('No linked user account for this message.');
+          return;
+        }
+
+        senderModal.classList.add('open');
+        senderModal.setAttribute('aria-hidden', 'false');
+        senderModalBody.innerHTML = '<div class="empty-state">Loading sender details...</div>';
+
+        const response = await AdminApp.request(`/Admin/users/${userId}`);
+        const data = await response.json().catch(() => ({}));
+        const user = data.user || {};
+        const summary = data.summary || {};
+
+        const userName = user.full_name || user.username || 'User';
+        senderAvatar.textContent = AdminApp.getInitials(userName);
+        senderModalTitle.textContent = userName;
+        senderModalSub.textContent = `${user.username || '-'} · ${user.email || '-'}`;
+
+        senderModalBody.innerHTML = `
+          <div class="info-grid">
+            <div class="info-item"><div class="info-label">User ID</div><div class="info-value">${AdminApp.escapeHtml(user.id || '-')}</div></div>
+            <div class="info-item"><div class="info-label">Status</div><div class="info-value">${user.is_active ? '<span class="status-badge status-active">Active</span>' : '<span class="status-badge status-inactive">Inactive</span>'}</div></div>
+            <div class="info-item"><div class="info-label">Created</div><div class="info-value">${AdminApp.formatDateTime(user.created_at)}</div></div>
+          </div>
+
+          <div class="stats-grid cols-4">
+            <div class="stat-card"><div class="stat-head"><span class="stat-label">Bookings</span><span class="stat-icon">&#127903;&#65039;</span></div><div class="stat-value">${AdminApp.formatNumber(summary.totalBookings || 0)}</div></div>
+            <div class="stat-card"><div class="stat-head"><span class="stat-label">Events</span><span class="stat-icon">&#127914;</span></div><div class="stat-value">${AdminApp.formatNumber(summary.totalCreatedEvents || 0)}</div></div>
+            <div class="stat-card"><div class="stat-head"><span class="stat-label">Payments</span><span class="stat-icon">&#128179;</span></div><div class="stat-value">${AdminApp.formatNumber(summary.totalPayments || 0)}</div></div>
+            <div class="stat-card"><div class="stat-head"><span class="stat-label">Favorites</span><span class="stat-icon">?</span></div><div class="stat-value">${AdminApp.formatNumber(summary.totalFavorites || 0)}</div></div>
+          </div>
+
+          <div class="card" style="margin-bottom:0;">
+            <h4 class="card-title">Recent Bookings</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Event</th><th>Status</th><th>Ticket</th><th>Date</th></tr></thead>
+                <tbody>
+                  ${(data.bookings || []).slice(0, 10).map((booking) => `
+                    <tr>
+                      <td>${AdminApp.escapeHtml(booking.event_title || '-')}</td>
+                      <td>${AdminApp.escapeHtml(booking.status || '-')}</td>
+                      <td>${AdminApp.escapeHtml(booking.ticket_type || '-')}</td>
+                      <td>${AdminApp.formatDateTime(booking.booking_date)}</td>
+                    </tr>
+                  `).join('') || '<tr><td colspan="4"><span class="muted">No bookings found.</span></td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function closeSenderModal() {
+        senderModal.classList.remove('open');
+        senderModal.setAttribute('aria-hidden', 'true');
+      }
+
+      supportTabs.addEventListener('click', (event) => {
+        const tab = event.target.closest('button[data-filter]');
+        if (!tab) return;
+        currentFilter = tab.dataset.filter;
+        supportTabs.querySelectorAll('.tab-btn').forEach((button) => button.classList.remove('active'));
+        tab.classList.add('active');
+        renderList();
+      });
+
+      supportList.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+
+        const card = button.closest('.message-card[data-id]');
+        if (!card) return;
+
+        const ticketId = card.dataset.id;
+        const ticket = tickets.find((item) => String(item.id) === String(ticketId));
+        if (!ticket) return;
+
+        const action = button.dataset.action;
+
+        if (action === 'toggle-reply') {
+          const panel = card.querySelector('.expand-panel');
+          if (panel) panel.classList.toggle('open');
+          return;
+        }
+
+        if (action === 'send-reply') {
+          await sendReply(ticketId);
+          return;
+        }
+
+        if (action === 'mark-read') {
+          await markRead(ticketId);
+          return;
+        }
+
+        if (action === 'delete') {
+          await deleteTicket(ticketId);
+          return;
+        }
+
+        if (action === 'view-sender') {
+          await viewSenderDetails(ticket.user_id || '');
+        }
+      });
+
+      document.getElementById('markAllRead').addEventListener('click', async () => {
+        const response = await AdminApp.request('/Admin/support/read-all', { method: 'PUT' });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          window.alert(error.message || 'Failed to mark all as read.');
+          return;
+        }
+        await loadTickets();
+      });
+
+      document.getElementById('deleteAllTickets').addEventListener('click', async () => {
+        if (!window.confirm('Delete all support messages?')) return;
+        const response = await AdminApp.request('/Admin/support', { method: 'DELETE' });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          window.alert(error.message || 'Failed to delete all tickets.');
+          return;
+        }
+        await loadTickets();
+      });
+
+      document.getElementById('closeSenderModal').addEventListener('click', closeSenderModal);
+      senderModal.addEventListener('click', (event) => {
+        if (event.target === senderModal) closeSenderModal();
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && senderModal.classList.contains('open')) closeSenderModal();
+      });
+
+      await loadTickets();
+    })();
+  </script>
+</body>
+</html>
+

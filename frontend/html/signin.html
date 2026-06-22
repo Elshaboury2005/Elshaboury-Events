@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Elshaboury Events</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../public/css/auth.css">
+    <script src="../public/js/auth-config.js"></script>
+    <script src="../public/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="../css/signin.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+    <div class="background">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <h2 class="login-title">Login</h2>
+            <p class="login-subtitle">Welcome back to Elshaboury Events</p>
+            <div id="platformLockNotice" class="message-box error" style="display:none; margin-bottom: 16px;"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" placeholder="Enter your username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="password-field">
+                        <input type="password" class="form-control" id="password" placeholder="Enter your password"
+                            required>
+                        <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">&#128065;</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login">Sign In</button>
+                <button type="button" id="guestBtn" class="btn-login"
+                    style="margin-top: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">Continue
+                    as Guest</button>
+                <button type="button" id="adminBtn" class="btn-login"
+                    style="margin-top: 10px; background: rgba(56,189,248,0.18); border: 1px solid rgba(56,189,248,0.45);">Continue
+                    as Administrator</button>
+            </form>
+
+            <div class="account-links">
+                <a href="/html/register.html" class="create-account">Create a new account</a>
+                <a href="#">Forgot Password?</a>
+            </div>
+
+            <div id="messageBox" class="message-box"></div>
+        </div>
+    </div>
+
+    <script>
+        // document.getElementById('loginForm').addEventListener('submit', function(event) {
+        //     event.preventDefault();
+
+        //     const username = document.getElementById('username').value;
+        //     const password = document.getElementById('password').value;
+        //     const messageBox = document.getElementById('messageBox');
+
+        //     // Remove existing classes
+        //     messageBox.classList.remove('show', 'success', 'error');
+
+        //     if (username && password) {
+        //         messageBox.classList.add('success', 'show');
+        //         messageBox.textContent = 'Login successful! Welcome back.';
+
+        //         setTimeout(() => {
+        //             window.location.href = 'index.html';
+        //         }, 2000);
+        //     } else {
+        //         messageBox.classList.add('error', 'show');
+        //         messageBox.textContent = 'Please enter both username and password.';
+
+        //         setTimeout(() => {
+        //             messageBox.classList.remove('show');
+        //         }, 3000);
+        //     }
+        // });
+
+
+        const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('passwordToggle');
+        const platformLockNotice = document.getElementById('platformLockNotice');
+        const guestBtn = document.getElementById('guestBtn');
+        const adminBtn = document.getElementById('adminBtn');
+        const loginForm = document.getElementById('loginForm');
+        const messageBox = document.getElementById('messageBox');
+        const createAccountLink = document.querySelector('.create-account');
+        let platformLocked = false;
+
+        function applyPlatformAccessState(state) {
+            platformLocked = Boolean(state && state.locked);
+
+            const fields = loginForm.querySelectorAll('input, button[type="submit"]');
+            fields.forEach((field) => {
+                if (field === adminBtn) return;
+                field.disabled = platformLocked;
+            });
+            guestBtn.disabled = platformLocked;
+
+            if (platformLocked) {
+                platformLockNotice.style.display = 'block';
+                platformLockNotice.classList.add('show');
+                platformLockNotice.textContent = state.message || 'The platform is currently locked by the administrator. Only admin access is available right now.';
+                if (createAccountLink) {
+                    createAccountLink.style.pointerEvents = 'none';
+                    createAccountLink.style.opacity = '0.5';
+                }
+            } else {
+                platformLockNotice.style.display = 'none';
+                platformLockNotice.classList.remove('show');
+                platformLockNotice.textContent = '';
+                if (createAccountLink) {
+                    createAccountLink.style.pointerEvents = '';
+                    createAccountLink.style.opacity = '';
+                }
+            }
+        }
+
+        const initialPlatformLocked = new URLSearchParams(window.location.search).get('platformLocked') === '1';
+        applyPlatformAccessState(window.__eePlatformAccessState || {
+            locked: initialPlatformLocked,
+            message: initialPlatformLocked ? 'The platform is currently locked by the administrator. Only admin access is available right now.' : ''
+        });
+        window.addEventListener('ee:platform-access-state', (event) => {
+            applyPlatformAccessState(event.detail || { locked: false });
+        });
+
+        passwordToggle.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            passwordToggle.innerHTML = isPassword ? '&#128584;' : '&#128065;';
+            passwordToggle.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+        });
+
+        loginForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const password = passwordInput.value;
+
+            // Remove existing classes
+            messageBox.classList.remove('show', 'success', 'error');
+
+            if (platformLocked) {
+                messageBox.classList.add('error', 'show');
+                messageBox.textContent = 'The platform is locked. Only administrator access is available right now.';
+                return;
+            }
+
+            if (!username || !password) {
+                messageBox.classList.add('error', 'show');
+                messageBox.textContent = 'Please enter both username and password.';
+
+                setTimeout(() => {
+                    messageBox.classList.remove('show');
+                }, 3000);
+                return;
+            }
+
+            try {
+                // Call backend API
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Store user info and token in localStorage
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('token', data.token);
+
+                    messageBox.classList.add('success', 'show');
+                    messageBox.textContent = data.message || 'Login successful! Welcome back.';
+
+                    // Redirect after 2 seconds
+                    setTimeout(() => {
+                        if (data.user && data.user.role === 'venue_owner') {
+                            window.location.href = '/html/venue-owner-dashboard.html';
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    }, 2000);
+                } else {
+                    if (data.code === 'PLATFORM_LOCKED') {
+                        applyPlatformAccessState({ locked: true, message: data.message });
+                    }
+                    messageBox.classList.add('error', 'show');
+                    messageBox.textContent = data.message || 'Invalid username or password.';
+
+                    setTimeout(() => {
+                        messageBox.classList.remove('show');
+                    }, 3000);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                messageBox.classList.add('error', 'show');
+                messageBox.textContent = 'An error occurred. Please try again later.';
+
+                setTimeout(() => {
+                    messageBox.classList.remove('show');
+                }, 3000);
+            }
+        });
+
+        guestBtn.addEventListener('click', () => {
+            if (platformLocked) {
+                messageBox.classList.remove('success');
+                messageBox.classList.add('error', 'show');
+                messageBox.textContent = 'Guest access is disabled while the platform is locked by the administrator.';
+                return;
+            }
+            localStorage.setItem('isLoggedIn', 'guest');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+
+        document.getElementById('adminBtn').addEventListener('click', () => {
+            window.location.href = '/admin/login.html';
+        });
+    </script>
+    <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+

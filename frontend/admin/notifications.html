@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Notifications</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Notifications Manager');
+
+      const params = new URLSearchParams(window.location.search);
+      const bulkMode = params.get('mode') === 'bulk';
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Admin Notification Dispatch</h3>
+              <p class="section-meta">Send targeted or global platform messages to users. Notifications appear in each user's notification center.</p>
+            </div>
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div style="font-weight:700;">Send to ALL Users</div>
+              <div class="section-meta">Enable this to broadcast to every active user account.</div>
+            </div>
+            <label class="switch">
+              <input id="sendAllToggle" type="checkbox" ${bulkMode ? 'checked' : ''} />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <label class="label-stack">Notification Title
+              <input id="title" placeholder="Ex: Important platform update" />
+            </label>
+            <label class="label-stack">Notification Type
+              <select id="typeSelect">
+                <option value="info">🔵 Info</option>
+                <option value="warning">🟠 Warning</option>
+                <option value="alert">🔴 Alert</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="label-stack" style="margin-top:10px;">Message
+            <textarea id="message" rows="4" placeholder="Write your notification message"></textarea>
+          </label>
+
+          <div id="targetedFields" style="margin-top:10px;">
+            <div class="form-grid">
+              <label class="label-stack">Specific User Emails (comma separated)
+                <input id="userEmails" placeholder="example1@mail.com, example2@mail.com" />
+              </label>
+              <label class="label-stack">Specific User IDs (comma separated)
+                <input id="userIds" placeholder="UUIDs (optional)" />
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button id="sendBtn" class="btn btn-gradient">&#128228; Send Notification</button>
+            <span id="result" class="section-meta"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Recent Notifications Sent</h3>
+              <p class="section-meta">Latest 10 admin notification dispatches</p>
+            </div>
+          </div>
+          <div id="recentNotifications"></div>
+        </div>
+      `;
+
+      const sendAllToggle = document.getElementById('sendAllToggle');
+      const targetedFields = document.getElementById('targetedFields');
+      const typeSelect = document.getElementById('typeSelect');
+      const result = document.getElementById('result');
+      const recentNotifications = document.getElementById('recentNotifications');
+
+      function updateTargetVisibility() {
+        targetedFields.classList.toggle('hidden', sendAllToggle.checked);
+      }
+
+      function updateTypeTone() {
+        typeSelect.classList.remove('status-info', 'status-warning', 'status-alert');
+        const selected = String(typeSelect.value || 'info').toLowerCase();
+        if (selected === 'warning') typeSelect.classList.add('status-warning');
+        else if (selected === 'alert') typeSelect.classList.add('status-alert');
+        else typeSelect.classList.add('status-info');
+      }
+
+      function parseRecipients(value) {
+        return String(value || '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      async function loadRecentNotifications() {
+        const response = await AdminApp.request('/Admin/audit-logs');
+        const data = await response.json().catch(() => ({}));
+        const logs = (data.logs || [])
+          .filter((log) => String(log.action || '').toUpperCase() === 'SEND_NOTIFICATION')
+          .slice(0, 10);
+
+        if (!logs.length) {
+          recentNotifications.innerHTML = '<div class="empty-state">No sent notifications yet.</div>';
+          return;
+        }
+
+        recentNotifications.innerHTML = `
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>Recipients</th>
+                  <th>Date Sent</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${logs.map((log) => {
+                  const details = AdminApp.parseJson(log.details, {}) || {};
+                  const rawType = String(details.type || 'info').toLowerCase();
+                  const type = rawType === 'error' ? 'alert' : rawType;
+                  return `
+                    <tr>
+                      <td>${AdminApp.escapeHtml(details.title || 'Notification')}</td>
+                      <td><span class="status-badge status-${AdminApp.escapeHtml(type === 'alert' ? 'alert' : type)}">${AdminApp.escapeHtml(type)}</span></td>
+                      <td>${AdminApp.formatNumber(details.toUsers || 0)} users</td>
+                      <td>${AdminApp.formatDateTime(log.created_at)}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      document.getElementById('sendBtn').addEventListener('click', async () => {
+        const title = document.getElementById('title').value.trim();
+        const message = document.getElementById('message').value.trim();
+        const typeValue = String(typeSelect.value || 'info').toLowerCase();
+
+        if (!title || !message) {
+          result.textContent = 'Title and message are required.';
+          return;
+        }
+
+        let userEmails;
+        let userIds;
+
+        if (!sendAllToggle.checked) {
+          userEmails = parseRecipients(document.getElementById('userEmails').value);
+          userIds = parseRecipients(document.getElementById('userIds').value);
+          if (!userEmails.length && !userIds.length) {
+            result.textContent = 'Provide target users or enable "Send to ALL Users".';
+            return;
+          }
+        }
+
+        const payload = {
+          title,
+          message,
+          type: typeValue === 'alert' ? 'error' : typeValue,
+          userEmails,
+          userIds
+        };
+
+        const response = await AdminApp.request('/Admin/notifications/send', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json().catch(() => ({}));
+
+        const missing = Array.isArray(data.missingEmails) && data.missingEmails.length
+          ? ` | Not found: ${data.missingEmails.join(', ')}`
+          : '';
+        result.textContent = `${data.message || 'Notification sent.'}${missing}`;
+
+        await loadRecentNotifications();
+      });
+
+      sendAllToggle.addEventListener('change', updateTargetVisibility);
+      typeSelect.addEventListener('change', updateTypeTone);
+
+      updateTargetVisibility();
+      updateTypeTone();
+      await loadRecentNotifications();
+    })();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Favorite Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/fav-events.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <div class="page-title">
+      <h1>Favorite Events</h1>
+      <p>Your handpicked selection of extraordinary moments</p>
+    </div>
+
+    <div class="events-grid" id="eventsGrid">
+      <!-- Events will be loaded here -->
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+        Loading your favorite events...
+      </div>
+    </div>
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form →</a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun – Thu : 8:00 AM – 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => {
+        const isOpen = header.classList.contains('menu-open');
+        setMenuState(!isOpen);
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            setMenuState(false);
+          }
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+          setMenuState(false);
+        }
+      });
+    })();
+
+    const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+
+    // Get auth token from localStorage
+    function getAuthToken() {
+      const user = localStorage.getItem('user');
+      const isLoggedIn = localStorage.getItem('isLoggedIn');
+      if (!user || !isLoggedIn || isLoggedIn !== 'true') {
+        return null;
+      }
+      // Token should be stored separately, but for now we'll get it from user object
+      const token = localStorage.getItem('token');
+      return token;
+    }
+
+    // Load favorite events from API
+    async function loadFavoriteEvents() {
+      const token = getAuthToken();
+      if (!token) {
+        document.getElementById('eventsGrid').innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+            <p>Please <a href="/html/signin.html" style="color: var(--accent);">sign in</a> to view your favorite events.</p>
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Favorites`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.events.length > 0) {
+          displayEvents(data.events);
+        } else {
+          document.getElementById('eventsGrid').innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+              <p>You don't have any favorite events yet.</p>
+              <p style="margin-top: 16px;"><a href="/html/book-event.html" style="color: var(--accent);">Browse events</a> to add some favorites!</p>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+        document.getElementById('eventsGrid').innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+            <p>Error loading favorite events. Please try again later.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Display events
+    function toNumber(value, fallback = 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function normalizeCategory(rawType) {
+      const source = String(rawType || '').toLowerCase();
+      if (source.includes('music') || source.includes('concert')) return { label: 'Music', className: 'badge-music' };
+      if (source.includes('workshop')) return { label: 'Workshop', className: 'badge-workshop' };
+      if (source.includes('art')) return { label: 'Art', className: 'badge-art' };
+      if (source.includes('tour')) return { label: 'Tour', className: 'badge-tour' };
+      if (source.includes('sport')) return { label: 'Sports', className: 'badge-sports' };
+      if (source.includes('conference') || source.includes('business')) return { label: 'Business', className: 'badge-business' };
+      return { label: rawType || 'Event', className: 'badge-default' };
+    }
+
+    function buildSeatsProgress(event) {
+      const maxSeats = Math.max(0, toNumber(event.max_seats));
+      const availableSeatsRaw = Number(event.available_seats);
+      const hasAvailable = Number.isFinite(availableSeatsRaw);
+
+      if (!maxSeats || !hasAvailable) {
+        return `
+          <div class="seats-progress-block">
+            <div class="seats-progress-head">
+              <span>Seats info unavailable</span>
+              <span>0%</span>
+            </div>
+            <div class="seats-progress-track"><div class="seats-progress-fill" style="width:0%;"></div></div>
+          </div>
+        `;
+      }
+
+      const availableSeats = Math.max(0, Math.min(maxSeats, availableSeatsRaw));
+      const fullPercent = Math.max(0, Math.min(100, Math.round(((maxSeats - availableSeats) / maxSeats) * 100)));
+
+      return `
+        <div class="seats-progress-block">
+          <div class="seats-progress-head">
+            <span>${availableSeats} seats remaining</span>
+            <span>${fullPercent}% full</span>
+          </div>
+          <div class="seats-progress-track"><div class="seats-progress-fill" style="width:${fullPercent}%;"></div></div>
+        </div>
+      `;
+    }
+
+    function displayEvents(events) {
+      const grid = document.getElementById('eventsGrid');
+      grid.innerHTML = events.map(event => {
+        const eventDate = new Date(event.event_date);
+        const formattedDate = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const location = event.location || 'TBA';
+        const category = normalizeCategory(event.event_type);
+
+        return `
+          <div class="event-card" data-event-id="${event.id}">
+            <div class="favorite-badge" onclick="removeFavorite('${event.id}', this)" title="Remove from favorites">&#10084;&#65039;</div>
+            <div class="event-header">
+              <span class="event-tag category-badge ${category.className}">${category.label}</span>
+              <h2>${event.title}</h2>
+              <div class="event-meta">
+                <span>&#x1F4CD; ${location}</span>
+                <span>&#x1F4C5; ${formattedDate}</span>
+              </div>
+            </div>
+            ${buildSeatsProgress(event)}
+            <p class="event-description">${event.description || 'No description available.'}</p>
+            <div class="event-footer">
+              <a class="cta" href="/html/event-details.html?id=${event.id}">Get Info</a>
+              <button class="remove-fav" onclick="removeFavorite('${event.id}', this.closest('.event-card'))">Remove</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Remove favorite
+    async function removeFavorite(eventId, element) {
+      const token = getAuthToken();
+      if (!token) {
+        alert('Please sign in to manage favorites');
+        return;
+      }
+
+      const card = element.classList?.contains('event-card') ? element : element.closest('.event-card');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Favorites/${eventId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Animate removal
+          if (card) {
+            card.style.transform = 'scale(0.9)';
+            card.style.opacity = '0';
+            setTimeout(() => {
+              card.remove();
+              // Reload to update the list
+              loadFavoriteEvents();
+            }, 300);
+          } else {
+            loadFavoriteEvents();
+          }
+        } else {
+          alert(data.message || 'Error removing favorite');
+        }
+      } catch (error) {
+        console.error('Error removing favorite:', error);
+        alert('Error removing favorite. Please try again.');
+      }
+    }
+
+    // Load events on page load
+    loadFavoriteEvents();
+
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

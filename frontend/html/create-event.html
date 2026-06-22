@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Create Event</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/create-event.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn active auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Host bold experiences with precision.</h1>
+      <p>Capture every detail your event team needs and launch a premium experience powered by Elshaboury Events.</p>
+    </section>
+
+    <form id="createEventForm" novalidate>
+      <div class="wizard-header">
+        <div class="wizard-meta">
+          <p id="stepLabel" class="step-label">Step 1 of 5</p>
+          <h2 id="stepTitle">Event Format</h2>
+        </div>
+        <div class="wizard-progress" aria-hidden="true">
+          <span id="wizardProgressBar"></span>
+        </div>
+        <ol class="wizard-steps" aria-label="Create event steps">
+          <li class="wizard-step active"><span class="wizard-step-dot">1</span><span class="wizard-step-text">Event Format</span></li>
+          <li class="wizard-step"><span class="wizard-step-dot">2</span><span class="wizard-step-text">Basic Info</span></li>
+          <li class="wizard-step"><span class="wizard-step-dot">3</span><span class="wizard-step-text">Time & Location</span></li>
+          <li class="wizard-step"><span class="wizard-step-dot">4</span><span class="wizard-step-text">Ticketing</span></li>
+          <li class="wizard-step"><span class="wizard-step-dot">5</span><span class="wizard-step-text">Agenda & Host</span></li>
+        </ol>
+      </div>
+
+      <section class="form-section venue-step-card" data-step="0">
+        <h3>Choose Your Venue Path</h3>
+        <p class="section-intro">Start by choosing whether this is online, hosted at your own venue, or booked through the platform.</p>
+        <div class="venue-choice-grid">
+          <article class="venue-choice-card">
+            <div class="venue-choice-icon">💻</div>
+            <h4>Online Event</h4>
+            <p>Run your event virtually with a meeting platform, access link, timezone, and clear joining instructions.</p>
+            <button type="button" id="onlineEventBtn" class="cta-btn">Continue Online</button>
+          </article>
+          <article class="venue-choice-card">
+            <div class="venue-choice-icon">📍</div>
+            <h4>I Have My Own Venue</h4>
+            <p>You already have a location booked. Just add your event details and start selling tickets.</p>
+            <button type="button" id="ownVenueBtn" class="cta-btn">Continue with My Venue</button>
+          </article>
+          <article class="venue-choice-card">
+            <div class="venue-choice-icon">🏛️</div>
+            <h4>Book a Venue Through Us</h4>
+            <p>Browse and book from our list of available venues across Egypt. Venue capacity determines your ticket count.</p>
+            <button type="button" id="browseVenueBtn" class="cta-btn">Browse Available Venues</button>
+          </article>
+        </div>
+        <p id="venuePathNote" class="helper-text hidden"></p>
+
+        <div id="selectedVenueStrip" class="selected-venue-strip hidden">
+          <div>
+            <strong id="selectedVenueStripLabel"></strong>
+            <p id="selectedVenueStripMeta"></p>
+          </div>
+          <button type="button" id="changeVenueSelectionBtn" class="secondary-btn">Change</button>
+        </div>
+
+        <div id="venueSearchPanel" class="venue-search-panel hidden">
+          <div class="venue-search-topbar">
+            <div class="venue-search-toolbar">
+              <div class="compact-search-controls">
+                <div class="input-group compact-input-group">
+                  <label for="venue-search-governorate">Governorate</label>
+                  <select id="venue-search-governorate">
+                    <option value="" selected>All Governorates</option>
+                  </select>
+                </div>
+                <div class="input-group compact-input-group compact-search-input">
+                  <label for="venue-search-input">Search by venue or area</label>
+                  <input id="venue-search-input" type="search" placeholder="Search by venue name or area" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="venueSuggestionBanner" class="smart-suggestion-banner hidden">
+            <div>
+              <p class="summary-kicker">Smart Suggestions</p>
+              <strong id="venueSuggestionTitle">Suggested venues for your event type</strong>
+              <p id="venueSuggestionText" class="helper-text">Pick an event type in Basic Info to unlock tailored venue matches.</p>
+            </div>
+            <div id="venueSuggestionCards" class="suggestion-card-row"></div>
+          </div>
+
+          <div class="venue-browser-layout">
+            <aside class="venue-filter-sidebar">
+              <div class="filter-sidebar-head">
+                <strong id="filterCountLabel">Filters (0)</strong>
+                <button type="button" id="clearAllFiltersBtn" class="text-btn">Clear All Filters</button>
+              </div>
+              <div class="filter-section">
+                <div class="filter-section-head">
+                  <strong>Category</strong>
+                  <button type="button" id="resetCategoryBtn" class="text-btn">Reset</button>
+                </div>
+                <div id="venueCategoryFilters" class="category-pill-grid"></div>
+              </div>
+
+              <div class="filter-section">
+                <div class="filter-section-head">
+                  <strong>Capacity</strong>
+                  <span id="capacityFilterValue">50+ seats</span>
+                </div>
+                <input id="capacityMinRange" type="range" min="50" max="2000" step="50" value="50" />
+              </div>
+
+              <div class="filter-section">
+                <div class="filter-section-head">
+                  <strong>Price per day</strong>
+                  <span id="priceFilterValue">2,000 - 15,000 EGP</span>
+                </div>
+                <label for="priceMinRange" class="mini-label">Minimum</label>
+                <input id="priceMinRange" type="range" min="2000" max="15000" step="500" value="2000" />
+                <label for="priceMaxRange" class="mini-label">Maximum</label>
+                <input id="priceMaxRange" type="range" min="2000" max="15000" step="500" value="15000" />
+              </div>
+
+              <div class="filter-section">
+                <div class="filter-section-head">
+                  <strong>Amenities</strong>
+                  <button type="button" id="resetAmenitiesBtn" class="text-btn">Clear</button>
+                </div>
+                <div id="venueAmenitiesFilters" class="amenity-check-grid"></div>
+              </div>
+            </aside>
+
+            <div class="venue-results-panel">
+              <div class="results-toolbar">
+                <div class="results-tabs">
+                  <button type="button" id="allVenuesTab" class="tab-btn active">Browse Venues</button>
+                  <button type="button" id="savedVenuesTab" class="tab-btn">Saved Venues</button>
+                </div>
+                <div class="view-toggle-group">
+                  <button type="button" id="gridViewBtn" class="view-toggle-btn active">Grid View</button>
+                  <button type="button" id="listViewBtn" class="view-toggle-btn">List View</button>
+                </div>
+                <label class="toolbar-select" for="venue-sort-select">
+                  <span>Sort</span>
+                  <select id="venue-sort-select">
+                    <option value="featured_first">Featured First</option>
+                    <option value="price_low_high">Price Low-High</option>
+                    <option value="price_high_low">Price High-Low</option>
+                    <option value="capacity">Capacity</option>
+                    <option value="rating">Rating</option>
+                  </select>
+                </label>
+              </div>
+              <p id="venueSearchFeedback" class="helper-text results-toolbar-feedback"></p>
+
+              <div id="featuredVenuesShell" class="featured-venues-shell">
+                <div class="section-split-head">
+                  <div>
+                    <h4>Featured Venues</h4>
+                    <p class="helper-text">Premium picks across Egypt with standout ratings and presentation quality.</p>
+                  </div>
+                  <button type="button" id="refreshFeaturedVenuesBtn" class="secondary-btn">Refresh</button>
+                </div>
+                <div class="featured-rail-shell">
+                  <button type="button" id="featuredPrevBtn" class="featured-scroll-btn" aria-label="Scroll featured venues left">&larr;</button>
+                  <div id="featuredVenuesRow" class="featured-venues-row"></div>
+                  <button type="button" id="featuredNextBtn" class="featured-scroll-btn" aria-label="Scroll featured venues right">&rarr;</button>
+                </div>
+                <div id="featuredDots" class="featured-dots" aria-label="Featured venue position"></div>
+              </div>
+
+              <div id="venueLoadingSkeleton" class="venue-loading-grid hidden">
+                <div class="venue-skeleton-card"></div>
+                <div class="venue-skeleton-card"></div>
+                <div class="venue-skeleton-card"></div>
+              </div>
+
+              <div id="venueGrid" class="venue-grid"></div>
+              <div id="noVenuesState" class="empty-state hidden"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section" data-step="1">
+        <h3>Basic Information</h3>
+        <div id="readonlyVenueCard" class="readonly-venue-card hidden">
+          <strong id="readonlyVenueName">Selected venue</strong>
+          <p id="readonlyVenueLocation"></p>
+          <span id="readonlyVenueCapacity" class="chip"></span>
+        </div>
+        <div class="input-group">
+          <label for="event-title">Event Title <span class="required-star">*</span></label>
+          <input id="event-title" name="eventTitle" type="text" placeholder="Event headline" required />
+        </div>
+        <div class="input-group">
+          <label for="event-type">Event Type <span class="required-star">*</span></label>
+          <select id="event-type" name="eventType" required>
+            <option value="" disabled selected>Select a type</option>
+            <option>Conference</option>
+            <option>Workshop</option>
+            <option>Gala</option>
+            <option>Festival</option>
+            <option>Private Gathering</option>
+            <option>Sporting Event</option>
+            <option>Concert</option>
+          </select>
+        </div>
+        <div id="basicInfoVenueSuggestions" class="smart-suggestion-banner hidden">
+          <div>
+            <p class="summary-kicker">Venue Match</p>
+            <strong id="basicSuggestionTitle">Based on your event type, we recommend these venues</strong>
+            <p id="basicSuggestionText" class="helper-text"></p>
+          </div>
+          <div id="basicSuggestionCards" class="suggestion-card-row"></div>
+        </div>
+        <div class="input-group">
+          <label for="event-description">Event Description</label>
+          <textarea id="event-description" name="eventDescription" placeholder="Describe the experience, audience, and objectives"></textarea>
+        </div>
+        <div class="input-group">
+          <label for="event-image">Event Poster URL</label>
+          <input id="event-image" name="imageUrl" type="url" placeholder="https://example.com/poster.jpg" />
+        </div>
+      </section>
+
+      <section class="form-section" data-step="2">
+        <h3>Time & Location</h3>
+        <p id="locationModeNote" class="helper-text">Search or pin your own venue location on the map.</p>
+        <div class="wizard-fields-two">
+          <div class="input-group">
+            <label for="event-date">Event Date <span class="required-star">*</span></label>
+            <input id="event-date" name="eventDate" type="date" required />
+          </div>
+          <div class="input-group">
+            <label for="event-time">Event Time <span class="required-star">*</span></label>
+            <input id="event-time" name="eventTime" type="time" required />
+          </div>
+        </div>
+        <div class="input-group physical-location-field">
+          <label for="governorate">Governorate <span class="required-star">*</span></label>
+          <select id="governorate" name="governorate" required>
+            <option value="" disabled selected>Select Governorate</option>
+            <option>Alexandria</option>
+            <option>Aswan</option>
+            <option>Asyut</option>
+            <option>Beheira</option>
+            <option>Beni Suef</option>
+            <option>Cairo</option>
+            <option>Dakahlia</option>
+            <option>Damietta</option>
+            <option>Faiyum</option>
+            <option>Gharbia</option>
+            <option>Giza</option>
+            <option>Ismailia</option>
+            <option>Kafr El Sheikh</option>
+            <option>Luxor</option>
+            <option>Matrouh</option>
+            <option>Minya</option>
+            <option>Monufia</option>
+            <option>New Valley</option>
+            <option>North Sinai</option>
+            <option>Port Said</option>
+            <option>Qalyubia</option>
+            <option>Qena</option>
+            <option>Red Sea</option>
+            <option>Sharqia</option>
+            <option>Sohag</option>
+            <option>South Sinai</option>
+            <option>Suez</option>
+          </select>
+        </div>
+        <div id="onlineEventFields" class="online-event-fields hidden">
+          <div class="wizard-fields-two">
+            <div class="input-group">
+              <label for="online-platform">Streaming Platform <span class="required-star">*</span></label>
+              <select id="online-platform" name="onlinePlatform">
+                <option value="" disabled selected>Select platform</option>
+                <option>Zoom</option>
+                <option>Google Meet</option>
+                <option>Microsoft Teams</option>
+                <option>YouTube Live</option>
+                <option>Custom Platform</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="online-timezone">Event Timezone <span class="required-star">*</span></label>
+              <select id="online-timezone" name="onlineTimezone">
+                <option value="Africa/Cairo" selected>Africa/Cairo (Egypt Time)</option>
+                <option value="UTC">UTC</option>
+                <option value="Europe/London">Europe/London</option>
+                <option value="Europe/Paris">Europe/Paris</option>
+                <option value="Asia/Dubai">Asia/Dubai</option>
+                <option value="America/New_York">America/New_York</option>
+              </select>
+            </div>
+          </div>
+          <div class="input-group">
+            <label for="online-url">Meeting or Streaming Link <span class="required-star">*</span></label>
+            <input id="online-url" name="onlineUrl" type="url" placeholder="https://zoom.us/j/..." />
+          </div>
+          <div class="input-group">
+            <label for="online-access">Access Instructions</label>
+            <textarea id="online-access" name="onlineAccess" placeholder="Add passcode, waiting room rules, replay availability, and when attendees should join."></textarea>
+          </div>
+        </div>
+        <div id="mapSearchWrap" class="input-group physical-location-field">
+          <label for="mapSearchInput">Search Location</label>
+          <div class="map-search-row">
+            <input id="mapSearchInput" type="text" placeholder="Search by place name (e.g. Bibliotheca Alexandria)" />
+            <button type="button" id="mapSearchBtn" class="ghost-btn">Search</button>
+          </div>
+        </div>
+        <div id="physicalMapWrap" class="input-group physical-location-field">
+          <label>Pick Location on Map <span class="required-star">*</span></label>
+          <div id="map"></div>
+          <input type="hidden" id="latitude" name="latitude">
+          <input type="hidden" id="longitude" name="longitude">
+          <p id="mapCoordinates" class="map-coordinates">No coordinates selected yet.</p>
+          <p class="map-helper">Click on the map or use the search to set the exact coordinates.</p>
+        </div>
+        <div class="input-group physical-location-field">
+          <label for="venue-address">Exact Address Details</label>
+          <input id="venue-address" name="venueAddress" type="text" placeholder="Building, Street, Floor..." />
+        </div>
+      </section>
+
+      <section class="form-section" data-step="3">
+        <h3>Ticketing</h3>
+        <p id="ticketingModeNote" class="helper-text">Define the seat quantities and prices for Standard, Special, and VIP.</p>
+        <div class="capacity-summary-banner">
+          <strong id="totalCapacityPreview">0 total seats</strong>
+          <span id="totalCapacityMeta">Add seat quantities to calculate capacity and listing fee.</span>
+        </div>
+        <div id="onlineCapacityCard" class="input-group ticket-tier-card hidden">
+          <label for="online-attendees">Maximum Attendees</label>
+          <input id="online-attendees" type="number" min="1" value="0" />
+        </div>
+        <div id="ticketTierGrid" class="ticket-tier-grid">
+          <div class="input-group ticket-tier-card">
+            <label for="standard-seats">Standard Seats</label>
+            <input id="standard-seats" type="number" min="0" value="0" />
+          </div>
+          <div class="input-group ticket-tier-card">
+            <label for="special-seats">Special Seats</label>
+            <input id="special-seats" type="number" min="0" value="0" />
+          </div>
+          <div class="input-group ticket-tier-card">
+            <label for="vip-seats">VIP Seats</label>
+            <input id="vip-seats" type="number" min="0" value="0" />
+          </div>
+        </div>
+        <div class="input-group">
+          <label for="age-restriction">Age Restriction</label>
+          <select id="age-restriction" name="ageRestriction">
+            <option value="All Ages">All Ages</option>
+            <option value="12+">12+</option>
+            <option value="16+">16+</option>
+            <option value="18+">18+</option>
+            <option value="21+">21+</option>
+          </select>
+        </div>
+        <div class="price-grid">
+          <div class="input-group">
+            <label id="priceStandardLabel" for="price-standard">Standard Price (EGP)</label>
+            <input id="price-standard" name="priceStandard" type="number" min="0" placeholder="0" />
+          </div>
+          <div id="priceSpecialGroup" class="input-group">
+            <label for="price-special">Special Price (EGP)</label>
+            <input id="price-special" name="priceSpecial" type="number" min="0" placeholder="0" />
+          </div>
+          <div id="priceVipGroup" class="input-group">
+            <label for="price-vip">VIP Price (EGP)</label>
+            <input id="price-vip" name="priceVip" type="number" min="0" placeholder="0" />
+          </div>
+        </div>
+        <div class="input-group">
+          <label for="registration-deadline">Registration Deadline</label>
+          <input id="registration-deadline" name="registrationDeadline" type="datetime-local" />
+        </div>
+      </section>
+
+      <section class="form-section" data-step="4">
+        <h3>Agenda & Terms</h3>
+        <div class="input-group">
+          <label for="event-agenda">Event Agenda</label>
+          <textarea id="event-agenda" name="eventAgenda" placeholder="e.g. 9:00 AM Opening, 10:30 AM Workshop..."></textarea>
+        </div>
+        <div class="input-group">
+          <label for="terms-conditions">Terms & Conditions</label>
+          <textarea id="terms-conditions" name="termsConditions" placeholder="Refund policy, entry rules, etc."></textarea>
+        </div>
+        <div class="input-group">
+          <label for="logistics">Logistics (Stage, AV, Catering)</label>
+          <textarea id="logistics" name="logistics" placeholder="Internal notes for organizers"></textarea>
+        </div>
+      </section>
+
+      <section class="form-section" data-step="4">
+        <h3>OC Head & Host</h3>
+        <div class="wizard-fields-two">
+          <div class="input-group">
+            <label for="oc-name">OC Head Name</label>
+            <input id="oc-name" name="ocName" type="text" placeholder="OC Head name" />
+          </div>
+          <div class="input-group">
+            <label for="oc-email">OC Head Email</label>
+            <input id="oc-email" name="ocEmail" type="email" placeholder="ochead@email.com" />
+          </div>
+        </div>
+        <div class="input-group">
+          <label for="oc-phone">OC Head Phone</label>
+          <input id="oc-phone" name="ocPhone" type="tel" placeholder="+20-1XXXXXXXXX" />
+        </div>
+        <div class="input-group">
+          <label for="host-name">Organizer Name <span class="required-star">*</span></label>
+          <input id="host-name" name="hostName" type="text" placeholder="Mohamed Elshaboury" required />
+        </div>
+        <div class="input-group">
+          <label for="host-email">Contact Email <span class="required-star">*</span></label>
+          <input id="host-email" name="hostEmail" type="email" placeholder="host@email.com" required />
+        </div>
+        <div class="input-group">
+          <label for="host-phone">Contact Phone <span class="required-star">*</span></label>
+          <input id="host-phone" name="hostPhone" type="tel" placeholder="+20-1XXXXXXXXX" required />
+        </div>
+        <div class="input-group">
+          <label for="host-organization">Organization</label>
+          <input id="host-organization" name="hostOrganization" type="text" placeholder="Company Name" />
+        </div>
+      </section>
+
+      <div class="form-actions wizard-actions">
+        <button type="button" id="prevStepBtn" class="secondary-btn">Previous</button>
+        <button type="button" id="nextStepBtn" class="cta-btn">Next</button>
+        <button type="button" id="createEventBtn" class="cta-btn">Review & Create Event</button>
+      </div>
+    </form>
+
+    <div id="reviewModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-card">
+        <button type="button" id="closeReviewModalBtn" class="modal-close" aria-label="Close review modal">&times;</button>
+        <h3>Review Event Details</h3>
+        <p>Please confirm your event details before creating.</p>
+        <div id="reviewSummary" class="review-summary"></div>
+        <div class="modal-actions">
+          <button type="button" id="editEventBtn" class="secondary-btn">Edit</button>
+          <button type="button" id="confirmCreateBtn" class="cta-btn">Confirm & Create</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="successOverlay" class="modal-overlay" aria-hidden="true">
+      <div class="modal-card success-card">
+        <h3>Event Draft Ready</h3>
+        <p>Your event details are saved. Continue to payment to complete publishing.</p>
+        <div class="modal-actions">
+          <a class="secondary-btn as-link" href="/html/my-events.html">View My Events</a>
+          <a class="cta-btn as-link" href="/html/pay-for-event.html">Continue to Payment</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="venueQuickViewModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-card venue-modal-card">
+        <button type="button" id="closeVenueQuickViewBtn" class="modal-close" aria-label="Close venue details modal">&times;</button>
+        <div class="venue-modal-layout">
+          <div class="venue-modal-main">
+            <div class="venue-modal-gallery">
+              <div id="venueModalHero" class="venue-modal-hero"></div>
+              <div id="venueModalDots" class="venue-modal-dots"></div>
+            </div>
+            <div class="venue-modal-section">
+              <h3>Description</h3>
+              <p id="venueModalDescription" class="venue-description-copy"></p>
+            </div>
+            <div class="venue-modal-section">
+              <div class="section-split-head">
+                <h3>Amenities</h3>
+                <a id="venueDirectionsLink" class="secondary-btn as-link" href="#" target="_blank" rel="noopener noreferrer">Get Directions</a>
+              </div>
+              <div id="venueModalAmenities" class="venue-amenities-grid"></div>
+            </div>
+            <div class="venue-modal-section">
+              <h3>Location</h3>
+              <p id="venueModalAddress" class="helper-text"></p>
+              <div id="venueDetailMap" class="detail-map"></div>
+            </div>
+            <div class="venue-modal-section">
+              <h3>Latest Reviews</h3>
+              <div id="venueModalReviews" class="review-card-grid"></div>
+            </div>
+          </div>
+          <aside class="venue-modal-summary">
+            <div class="venue-summary-head">
+              <div>
+                <div class="summary-pill-row">
+                  <span id="venueModalCategoryBadge" class="category-chip"></span>
+                  <span id="venueModalRatingBadge" class="rating-pill"></span>
+                </div>
+                <h3 id="venueModalName">Venue Name</h3>
+                <p id="venueModalLocationMeta" class="helper-text"></p>
+              </div>
+            </div>
+            <div class="seat-card-grid">
+              <div class="seat-summary-card standard-card">
+                <span>Standard seats</span>
+                <strong id="seatCountStandard">0</strong>
+              </div>
+              <div class="seat-summary-card special-card">
+                <span>Special seats</span>
+                <strong id="seatCountSpecial">0</strong>
+              </div>
+              <div class="seat-summary-card vip-card">
+                <span>VIP seats</span>
+                <strong id="seatCountVip">0</strong>
+              </div>
+              <div class="seat-summary-card total-card">
+                <span>Total capacity</span>
+                <strong id="venueCapacity">0</strong>
+              </div>
+            </div>
+            <div class="pricing-stack">
+              <div class="pricing-row">
+                <span>Per day</span>
+                <strong id="venuePrice">0 EGP</strong>
+              </div>
+              <div class="pricing-row" id="venueHourlyRow">
+                <span>Per hour</span>
+                <strong id="venueHourlyPrice">0 EGP</strong>
+              </div>
+              <p id="venueMinimumHours" class="helper-text"></p>
+            </div>
+            <div class="venue-calendar-card">
+              <div class="filter-section-head">
+                <strong>Availability</strong>
+                <span id="venueAvailabilityBadge" class="availability-pill">Available</span>
+              </div>
+              <p id="venueCalendarLabel" class="helper-text"></p>
+              <div id="venueCalendarGrid" class="mini-calendar-grid"></div>
+            </div>
+            <div class="modal-actions stacked-actions">
+              <button type="button" id="confirmVenueSelectionBtn" class="cta-btn">Book This Venue</button>
+              <button type="button" id="toggleWishlistModalBtn" class="secondary-btn">Add to Wishlist</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <div id="compareBar" class="compare-bar hidden">
+      <div>
+        <strong id="compareBarLabel">Compare 2 Venues</strong>
+        <p id="compareBarText">Review price, capacity, amenities, and rating side by side.</p>
+      </div>
+      <div class="compare-bar-actions">
+        <button type="button" id="clearCompareBtn" class="secondary-btn">Clear</button>
+        <button type="button" id="openCompareModalBtn" class="cta-btn">Compare Venues</button>
+      </div>
+    </div>
+
+    <div id="compareModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-card compare-modal-card">
+        <div class="compare-modal-head">
+          <div>
+            <h3>Venue Comparison</h3>
+            <p>Review price, capacity, amenities, and rating side by side.</p>
+          </div>
+          <button type="button" id="closeCompareModalBtn" class="modal-close" aria-label="Close comparison modal">&times;</button>
+        </div>
+        <div id="compareTableWrap" class="compare-table-wrap"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form -></a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="contact-chip">Instagram</div>
+        <div class="contact-chip">LinkedIn</div>
+        <div class="contact-chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+
+      if (!header || !menuToggle) return;
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) setMenuState(false);
+        });
+      });
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/create-event-page.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+

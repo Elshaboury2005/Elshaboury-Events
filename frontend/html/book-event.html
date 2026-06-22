@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Book Event</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/book-event.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn active" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Reserve curated experiences with one effortless flow.</h1>
+      <p>Browse upcoming events or switch to past events for historical stats and ratings.</p>
+
+      <div class="search-container">
+        <div class="search-field search-field-wide">
+          <input type="text" id="searchInput" class="search-input" placeholder="Search events...">
+        </div>
+        <div class="search-field">
+          <select id="locationFilter" class="search-select">
+            <option value="">All Locations</option>
+            <option value="Alexandria">Alexandria</option>
+            <option value="Cairo">Cairo</option>
+            <option value="Giza">Giza</option>
+            <option value="Online">Online</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <select id="categoryFilter" class="search-select">
+            <option value="">All Categories</option>
+            <option value="Music">Music</option>
+            <option value="Sports">Sports</option>
+            <option value="Workshop">Workshop</option>
+            <option value="Art">Art</option>
+            <option value="Tour">Tour</option>
+            <option value="Business">Business</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="view-toggle" role="tablist" aria-label="Event lifecycle filter">
+        <button id="upcomingTab" class="view-toggle-btn active" type="button" aria-pressed="true">Upcoming Events</button>
+        <button id="pastTab" class="view-toggle-btn" type="button" aria-pressed="false">Past Events</button>
+      </div>
+      <p id="resultsCount" class="results-count">Showing 0 upcoming events</p>
+    </section>
+
+    <section class="events-grid" id="eventsGrid">
+      <div class="events-feedback">
+        Loading events...
+      </div>
+    </section>
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form -></a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="contact-chip">Instagram</div>
+        <div class="contact-chip">LinkedIn</div>
+        <div class="contact-chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => {
+        const isOpen = header.classList.contains('menu-open');
+        setMenuState(!isOpen);
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) setMenuState(false);
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+
+    const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+    const eventsGrid = document.getElementById('eventsGrid');
+    const upcomingTab = document.getElementById('upcomingTab');
+    const pastTab = document.getElementById('pastTab');
+    const resultsCount = document.getElementById('resultsCount');
+
+    let allEvents = [];
+    let currentView = 'upcoming';
+
+    function getAuthToken() {
+      return localStorage.getItem('token');
+    }
+
+    function setView(view) {
+      currentView = view === 'past' ? 'past' : 'upcoming';
+      upcomingTab.classList.toggle('active', currentView === 'upcoming');
+      pastTab.classList.toggle('active', currentView === 'past');
+      upcomingTab.setAttribute('aria-pressed', String(currentView === 'upcoming'));
+      pastTab.setAttribute('aria-pressed', String(currentView === 'past'));
+      loadEvents();
+    }
+
+    function toNumber(value, fallback = 0) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function normalizeCategory(rawType) {
+      const source = String(rawType || '').toLowerCase();
+      if (source.includes('music')) return { label: 'Music', className: 'badge-music' };
+      if (source.includes('workshop')) return { label: 'Workshop', className: 'badge-workshop' };
+      if (source.includes('art')) return { label: 'Art', className: 'badge-art' };
+      if (source.includes('tour')) return { label: 'Tour', className: 'badge-tour' };
+      if (source.includes('sport')) return { label: 'Sports', className: 'badge-sports' };
+      if (source.includes('business')) return { label: 'Business', className: 'badge-business' };
+      return { label: rawType || 'Event', className: 'badge-default' };
+    }
+
+    function formatEventDate(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Date TBA';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function toBoolean(value) {
+      return value === true || value === 1 || value === '1' || value === 'true';
+    }
+
+    function isNewEvent(createdAt) {
+      const createdDate = new Date(createdAt);
+      if (Number.isNaN(createdDate.getTime())) return false;
+      const ageMs = Date.now() - createdDate.getTime();
+      return ageMs >= 0 && ageMs < (7 * 24 * 60 * 60 * 1000);
+    }
+
+    function getUrgencyMeta(event) {
+      const maxSeats = Math.max(0, toNumber(event.max_seats, 0));
+      const seatsRemaining = Math.max(0, toNumber(event.available_seats, 0));
+      const seatsSold = Math.max(0, maxSeats - seatsRemaining);
+      const soldPercent = maxSeats > 0
+        ? toNumber(event.seats_sold_percentage, (seatsSold / maxSeats) * 100)
+        : 0;
+
+      return {
+        seatsRemaining,
+        soldPercent,
+        isSellingFast: toBoolean(event.is_selling_fast) || soldPercent >= 70,
+        isAlmostFull: toBoolean(event.is_almost_full) || soldPercent >= 85,
+        isLastFewSeats: toBoolean(event.is_last_few_seats) || (seatsRemaining > 0 && seatsRemaining < 10),
+        isNew: event.is_new_event != null ? toBoolean(event.is_new_event) : isNewEvent(event.created_at)
+      };
+    }
+
+    function buildUrgencyBadgesMarkup(event, isPast) {
+      if (isPast) return '';
+      const urgency = getUrgencyMeta(event);
+      const badges = [];
+      if (urgency.isSellingFast) {
+        badges.push('<span class="urgency-badge urgency-selling-fast">&#128293; Selling Fast</span>');
+      }
+      if (urgency.isAlmostFull) {
+        badges.push('<span class="urgency-badge urgency-almost-full">&#9889; Almost Full</span>');
+      }
+      if (urgency.isNew) {
+        badges.push('<span class="urgency-badge urgency-new-event">&#128280; New Event</span>');
+      }
+      if (badges.length === 0) return '';
+      return `<div class="urgency-badges">${badges.join('')}</div>`;
+    }
+
+    function updateResultsCount(count) {
+      const suffix = count === 1 ? 'event' : 'events';
+      resultsCount.textContent = `Showing ${count} ${currentView} ${suffix}`;
+    }
+
+    function buildSeatsProgressMarkup(event, isPast) {
+      const maxSeats = Math.max(0, toNumber(event.max_seats));
+      if (maxSeats === 0) {
+        return `
+          <div class="seat-status">
+            <div class="seat-status-top">
+              <span>Seats information unavailable</span>
+              <span>0%</span>
+            </div>
+            <div class="seat-progress-track"><div class="seat-progress-fill" style="width: 0%;"></div></div>
+          </div>
+        `;
+      }
+
+      if (isPast) {
+        const attendance = Math.max(0, toNumber(event.final_attendance_count));
+        const percent = Math.max(0, Math.min(100, Math.round((attendance / maxSeats) * 100)));
+        return `
+          <div class="seat-status">
+            <div class="seat-status-top">
+              <span>Attendance ${attendance} / ${maxSeats}</span>
+              <span>${percent}%</span>
+            </div>
+            <div class="seat-progress-track"><div class="seat-progress-fill" style="width: ${percent}%;"></div></div>
+          </div>
+        `;
+      }
+
+      const available = Math.max(0, toNumber(event.available_seats));
+      const booked = Math.max(0, maxSeats - available);
+      const percent = Math.max(0, Math.min(100, Math.round((booked / maxSeats) * 100)));
+      return `
+        <div class="seat-status">
+          <div class="seat-status-top">
+            <span>${available} seats remaining</span>
+            <span>${percent}% full</span>
+          </div>
+          <div class="seat-progress-track"><div class="seat-progress-fill" style="width: ${percent}%;"></div></div>
+        </div>
+      `;
+    }
+
+    async function loadEvents() {
+      eventsGrid.classList.add('is-switching');
+      eventsGrid.innerHTML = `
+        <div class="events-feedback">
+          Loading events...
+        </div>
+      `;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Events?view=${currentView}`);
+        const data = await response.json();
+        if (!response.ok || !data.success || !Array.isArray(data.events)) {
+          throw new Error(data.message || 'Failed to load events');
+        }
+        allEvents = data.events;
+        filterEvents();
+      } catch (error) {
+        console.error('Error loading events:', error);
+        eventsGrid.innerHTML = `
+          <div class="events-feedback">
+            Error loading events. Please try again later.
+          </div>
+        `;
+        updateResultsCount(0);
+      } finally {
+        window.setTimeout(() => eventsGrid.classList.remove('is-switching'), 120);
+      }
+    }
+
+    function filterEvents() {
+      const searchText = (document.getElementById('searchInput').value || '').toLowerCase();
+      const locationFilter = document.getElementById('locationFilter').value;
+      const categoryFilter = document.getElementById('categoryFilter').value;
+
+      const filtered = allEvents.filter((event) => {
+        const title = (event.title || '').toLowerCase();
+        const description = (event.description || '').toLowerCase();
+        const eventLocation = event.location || '';
+        const eventCategory = event.event_type || '';
+        const matchesSearch = title.includes(searchText) || description.includes(searchText);
+        const matchesLocation = !locationFilter || eventLocation.includes(locationFilter);
+        const matchesCategory = !categoryFilter || eventCategory.includes(categoryFilter);
+        return matchesSearch && matchesLocation && matchesCategory;
+      });
+      updateResultsCount(filtered.length);
+
+      if (filtered.length === 0) {
+        eventsGrid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">&#x1F50D;</div>
+            <h3>No events found</h3>
+            <p>${currentView === 'past' ? 'No past events match your search.' : 'No upcoming events match your search.'}</p>
+          </div>
+        `;
+        return;
+      }
+
+      displayEvents(filtered);
+    }
+
+    function displayEvents(events) {
+      const token = getAuthToken();
+      eventsGrid.innerHTML = events.map((event) => {
+        const formattedDate = formatEventDate(event.event_date);
+        const location = event.location || 'TBA';
+        const eventId = event.id;
+        const isPast = currentView === 'past' || event.lifecycle_status === 'expired';
+        const averageRating = toNumber(event.average_rating).toFixed(1);
+        const category = normalizeCategory(event.event_type);
+        const urgency = getUrgencyMeta(event);
+        const urgencyBadges = buildUrgencyBadgesMarkup(event, isPast);
+        const lastSeatsMarkup = (!isPast && urgency.isLastFewSeats)
+          ? `<p class="urgency-last-seats">&#127915; Only ${Math.max(0, urgency.seatsRemaining)} seats left</p>`
+          : '';
+
+        const favoriteMarkup = isPast
+          ? ''
+          : `<div class="favorite-icon" onclick="toggleFavorite('${eventId}', this)" title="Add to favorites">&#129293;</div>`;
+        const actionMarkup = isPast
+          ? `<span class="reserve-btn ended-btn">Event Ended</span>`
+          : `<a class="reserve-btn" href="/html/event-details.html?id=${eventId}">Get Information</a>`;
+        const endedBadge = isPast ? '<span class="event-ended-badge">Ended</span>' : '';
+        const ratingMeta = isPast ? `<span class="rating-pill">&#11088; ${averageRating} / 5</span>` : '';
+
+        return `
+          <article class="event-card" data-event-id="${eventId}">
+            ${favoriteMarkup}
+            ${endedBadge}
+            <span class="category-badge ${category.className}">${category.label}</span>
+            ${urgencyBadges}
+            <div class="event-title">${event.title || 'Untitled Event'}</div>
+            <div class="event-info-line">
+              <span>&#x1F4CD; ${location}</span>
+              <span>&#x1F4C5; ${formattedDate}</span>
+            </div>
+            ${buildSeatsProgressMarkup(event, isPast)}
+            ${lastSeatsMarkup}
+            <div class="event-meta">
+              ${ratingMeta}
+            </div>
+            <p class="event-description">${event.description || 'No description available.'}</p>
+            ${actionMarkup}
+          </article>
+        `;
+      }).join('');
+
+      if (token && currentView !== 'past') {
+        events.forEach((event) => {
+          checkFavoriteStatus(event.id);
+        });
+      }
+    }
+
+    async function checkFavoriteStatus(eventId) {
+      const token = getAuthToken();
+      if (!token) return;
+      try {
+        const response = await fetch(`${API_BASE_URL}/Favorites/check/${eventId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success && data.isFavorited) {
+          const icon = document.querySelector(`[data-event-id="${eventId}"] .favorite-icon`);
+          if (!icon) return;
+          icon.classList.add('favorited');
+          icon.innerHTML = '&#10084;&#65039;';
+          icon.setAttribute('title', 'Remove from favorites');
+        }
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+      }
+    }
+
+    async function toggleFavorite(eventId, element) {
+      const token = getAuthToken();
+      const isLoggedIn = localStorage.getItem('isLoggedIn');
+      if (!token || isLoggedIn === 'guest') {
+        alert('Please sign in to add favorites');
+        window.location.href = '/html/signin.html';
+        return;
+      }
+
+      const isFavorited = element.classList.contains('favorited');
+      try {
+        if (isFavorited) {
+          const response = await fetch(`${API_BASE_URL}/Favorites/${eventId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (data.success) {
+            element.classList.remove('favorited');
+            element.innerHTML = '&#129293;';
+            element.setAttribute('title', 'Add to favorites');
+          }
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/Favorites/${eventId}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await response.json();
+        if (data.success) {
+          element.classList.add('favorited');
+          element.innerHTML = '&#10084;&#65039;';
+          element.setAttribute('title', 'Remove from favorites');
+        } else {
+          const errorMsg = data.message || 'Error adding to favorites';
+          console.error('Favorite error:', errorMsg, data);
+          if (errorMsg.includes('table') || errorMsg.includes('Table') || errorMsg.includes('not found')) {
+            alert('Database error: ' + errorMsg + '\n\nPlease make sure the favorites table exists in the database.');
+          } else {
+            alert(errorMsg);
+          }
+        }
+      } catch (error) {
+        console.error('Error toggling favorite:', error);
+        if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+          alert('Network error. Please check your connection and make sure the server is running.');
+        } else if (error.message && error.message.includes('JSON')) {
+          alert('Server error. Please check the server logs.');
+        } else {
+          alert('Error updating favorite. Please try again.\n\nError: ' + (error.message || 'Unknown error'));
+        }
+      }
+    }
+
+    document.getElementById('searchInput').addEventListener('input', filterEvents);
+    document.getElementById('locationFilter').addEventListener('change', filterEvents);
+    document.getElementById('categoryFilter').addEventListener('change', filterEvents);
+    upcomingTab.addEventListener('click', () => setView('upcoming'));
+    pastTab.addEventListener('click', () => setView('past'));
+
+    loadEvents();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

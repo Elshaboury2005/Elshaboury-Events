@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Organizer Profile | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/public/css/auth.css">
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="/css/organizer-profile.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/contact-form.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section id="profileSection">
+      <div class="loading-state">Loading organizer profile...</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-row">
+      <p>Elshaboury Events</p>
+      <p>Public organizer profile and event portfolio</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => {
+        setMenuState(!header.classList.contains('menu-open'));
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) setMenuState(false);
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+      const profileSection = document.getElementById('profileSection');
+      let currentOrganizerId = '';
+      let currentIsFollowing = false;
+      let currentFollowersCount = 0;
+      let currentIsOwnProfile = false;
+
+      function getAuthToken() {
+        return localStorage.getItem('token');
+      }
+
+      function toNumber(value, fallback = 0) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : fallback;
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function getOrganizerIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const queryId = params.get('userId');
+        if (queryId) return queryId;
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        if (parts[0] && parts[0].toLowerCase() === 'organizer' && parts[1]) {
+          return decodeURIComponent(parts[1]);
+        }
+        return '';
+      }
+
+      function getCurrentUserId() {
+        try {
+          const raw = localStorage.getItem('user');
+          if (!raw) return '';
+          const parsed = JSON.parse(raw);
+          return parsed?.id || parsed?.userId || '';
+        } catch (_) {
+          return '';
+        }
+      }
+
+      function formatDate(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Unknown';
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      function buildStars(rating) {
+        const safe = Math.max(0, Math.min(5, toNumber(rating, 0)));
+        const rounded = Math.round(safe);
+        let stars = '';
+        for (let i = 1; i <= 5; i += 1) {
+          stars += `<span>${i <= rounded ? '&#9733;' : '&#9734;'}</span>`;
+        }
+        return stars;
+      }
+
+      function getInitials(name) {
+        const safe = String(name || 'OR').trim();
+        if (!safe) return 'OR';
+        return safe.split(/\s+/).slice(0, 2).map((s) => s.charAt(0).toUpperCase()).join('');
+      }
+
+      function getReputationTier(successfulEvents, averageRating) {
+        const successful = toNumber(successfulEvents, 0);
+        const rating = toNumber(averageRating, 0);
+        if (successful >= 20 && rating >= 4.7) return { label: 'Platinum Organizer', className: 'tier-platinum' };
+        if (successful >= 12 && rating >= 4.4) return { label: 'Gold Organizer', className: 'tier-gold' };
+        if (successful >= 6 && rating >= 4.0) return { label: 'Silver Organizer', className: 'tier-silver' };
+        return { label: 'Bronze Organizer', className: 'tier-bronze' };
+      }
+
+      function renderEventsGrid(events, isPast) {
+        if (!Array.isArray(events) || events.length === 0) {
+          return '<p class="empty-note">No events to show.</p>';
+        }
+
+        return `
+          <div class="event-grid">
+            ${events.map((event) => `
+              <article class="event-card">
+                <h3>${escapeHtml(event.title || 'Untitled Event')}</h3>
+                <p>&#128197; ${escapeHtml(formatDate(event.event_date))}</p>
+                <p>&#128205; ${escapeHtml(event.location || 'Location TBA')}</p>
+                ${isPast
+                  ? `<p><span class="stat-stars">${buildStars(event.average_rating)}</span> (${toNumber(event.review_count, 0)} reviews)</p>`
+                  : `<p>${Math.max(0, toNumber(event.available_seats, 0))} seats left</p>`
+                }
+                <a href="/html/event-details.html?id=${encodeURIComponent(event.id)}">Get Info</a>
+              </article>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderReviews(reviews) {
+        if (!Array.isArray(reviews) || reviews.length === 0) {
+          return '<p class="empty-note">No reviews yet.</p>';
+        }
+
+        return `
+          <div class="review-list">
+            ${reviews.map((review) => `
+              <article class="review-card">
+                <div class="review-head">
+                  <strong>${escapeHtml(review.reviewer_name || review.reviewer_username || 'Guest')}</strong>
+                  <span class="stat-stars">${buildStars(review.rating)}</span>
+                </div>
+                <p class="review-event">${escapeHtml(review.event_title || 'Event')}</p>
+                <p class="review-text">${escapeHtml(review.review || 'No written review provided.')}</p>
+              </article>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderFollowButton() {
+        const btn = document.getElementById('followToggleBtn');
+        const countEl = document.getElementById('followersCount');
+        if (!btn || !countEl) return;
+
+        countEl.textContent = `${Math.max(0, toNumber(currentFollowersCount, 0)).toLocaleString('en-US')} followers`;
+
+        if (currentIsOwnProfile) {
+          btn.textContent = 'Your Profile';
+          btn.disabled = true;
+          btn.classList.remove('is-following');
+          return;
+        }
+
+        const token = getAuthToken();
+        if (!token) {
+          btn.textContent = 'Sign In to Follow';
+          btn.disabled = false;
+          btn.classList.remove('is-following');
+          return;
+        }
+
+        btn.textContent = currentIsFollowing ? 'Unfollow' : 'Follow';
+        btn.classList.toggle('is-following', currentIsFollowing);
+        btn.disabled = false;
+      }
+
+      async function toggleFollow() {
+        const token = getAuthToken();
+        if (currentIsOwnProfile) return;
+        if (!token) {
+          window.location.href = '/html/signin.html';
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/organizers/${encodeURIComponent(currentOrganizerId)}/follow`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to update follow status');
+          }
+          currentIsFollowing = Boolean(data.is_following);
+          currentFollowersCount = Math.max(0, toNumber(data.followers_count, 0));
+          renderFollowButton();
+        } catch (error) {
+          alert(error.message || 'Unable to update follow status');
+        }
+      }
+
+      function attachInteractions() {
+        const followBtn = document.getElementById('followToggleBtn');
+        if (followBtn) {
+          followBtn.addEventListener('click', toggleFollow);
+        }
+
+        const pastToggleBtn = document.getElementById('pastToggleBtn');
+        const pastContent = document.getElementById('pastEventsContent');
+        if (pastToggleBtn && pastContent) {
+          pastToggleBtn.addEventListener('click', () => {
+            const isCollapsed = pastContent.classList.toggle('is-collapsed');
+            pastToggleBtn.textContent = isCollapsed ? 'Show Past Events' : 'Hide Past Events';
+          });
+        }
+      }
+
+      function renderProfile(data) {
+        const organizer = data.organizer || {};
+        const stats = data.stats || {};
+        const tier = getReputationTier(stats.successful_events, stats.average_rating);
+        const avatarMarkup = organizer.profile_picture
+          ? `<img src="${escapeHtml(organizer.profile_picture)}" alt="${escapeHtml(organizer.name || 'Organizer')}">`
+          : escapeHtml(getInitials(organizer.name));
+        const verifiedBadge = organizer.verified
+          ? '<span class="pill verified">&#10003; Verified Organizer</span>'
+          : '';
+
+        profileSection.innerHTML = `
+          <section class="profile-hero">
+            <div class="hero-top">
+              <div class="profile-avatar">${avatarMarkup}</div>
+              <div class="hero-main">
+                <h1>${escapeHtml(organizer.name || 'Organizer')}</h1>
+                <p>@${escapeHtml(organizer.username || 'username')}</p>
+                <div class="hero-row">
+                  <span class="pill">Member Since ${escapeHtml(formatDate(organizer.member_since))}</span>
+                  ${verifiedBadge}
+                </div>
+              </div>
+              <button id="followToggleBtn" class="follow-btn" type="button">Follow</button>
+            </div>
+            <p class="hero-followers" id="followersCount">${Math.max(0, toNumber(data.followers_count, 0)).toLocaleString('en-US')} followers</p>
+          </section>
+
+          <section class="stats-grid">
+            <article class="stat-card">
+              <span>Total Events</span>
+              <strong>${Math.max(0, toNumber(stats.total_events_created, 0)).toLocaleString('en-US')}</strong>
+            </article>
+            <article class="stat-card">
+              <span>Total Attendees</span>
+              <strong>${Math.max(0, toNumber(stats.total_attendees, 0)).toLocaleString('en-US')}</strong>
+            </article>
+            <article class="stat-card">
+              <span>Average Rating</span>
+              <strong>${toNumber(stats.average_rating, 0).toFixed(1)}</strong>
+              <div class="stat-stars">${buildStars(stats.average_rating)}</div>
+            </article>
+            <article class="stat-card">
+              <span>Events This Year</span>
+              <strong>${Math.max(0, toNumber(stats.events_this_year, 0)).toLocaleString('en-US')}</strong>
+            </article>
+          </section>
+
+          <section class="surface-card">
+            <div class="section-head">
+              <div>
+                <h2>Reputation</h2>
+                <p>Overall reputation score: ${toNumber(data.reputation_score, 0).toFixed(2)}</p>
+              </div>
+              <span class="tier-badge ${tier.className}">${tier.label}</span>
+            </div>
+          </section>
+
+          <section class="surface-card">
+            <div class="section-head">
+              <div>
+                <h2>Upcoming Events</h2>
+                <p>Approved events that are still upcoming.</p>
+              </div>
+            </div>
+            ${renderEventsGrid(data.upcoming_events, false)}
+          </section>
+
+          <section class="surface-card">
+            <div class="section-head">
+              <div>
+                <h2>Past Events</h2>
+                <p>Ended events with attendee ratings.</p>
+              </div>
+              <button id="pastToggleBtn" class="past-toggle" type="button">Show Past Events</button>
+            </div>
+            <div id="pastEventsContent" class="past-content is-collapsed">
+              ${renderEventsGrid(data.past_events, true)}
+            </div>
+          </section>
+
+          <section class="surface-card">
+            <div class="section-head">
+              <div>
+                <h2>Latest Reviews</h2>
+                <p>Recent attendee feedback from organizer events.</p>
+              </div>
+            </div>
+            ${renderReviews(data.latest_reviews)}
+          </section>
+        `;
+
+        renderFollowButton();
+        attachInteractions();
+      }
+
+      async function loadProfile() {
+        currentOrganizerId = getOrganizerIdFromUrl();
+        if (!currentOrganizerId) {
+          profileSection.innerHTML = '<div class="loading-state">Organizer ID is missing.</div>';
+          return;
+        }
+
+        try {
+          const headers = {};
+          const token = getAuthToken();
+          if (token) headers.Authorization = `Bearer ${token}`;
+
+          const response = await fetch(`${API_BASE_URL}/organizers/${encodeURIComponent(currentOrganizerId)}/profile`, {
+            headers,
+            cache: 'no-store'
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Unable to load organizer profile');
+          }
+
+          const currentUserId = getCurrentUserId();
+          currentIsFollowing = Boolean(data.is_following);
+          currentFollowersCount = Math.max(0, toNumber(data.followers_count, 0));
+          currentIsOwnProfile = currentUserId && String(currentUserId) === String(data.organizer?.id || '');
+
+          renderProfile(data);
+        } catch (error) {
+          profileSection.innerHTML = `<div class="loading-state">${escapeHtml(error.message || 'Failed to load organizer profile.')}</div>`;
+        }
+      }
+
+      loadProfile();
+    })();
+  </script>
+  <script src="/public/js/auth-nav.js"></script>
+  <script src="/js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

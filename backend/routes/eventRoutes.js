@@ -1,0 +1,38 @@
+const express = require('express');
+const router = express.Router();
+const eventController = require('../controllers/eventController');
+const marketingController = require('../controllers/marketingController');
+const { authenticateToken } = require('../middleware/authMiddleware');
+
+router.get('/', eventController.getAll);
+router.get('/my/events', authenticateToken, eventController.getMyEvents);
+router.get('/:id/seat-map', eventController.getSeatMap);
+router.get('/:id/reviews', eventController.getReviews);
+router.post('/:id/reviews', authenticateToken, eventController.addReview);
+router.post('/:id/view', eventController.trackView);
+router.get('/:id/views', eventController.getViewsLast24Hours);
+router.get('/:id/revenue-trend', authenticateToken, eventController.getRevenueTrend);
+router.get('/:id/post-event-summary', authenticateToken, eventController.getPostEventSummary);
+router.get('/:id/post-event-report', authenticateToken, eventController.exportPostEventReport);
+router.get('/:id/vault', authenticateToken, eventController.getVault);
+router.get('/:id/vault/transactions', authenticateToken, eventController.getVaultTransactions);
+router.post('/:id/vault/withdraw', authenticateToken, eventController.withdrawVault);
+router.get('/:id/cancellation-summary', authenticateToken, eventController.getCancellationSummary);
+router.post('/:id/cancel', authenticateToken, eventController.cancelEventWithRefunds);
+router.get('/:id/marketing/access', authenticateToken, marketingController.getAccess);
+router.get('/:id/marketing/setup', authenticateToken, marketingController.getSetup);
+router.put('/:id/marketing/setup', authenticateToken, marketingController.saveSetup);
+router.post('/:id/marketing/generate', authenticateToken, marketingController.generatePlan);
+router.post('/:id/waitlist', authenticateToken, eventController.joinWaitlist);
+router.post('/:id/promo-codes', authenticateToken, eventController.createPromoCode);
+router.get('/:id/promo-codes', authenticateToken, eventController.getPromoCodes);
+router.patch('/:id/promo-codes/:promoId/deactivate', authenticateToken, eventController.deactivatePromoCode);
+router.patch('/:id/promo-codes/:promoId/activate', authenticateToken, eventController.activatePromoCode);
+router.delete('/:id/promo-codes/:promoId', authenticateToken, eventController.deletePromoCode);
+router.post('/:id/promo/validate', eventController.validatePromoCode);
+router.get('/:id', eventController.getById);
+router.post('/', authenticateToken, eventController.create);
+router.put('/:id', authenticateToken, eventController.update);
+router.delete('/:id', authenticateToken, eventController.delete);
+
+module.exports = router;

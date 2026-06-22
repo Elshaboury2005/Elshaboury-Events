@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | My Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/my-events.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <div class="page-title">
+      <h1>My Events</h1>
+      <p>Events you organized</p>
+    </div>
+
+    <div class="events-grid" id="eventsGrid">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+        Loading your events...
+      </div>
+    </div>
+
+    <div class="page-title" style="margin-top: 60px;">
+      <h1>My Bookings</h1>
+      <p>Active tickets only</p>
+    </div>
+
+    <div class="events-grid" id="bookingsGrid">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+        Loading your active bookings...
+      </div>
+    </div>
+
+    <details class="past-bookings-wrap" id="pastBookingsWrap">
+      <summary>
+        <span class="past-summary-icon">&#128337;</span>
+        <span id="pastEventsLabel">Past Events (0)</span>
+      </summary>
+      <div class="events-grid" id="pastBookingsGrid">
+        <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: var(--muted);">
+          No past bookings.
+        </div>
+      </div>
+    </details>
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form -></a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) setMenuState(false);
+      }));
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+
+    const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+    const pastEventsLabel = document.getElementById('pastEventsLabel');
+
+    function getAuthToken() {
+      return localStorage.getItem('token');
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function toNumber(value, fallback = 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function toStatusText(raw) {
+      const source = String(raw || '').trim().toLowerCase();
+      if (!source) return 'Active';
+      return source.charAt(0).toUpperCase() + source.slice(1);
+    }
+
+    function resolveEventStatus(rawStatus, isEnded) {
+      if (isEnded) {
+        return { label: 'Ended', className: 'status-ended' };
+      }
+
+      const status = String(rawStatus || '').trim().toLowerCase();
+      if (status.includes('pending')) {
+        return { label: 'Pending', className: 'status-pending' };
+      }
+      if (status.includes('approved') || status.includes('active')) {
+        return { label: 'Approved', className: 'status-approved' };
+      }
+      return { label: toStatusText(status || 'active'), className: 'status-default' };
+    }
+
+    function buildSeatsProgress(availableSeatsRaw, maxSeatsRaw) {
+      const maxSeats = Math.max(0, toNumber(maxSeatsRaw));
+      if (!maxSeats) {
+        return `
+          <div class="seats-progress-block">
+            <div class="seats-progress-head">Seats info unavailable</div>
+            <div class="seats-progress-track"><div class="seats-progress-fill" style="width:0%;"></div></div>
+            <div class="seats-progress-percent">0.0% filled</div>
+          </div>
+        `;
+      }
+
+      const availableSeats = Math.max(0, Math.min(maxSeats, toNumber(availableSeatsRaw, maxSeats)));
+      const filledPercent = Math.max(0, Math.min(100, ((maxSeats - availableSeats) / maxSeats) * 100));
+
+      return `
+        <div class="seats-progress-block">
+          <div class="seats-progress-head">${availableSeats} / ${maxSeats} seats left</div>
+          <div class="seats-progress-track"><div class="seats-progress-fill" style="width:${filledPercent.toFixed(1)}%;"></div></div>
+          <div class="seats-progress-percent">${filledPercent.toFixed(1)}% filled</div>
+        </div>
+      `;
+    }
+
+    function renderDescription(description, idKey) {
+      const text = String(description || 'No description available.').trim();
+      const safeText = escapeHtml(text);
+      if (text.length <= 120) {
+        return `<p class="event-description">${safeText}</p>`;
+      }
+
+      const safeId = `desc-${String(idKey).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      return `
+        <p class="event-description is-clamped" id="${safeId}">${safeText}</p>
+        <button class="read-more-link" type="button" data-target="${safeId}" aria-expanded="false">Read more</button>
+      `;
+    }
+
+    function getSeatCount(booking) {
+      const seatNumbers = (booking.seat_numbers || '').toString().trim();
+      if (seatNumbers) {
+        return seatNumbers.split(',').map((seat) => parseInt(seat.trim(), 10)).filter((seat) => !isNaN(seat) && seat > 0).length;
+      }
+      const fallback = parseInt(booking.seat_number, 10);
+      return !isNaN(fallback) && fallback > 0 ? fallback : 1;
+    }
+
+    function parseEventDateMs(rawDate) {
+      if (!rawDate) return NaN;
+      if (rawDate instanceof Date) return rawDate.getTime();
+      const value = String(rawDate).trim();
+      if (!value) return NaN;
+
+      let timestamp = Date.parse(value);
+      if (!Number.isFinite(timestamp) && value.includes(' ') && !value.includes('T')) {
+        timestamp = Date.parse(value.replace(' ', 'T'));
+      }
+      return timestamp;
+    }
+
+    function isPastBookingEvent(booking, nowMs = Date.now()) {
+      const lifecycle = String(booking.event_lifecycle_status || booking.lifecycle_status || '').trim().toLowerCase();
+      const eventDateMs = parseEventDateMs(booking.event_date);
+      const hasValidDate = Number.isFinite(eventDateMs);
+      const forcedExpiredFuture = lifecycle === 'expired' && hasValidDate && eventDateMs > nowMs;
+
+      if (forcedExpiredFuture) return false;
+      if (lifecycle === 'expired') return true;
+      if (hasValidDate) return eventDateMs <= nowMs;
+      return Boolean(booking.is_past_event);
+    }
+
+    async function loadMyEvents() {
+      const token = getAuthToken();
+      const eventsGrid = document.getElementById('eventsGrid');
+      if (!token) {
+        eventsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);"><p>Please sign in to view your events.</p></div>';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Events/my/events`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success || !Array.isArray(data.events)) {
+          throw new Error(data.message || 'Failed to load events');
+        }
+
+        if (data.events.length === 0) {
+          eventsGrid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+              <p>You have not created any events yet.</p>
+              <p style="margin-top: 16px;"><a href="/html/create-event.html" style="color: var(--accent);">Create your first event</a></p>
+            </div>
+          `;
+          return;
+        }
+
+        const now = Date.now();
+        eventsGrid.innerHTML = data.events.map((event) => {
+          const eventDate = new Date(event.event_date);
+          const isExpired = event.lifecycle_status === 'expired' || eventDate.getTime() <= now || event.event_status === 'ended';
+          const status = resolveEventStatus(event.event_status, isExpired);
+          const manageHref = isExpired
+            ? `post-event-dashboard.html?id=${event.id}`
+            : `manage-event.html?id=${event.id}`;
+          const manageLabel = isExpired ? 'Post-Event Dashboard' : 'Manage & Stats';
+          const location = escapeHtml(event.location || 'TBA');
+          const title = escapeHtml(event.title || 'Untitled Event');
+          const formattedDate = Number.isNaN(eventDate.getTime())
+            ? 'Date TBA'
+            : eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          const descriptionHtml = renderDescription(event.description, `event-${event.id}`);
+          const seatsMarkup = buildSeatsProgress(event.available_seats, event.max_seats);
+
+          return `
+            <div class="event-card organized-card">
+              <div class="event-header">
+                <h2>${title}</h2>
+                <div class="event-meta">
+                  <span>&#x1F4CD; ${location}</span>
+                  <span>&#x1F4C5; ${formattedDate}</span>
+                </div>
+                <span class="event-tag ${status.className}">${escapeHtml(status.label)}</span>
+              </div>
+              ${seatsMarkup}
+              ${descriptionHtml}
+              <div class="event-footer">
+                <a class="cta" href="/html/event-details.html?id=${event.id}">Public View</a>
+                <a class="cta ${isExpired ? 'cta-dashboard' : 'cta-manage'}" href="${manageHref}">${manageLabel}</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading my events:', error);
+        eventsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);"><p>Error loading events.</p></div>';
+      }
+    }
+
+    function groupBookings(bookings) {
+      const map = {};
+      bookings.forEach((booking) => {
+        const key = booking.event_id || booking.id;
+        if (!map[key]) {
+          map[key] = { ...booking, allBookings: [] };
+        }
+        map[key].allBookings.push(booking);
+      });
+      return Object.values(map);
+    }
+
+    function buildBookingCard(group, isPast) {
+      const booking = group;
+      const eventDate = new Date(booking.event_date);
+      const ticketTypes = [];
+      let latestBookingMs = 0;
+      const relevantBookings = isPast
+        ? group.allBookings
+        : group.allBookings.filter((item) => item.status === 'confirmed' && !isPastBookingEvent(item));
+      const sourceBookings = relevantBookings.length ? relevantBookings : group.allBookings;
+      let totalSeats = 0;
+
+      sourceBookings.forEach((item) => {
+        totalSeats += getSeatCount(item);
+        if (item.ticket_type) ticketTypes.push(item.ticket_type);
+        const ts = new Date(item.booking_date || item.created_at || 0).getTime();
+        if (ts > latestBookingMs) latestBookingMs = ts;
+      });
+
+      const uniqueTypes = Array.from(new Set(ticketTypes));
+      const statusLabel = isPast ? 'ENDED' : 'CONFIRMED';
+      const statusClass = isPast ? 'status-ended' : 'status-confirmed';
+      const latestDate = latestBookingMs ? new Date(latestBookingMs).toLocaleDateString() : '-';
+      const actionableBooking = sourceBookings[0] || group.allBookings[0];
+      const firstBookingId = actionableBooking ? actionableBooking.id : '';
+      const activeActions = !isPast && firstBookingId;
+      const formattedDate = Number.isNaN(eventDate.getTime())
+        ? 'Date TBA'
+        : eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const descriptionHtml = renderDescription(booking.description, `booking-${booking.event_id || booking.id}-${isPast ? 'past' : 'active'}`);
+      const safeTitle = escapeHtml(booking.event_title || 'Event');
+      const safeLocation = escapeHtml(booking.location || 'TBA');
+      const ticketTypeText = uniqueTypes.length ? uniqueTypes.join(' / ') : 'Standard';
+
+      return `
+        <div class="event-card booking-card ${isPast ? 'past-booking-card' : ''}">
+          <div class="event-header">
+            <h2>${safeTitle}</h2>
+            <div class="event-meta">
+              <span>&#x1F4CD; ${safeLocation}</span>
+              <span>&#x1F4C5; ${formattedDate}</span>
+              <span>Total Seats: ${totalSeats || 1}</span>
+              <span>Ticket Type: ${escapeHtml(ticketTypeText)}</span>
+            </div>
+            <span class="event-tag ${statusClass}">${statusLabel}</span>
+          </div>
+          ${descriptionHtml}
+          <div class="booking-meta-line">Booked on: ${latestDate}</div>
+          <div class="event-footer booking-footer">
+            ${isPast
+          ? `<a class="cta" href="/html/event-details.html?id=${booking.event_id}">View Event</a>`
+          : activeActions
+            ? `<a class="cta" href="/html/accepted-event.html?bookingId=${firstBookingId}&eventId=${booking.event_id}">View Tickets</a>`
+            : `<a class="cta" href="/html/event-details.html?id=${booking.event_id}">View Event</a>`}
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadMyBookings() {
+      const token = getAuthToken();
+      const activeGrid = document.getElementById('bookingsGrid');
+      const pastGrid = document.getElementById('pastBookingsGrid');
+      if (!token) {
+        activeGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);"><p>Please sign in to view your bookings.</p></div>';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Bookings/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success || !Array.isArray(data.bookings)) {
+          throw new Error(data.message || 'Failed to load bookings');
+        }
+
+        const nowMs = Date.now();
+        const normalizedBookings = data.bookings.map((booking) => ({
+          ...booking,
+          is_past_event: isPastBookingEvent(booking, nowMs)
+        }));
+
+        const grouped = groupBookings(normalizedBookings);
+        const groupedWithState = grouped.map((group) => {
+          const hasActiveConfirmed = group.allBookings.some(
+            (booking) => booking.status === 'confirmed' && !isPastBookingEvent(booking, nowMs)
+          );
+          const isEndedEvent = group.allBookings.some((booking) => isPastBookingEvent(booking, nowMs));
+          return { group, hasActiveConfirmed, isEndedEvent };
+        });
+
+        const activeGroups = groupedWithState
+          .filter((entry) => entry.hasActiveConfirmed)
+          .map((entry) => entry.group);
+
+        const pastGroups = groupedWithState
+          .filter((entry) => entry.isEndedEvent && !entry.hasActiveConfirmed)
+          .map((entry) => entry.group);
+        if (pastEventsLabel) {
+          pastEventsLabel.textContent = `Past Events (${pastGroups.length})`;
+        }
+
+        activeGrid.innerHTML = activeGroups.length
+          ? activeGroups.map((group) => buildBookingCard(group, false)).join('')
+          : `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+              <p>No active bookings right now.</p>
+              <p style="margin-top: 16px;"><a href="/html/book-event.html" style="color: var(--accent);">Browse events</a></p>
+            </div>`;
+
+        pastGrid.innerHTML = pastGroups.length
+          ? pastGroups.map((group) => buildBookingCard(group, true)).join('')
+          : '<div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: var(--muted);">No past bookings.</div>';
+      } catch (error) {
+        console.error('Error loading bookings:', error);
+        activeGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);"><p>Error loading bookings.</p></div>';
+      }
+    }
+
+    document.addEventListener('click', (event) => {
+      const toggleBtn = event.target.closest('.read-more-link');
+      if (!toggleBtn) return;
+
+      const targetId = toggleBtn.getAttribute('data-target');
+      const target = targetId ? document.getElementById(targetId) : null;
+      if (!target) return;
+
+      const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+      toggleBtn.setAttribute('aria-expanded', String(!expanded));
+      toggleBtn.textContent = expanded ? 'Read more' : 'Show less';
+      target.classList.toggle('is-clamped', expanded);
+    });
+
+    loadMyEvents();
+    loadMyBookings();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

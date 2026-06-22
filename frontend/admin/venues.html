@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Venues</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Venues Management');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="stats-grid cols-4" id="venueStats"></div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="section-head">
+              <div>
+                <h3 class="section-title">Venue Form</h3>
+                <p class="section-meta">Add or edit venue details, pricing, featured status, imagery, and inventory.</p>
+              </div>
+            </div>
+            <form id="venueForm" class="grid">
+              <div class="info-grid">
+                <label class="label-stack">Name
+                  <input id="venueName" class="search-input" required />
+                </label>
+                <label class="label-stack">Governorate
+                  <input id="venueGovernorate" class="search-input" required />
+                </label>
+                <label class="label-stack">Category
+                  <select id="venueCategory" class="search-input" required></select>
+                </label>
+                <label class="label-stack">Available
+                  <select id="venueAvailable" class="search-input">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              </div>
+              <label class="label-stack">Address
+                <input id="venueAddress" class="search-input" required />
+              </label>
+              <label class="label-stack">Description
+                <textarea id="venueDescription" class="search-input" rows="4"></textarea>
+              </label>
+              <div class="info-grid">
+                <label class="label-stack">Price Per Day
+                  <input id="venuePrice" class="search-input" type="number" min="1" required />
+                </label>
+                <label class="label-stack">Price Per Hour
+                  <input id="venuePricePerHour" class="search-input" type="number" min="0" />
+                </label>
+                <label class="label-stack">Minimum Hours
+                  <input id="venueMinHours" class="search-input" type="number" min="1" value="4" />
+                </label>
+                <label class="label-stack">Featured
+                  <select id="venueFeatured" class="search-input">
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </label>
+              </div>
+              <div class="info-grid">
+                <label class="label-stack">Total Capacity
+                  <input id="venueTotalCapacity" class="search-input" type="number" min="1" required />
+                </label>
+                <label class="label-stack">Standard Seats
+                  <input id="venueStandardSeats" class="search-input" type="number" min="0" required />
+                </label>
+                <label class="label-stack">Special Seats
+                  <input id="venueSpecialSeats" class="search-input" type="number" min="0" required />
+                </label>
+                <label class="label-stack">VIP Seats
+                  <input id="venueVipSeats" class="search-input" type="number" min="0" required />
+                </label>
+              </div>
+              <div class="info-grid">
+                <label class="label-stack">Latitude
+                  <input id="venueLatitude" class="search-input" />
+                </label>
+                <label class="label-stack">Longitude
+                  <input id="venueLongitude" class="search-input" />
+                </label>
+                <label class="label-stack">Rating
+                  <input id="venueRating" class="search-input" type="number" min="0" max="5" step="0.1" />
+                </label>
+                <label class="label-stack">Amenities
+                  <input id="venueAmenities" class="search-input" placeholder="parking, ac, stage" />
+                </label>
+              </div>
+              <label class="label-stack">Image URLs
+                <input id="venueImages" class="search-input" placeholder="url1, url2" />
+              </label>
+              <label class="label-stack">Image Upload
+                <input id="venueImageUpload" class="search-input" type="file" accept="image/*" multiple />
+              </label>
+              <div id="venueImagePreview" class="chip-row"></div>
+              <div class="inline-actions">
+                <button class="btn btn-gradient" type="submit" id="venueSubmitBtn">Save Venue</button>
+                <button class="btn btn-outline-primary" type="button" id="venueResetBtn">Reset</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="section-head">
+              <div>
+                <h3 class="section-title">Availability Calendar</h3>
+                <p class="section-meta">Review venue bookings and block maintenance windows.</p>
+              </div>
+            </div>
+            <div class="grid">
+              <label class="label-stack">Venue
+                <select id="calendarVenueSelect" class="search-input"></select>
+              </label>
+              <div id="venueCalendarGrid" class="table-wrap"></div>
+              <div class="info-grid">
+                <label class="label-stack">Block Start
+                  <input id="blockStartDate" class="search-input" type="date" />
+                </label>
+                <label class="label-stack">Block End
+                  <input id="blockEndDate" class="search-input" type="date" />
+                </label>
+              </div>
+              <label class="label-stack">Reason
+                <input id="blockReason" class="search-input" placeholder="Maintenance, renovation, private use..." />
+              </label>
+              <div class="inline-actions">
+                <button id="addBlockBtn" class="btn btn-gradient" type="button">Block Dates</button>
+              </div>
+              <div>
+                <h4 class="section-title" style="font-size: 1rem;">Blocked Ranges</h4>
+                <div id="venueBlockList" class="list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="section-head">
+              <div>
+                <h3 class="section-title">Venue Revenue Trend</h3>
+                <p class="section-meta">Confirmed platform venue booking income over the last 30 days.</p>
+              </div>
+            </div>
+            <div id="venueRevenueChart" class="table-wrap"></div>
+          </div>
+
+          <div class="card">
+            <div class="section-head">
+              <div>
+                <h3 class="section-title">Booking Export</h3>
+                <p class="section-meta">Export venue bookings for finance, operations, or audit workflows.</p>
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button id="exportVenueBookingsBtn" class="btn btn-gradient" type="button">Export Venue Bookings CSV</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Pending Venue Submissions</h3>
+              <p class="section-meta">Review and approve host-submitted venues to list them publicly.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name / Category</th>
+                  <th>Owner</th>
+                  <th>Capacity / Price</th>
+                  <th>Contact Info</th>
+                  <th>Policy</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="venueSubmissionsBody">
+                <tr><td colspan="6"><div class="empty-state">Loading submissions...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Venues</h3>
+              <p class="section-meta">Current venue inventory, category, reviews, featured status, and revenue.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Governorate</th>
+                  <th>Rating</th>
+                  <th>Capacity</th>
+                  <th>Price</th>
+                  <th>Featured</th>
+                  <th>Status</th>
+                  <th>Revenue</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="venuesBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Venue Bookings</h3>
+              <p class="section-meta">Confirm or cancel platform venue bookings.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Venue</th>
+                  <th>Host</th>
+                  <th>Date</th>
+                  <th>Price</th>
+                  <th>Status</th>
+                  <th>Payment</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="venueBookingsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      const VENUE_CATEGORIES = [
+        ['conference_hall', 'Conference Hall'],
+        ['wedding_hall', 'Wedding Hall'],
+        ['outdoor_garden', 'Outdoor Garden'],
+        ['rooftop', 'Rooftop'],
+        ['theater', 'Theater'],
+        ['sports_hall', 'Sports Hall'],
+        ['hotel_ballroom', 'Hotel Ballroom'],
+        ['art_gallery', 'Art Gallery'],
+        ['beach_venue', 'Beach Venue'],
+        ['private_villa', 'Private Villa']
+      ];
+
+      const venueStats = document.getElementById('venueStats');
+      const venueForm = document.getElementById('venueForm');
+      const venueSubmitBtn = document.getElementById('venueSubmitBtn');
+      const venueResetBtn = document.getElementById('venueResetBtn');
+      const venuesBody = document.getElementById('venuesBody');
+      const venueBookingsBody = document.getElementById('venueBookingsBody');
+      const venueImagePreview = document.getElementById('venueImagePreview');
+      const venueImagesInput = document.getElementById('venueImages');
+      const venueImageUpload = document.getElementById('venueImageUpload');
+      const calendarVenueSelect = document.getElementById('calendarVenueSelect');
+      const venueCalendarGrid = document.getElementById('venueCalendarGrid');
+      const venueBlockList = document.getElementById('venueBlockList');
+      const addBlockBtn = document.getElementById('addBlockBtn');
+      const exportVenueBookingsBtn = document.getElementById('exportVenueBookingsBtn');
+      const venueRevenueChart = document.getElementById('venueRevenueChart');
+
+      document.getElementById('venueCategory').innerHTML = VENUE_CATEGORIES
+        .map(([value, label]) => `<option value="${value}">${label}</option>`)
+        .join('');
+
+      let editingVenueId = null;
+      let venues = [];
+      let bookings = [];
+      let analytics = null;
+      let selectedVenueId = null;
+      let selectedCalendar = { bookings: [], blocks: [] };
+      let stagedImages = [];
+
+      function parseList(value) {
+        return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+      }
+
+      function toLocalDateInputValue(value = new Date()) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function categoryLabel(value) {
+        return VENUE_CATEGORIES.find(([key]) => key === value)?.[1] || value || '-';
+      }
+
+      function renderImagePreview() {
+        const images = [...new Set([...parseList(venueImagesInput.value), ...stagedImages])];
+        venueImagePreview.innerHTML = images.length
+          ? images.map((src) => `<span class="chip">${AdminApp.escapeHtml(src.length > 60 ? `${src.slice(0, 57)}...` : src)}</span>`).join('')
+          : '<span class="chip">No images added</span>';
+      }
+
+      function formValues() {
+        const manualImages = parseList(venueImagesInput.value);
+        return {
+          name: document.getElementById('venueName').value.trim(),
+          governorate: document.getElementById('venueGovernorate').value.trim(),
+          category: document.getElementById('venueCategory').value,
+          pricePerDay: Number(document.getElementById('venuePrice').value || 0),
+          pricePerHour: document.getElementById('venuePricePerHour').value === '' ? null : Number(document.getElementById('venuePricePerHour').value || 0),
+          minHours: Number(document.getElementById('venueMinHours').value || 4),
+          rating: Number(document.getElementById('venueRating').value || 0),
+          isFeatured: document.getElementById('venueFeatured').value === 'true',
+          isAvailable: document.getElementById('venueAvailable').value === 'true',
+          address: document.getElementById('venueAddress').value.trim(),
+          description: document.getElementById('venueDescription').value.trim(),
+          totalCapacity: Number(document.getElementById('venueTotalCapacity').value || 0),
+          standardSeats: Number(document.getElementById('venueStandardSeats').value || 0),
+          specialSeats: Number(document.getElementById('venueSpecialSeats').value || 0),
+          vipSeats: Number(document.getElementById('venueVipSeats').value || 0),
+          latitude: document.getElementById('venueLatitude').value.trim(),
+          longitude: document.getElementById('venueLongitude').value.trim(),
+          amenities: document.getElementById('venueAmenities').value.trim(),
+          images: [...manualImages, ...stagedImages].join(', ')
+        };
+      }
+
+      function resetForm() {
+        editingVenueId = null;
+        stagedImages = [];
+        venueForm.reset();
+        venueSubmitBtn.textContent = 'Save Venue';
+        document.getElementById('venueAvailable').value = 'true';
+        document.getElementById('venueFeatured').value = 'false';
+        document.getElementById('venueMinHours').value = '4';
+        document.getElementById('venueCategory').value = 'conference_hall';
+        renderImagePreview();
+      }
+
+      function fillForm(venue) {
+        editingVenueId = venue.id;
+        stagedImages = [];
+        venueSubmitBtn.textContent = 'Update Venue';
+        document.getElementById('venueName').value = venue.name || '';
+        document.getElementById('venueGovernorate').value = venue.governorate || '';
+        document.getElementById('venueCategory').value = venue.category || 'conference_hall';
+        document.getElementById('venuePrice').value = venue.pricePerDay || 0;
+        document.getElementById('venuePricePerHour').value = venue.pricePerHour ?? '';
+        document.getElementById('venueMinHours').value = venue.minHours || 4;
+        document.getElementById('venueRating').value = venue.rating || 0;
+        document.getElementById('venueFeatured').value = String(Boolean(venue.isFeatured));
+        document.getElementById('venueAvailable').value = String(Boolean(venue.isAvailable));
+        document.getElementById('venueAddress').value = venue.address || '';
+        document.getElementById('venueDescription').value = venue.description || '';
+        document.getElementById('venueTotalCapacity').value = venue.totalCapacity || 0;
+        document.getElementById('venueStandardSeats').value = venue.standardSeats || 0;
+        document.getElementById('venueSpecialSeats').value = venue.specialSeats || 0;
+        document.getElementById('venueVipSeats').value = venue.vipSeats || 0;
+        document.getElementById('venueLatitude').value = venue.latitude ?? '';
+        document.getElementById('venueLongitude').value = venue.longitude ?? '';
+        document.getElementById('venueAmenities').value = (venue.amenities || []).join(', ');
+        document.getElementById('venueImages').value = (venue.images || []).join(', ');
+        renderImagePreview();
+      }
+
+      function renderStats() {
+        const mostPopular = analytics?.stats?.mostPopularVenue;
+        venueStats.innerHTML = `
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Total Venues</span><span class="stat-icon">&#127963;&#65039;</span></div><div class="stat-value">${AdminApp.formatNumber(analytics?.stats?.totalVenues || venues.length)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Active Bookings</span><span class="stat-icon">&#128197;</span></div><div class="stat-value">${AdminApp.formatNumber(analytics?.stats?.activeBookings || 0)}</div></div>
+          <div class="stat-card revenue"><div class="stat-head"><span class="stat-label">Revenue from Venues</span><span class="stat-icon">&#128176;</span></div><div class="stat-value">${AdminApp.formatCurrency(analytics?.stats?.revenueFromVenues || 0)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Most Popular Venue</span><span class="stat-icon">&#11088;</span></div><div class="stat-value">${mostPopular ? AdminApp.escapeHtml(mostPopular.name) : 'N/A'}</div><div class="user-sub">${mostPopular ? `${AdminApp.formatNumber(mostPopular.confirmedBookings)} bookings` : 'No bookings yet'}</div></div>
+        `;
+      }
+
+      function renderRevenueTrend() {
+        const trend = analytics?.trend || [];
+        if (!trend.length) {
+          venueRevenueChart.innerHTML = '<div class="empty-state">No confirmed venue revenue has been recorded yet.</div>';
+          return;
+        }
+        const max = Math.max(...trend.map((point) => Number(point.revenue || 0)), 1);
+        venueRevenueChart.innerHTML = `
+          <div class="list">
+            ${trend.map((point) => `
+              <div>
+                <div class="inline-actions" style="justify-content: space-between;">
+                  <strong>${AdminApp.escapeHtml(point.day)}</strong>
+                  <span class="user-sub">${AdminApp.formatCurrency(point.revenue)}</span>
+                </div>
+                <div class="progress-bar"><span style="width:${Math.max(8, (Number(point.revenue || 0) / max) * 100)}%"></span></div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function venueStatusClass(status) {
+        const value = String(status || 'approved').toLowerCase();
+        if (value === 'pending_review' || value === 'changes_requested') return 'pending';
+        if (value === 'rejected' || value === 'suspended') return 'rejected';
+        return value;
+      }
+
+      function renderVenues() {
+        if (!venues.length) {
+          venuesBody.innerHTML = '<tr><td colspan="10"><div class="empty-state">No venues found.</div></td></tr>';
+          return;
+        }
+
+        venuesBody.innerHTML = venues.map((venue) => `
+          <tr data-id="${venue.id}">
+            <td>
+              <div><strong>${AdminApp.escapeHtml(venue.name)}</strong></div>
+              <div class="user-sub">${AdminApp.escapeHtml(venue.address)}</div>
+            </td>
+            <td>${AdminApp.escapeHtml(categoryLabel(venue.category))}</td>
+            <td>${AdminApp.escapeHtml(venue.governorate)}</td>
+            <td>${Number(venue.rating || 0).toFixed(1)} (${AdminApp.formatNumber(venue.totalReviews || 0)})</td>
+            <td>${AdminApp.formatNumber(venue.totalCapacity)}</td>
+            <td>${AdminApp.formatCurrency(venue.pricePerDay)}</td>
+            <td>${venue.isFeatured ? 'Yes' : 'No'}</td>
+            <td>
+              <span class="status-badge status-${AdminApp.escapeHtml(venueStatusClass(venue.status))}">${AdminApp.escapeHtml(venue.status || 'approved').replace(/_/g, ' ')}</span>
+              <div class="user-sub">${venue.isAvailable ? 'available' : 'offline'}</div>
+            </td>
+            <td>${AdminApp.formatCurrency(venue.totalRevenue || 0)}</td>
+            <td>
+              <div class="inline-actions">
+                <button class="btn btn-outline-primary" data-action="edit">Edit</button>
+                <button class="btn btn-secondary" data-action="calendar">Calendar</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      function renderSubmissions(submissions) {
+        const body = document.getElementById('venueSubmissionsBody');
+        if (!submissions.length) {
+          body.innerHTML = '<tr><td colspan="6"><div class="empty-state">No pending submissions.</div></td></tr>';
+          return;
+        }
+        body.innerHTML = submissions.map((venue) => `
+          <tr data-id="${venue.id}">
+            <td>
+              <div><strong>${AdminApp.escapeHtml(venue.name)}</strong></div>
+              <div class="user-sub">${AdminApp.escapeHtml(categoryLabel(venue.category))}</div>
+            </td>
+            <td>
+              <div>${AdminApp.escapeHtml(venue.ownerName || '-')}</div>
+              <div class="user-sub">${AdminApp.escapeHtml(venue.ownerEmail || '-')}</div>
+            </td>
+            <td>
+              <div>${AdminApp.formatNumber(venue.totalCapacity)} guests</div>
+              <div class="user-sub">${AdminApp.formatCurrency(venue.pricePerDay)}/day</div>
+            </td>
+            <td>
+              <div>${AdminApp.escapeHtml(venue.contactPhone || '-')}</div>
+              <div class="user-sub">${AdminApp.escapeHtml(venue.contactEmail || '-')}</div>
+            </td>
+            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${AdminApp.escapeHtml(venue.cancellationPolicy || '')}">
+              ${AdminApp.escapeHtml(venue.cancellationPolicy || '-')}
+            </td>
+            <td>
+              <div class="inline-actions">
+                <button class="btn btn-success" data-sub-action="approve">Approve</button>
+                <button class="btn btn-outline-danger" data-sub-action="reject">Reject</button>
+                <button class="btn btn-outline-primary" data-sub-action="changes">Changes</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      function renderBookings() {
+        if (!bookings.length) {
+          venueBookingsBody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No venue bookings found.</div></td></tr>';
+          return;
+        }
+
+        venueBookingsBody.innerHTML = bookings.map((booking) => `
+          <tr data-id="${booking.id}">
+            <td>
+              <div><strong>${AdminApp.escapeHtml(booking.venueName || '-')}</strong></div>
+              <div class="user-sub">${AdminApp.escapeHtml(booking.eventTitle || 'No event linked yet')}</div>
+            </td>
+            <td>
+              <div>${AdminApp.escapeHtml(booking.hostName || '-')}</div>
+              <div class="user-sub">${AdminApp.escapeHtml(booking.hostEmail || '-')}</div>
+            </td>
+            <td>${AdminApp.formatDate(booking.eventDate)}</td>
+            <td>${AdminApp.formatCurrency(booking.totalPrice)}</td>
+            <td><span class="status-badge status-${AdminApp.escapeHtml(booking.status)}">${AdminApp.escapeHtml(booking.status)}</span></td>
+            <td><span class="status-badge status-${AdminApp.escapeHtml(booking.paymentStatus)}">${AdminApp.escapeHtml(booking.paymentStatus)}</span></td>
+            <td>
+              <div class="inline-actions">
+                <button class="btn btn-success" data-booking-action="confirm" ${booking.status === 'confirmed' ? 'disabled' : ''}>Confirm</button>
+                <button class="btn btn-outline-danger" data-booking-action="cancel" ${booking.status === 'cancelled' ? 'disabled' : ''}>Cancel</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      function renderCalendarSelector() {
+        calendarVenueSelect.innerHTML = venues.length
+          ? venues.map((venue) => `<option value="${venue.id}" ${Number(selectedVenueId) === Number(venue.id) ? 'selected' : ''}>${AdminApp.escapeHtml(venue.name)}</option>`).join('')
+          : '<option value="">No venues</option>';
+      }
+
+      function renderCalendar() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startOffset = firstDay.getDay();
+        const booked = new Set((selectedCalendar.bookings || []).map((item) => item.date));
+        const blocks = selectedCalendar.blocks || [];
+        const cells = [];
+        const totalCells = Math.ceil((startOffset + lastDay.getDate()) / 7) * 7;
+        for (let index = 0; index < totalCells; index += 1) {
+          const day = index - startOffset + 1;
+          if (day < 1 || day > lastDay.getDate()) {
+            cells.push('<span class="chip"></span>');
+            continue;
+          }
+          const iso = toLocalDateInputValue(new Date(year, month, day));
+          const blocked = blocks.some((item) => item.startDate <= iso && item.endDate >= iso);
+          const bookedDay = booked.has(iso);
+          const klass = bookedDay || blocked ? 'status-badge status-rejected' : 'status-badge status-approved';
+          cells.push(`<span class="${klass}" style="display:flex;justify-content:center;">${day}</span>`);
+        }
+
+        venueCalendarGrid.innerHTML = `
+          <div class="section-meta">${today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>
+          <div class="stats-grid cols-7">${['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => `<strong>${day}</strong>`).join('')}${cells.join('')}</div>
+        `;
+        venueBlockList.innerHTML = blocks.length
+          ? blocks.map((block) => `
+              <div class="list-item">
+                <div>
+                  <strong>${AdminApp.escapeHtml(block.startDate)} to ${AdminApp.escapeHtml(block.endDate)}</strong>
+                  <div class="user-sub">${AdminApp.escapeHtml(block.reason || 'No reason provided')}</div>
+                </div>
+                <button class="btn btn-outline-danger" data-block-id="${block.id}">Delete</button>
+              </div>
+            `).join('')
+          : '<div class="empty-state">No blocked ranges for this venue.</div>';
+      }
+
+      async function loadCalendar(venueId) {
+        if (!venueId) return;
+        selectedVenueId = Number(venueId);
+        renderCalendarSelector();
+        const response = await AdminApp.request(`/Admin/venues/${selectedVenueId}/calendar`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          window.alert(data.message || 'Failed to load venue calendar');
+          return;
+        }
+        selectedCalendar = {
+          bookings: data.bookings || [],
+          blocks: data.blocks || []
+        };
+        renderCalendar();
+      }
+
+      async function loadData() {
+        const [venuesRes, bookingsRes, analyticsRes, submissionsRes] = await Promise.all([
+          AdminApp.request('/Admin/venues'),
+          AdminApp.request('/Admin/venue-bookings'),
+          AdminApp.request('/Admin/venues/analytics'),
+          AdminApp.request('/Admin/venue-submissions')
+        ]);
+
+        const venuesData = await venuesRes.json().catch(() => ({}));
+        const bookingsData = await bookingsRes.json().catch(() => ({}));
+        const analyticsData = await analyticsRes.json().catch(() => ({}));
+        const submissionsData = await submissionsRes.json().catch(() => ({}));
+
+        venues = venuesData.venues || [];
+        bookings = bookingsData.bookings || [];
+        analytics = analyticsData.success ? analyticsData : null;
+        const submissions = submissionsData.venues || [];
+
+        if (!selectedVenueId && venues.length) selectedVenueId = venues[0].id;
+
+        renderStats();
+        renderRevenueTrend();
+        renderVenues();
+        renderSubmissions(submissions);
+        renderBookings();
+        renderCalendarSelector();
+        if (selectedVenueId) await loadCalendar(selectedVenueId);
+      }
+
+      async function readFilesAsDataUrls(files) {
+        return Promise.all(Array.from(files).map((file) => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        })));
+      }
+
+      venueImageUpload.addEventListener('change', async (event) => {
+        if (!event.target.files?.length) return;
+        stagedImages = stagedImages.concat(await readFilesAsDataUrls(event.target.files));
+        renderImagePreview();
+      });
+
+      venueImagesInput.addEventListener('input', renderImagePreview);
+
+      venueForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = formValues();
+        const method = editingVenueId ? 'PATCH' : 'POST';
+        const path = editingVenueId ? `/Admin/venues/${editingVenueId}` : '/Admin/venues';
+        const response = await AdminApp.request(path, {
+          method,
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          window.alert(data.message || 'Failed to save venue');
+          return;
+        }
+        resetForm();
+        await loadData();
+      });
+
+      venueResetBtn.addEventListener('click', resetForm);
+
+      venuesBody.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const row = button.closest('tr[data-id]');
+        const venue = venues.find((item) => Number(item.id) === Number(row.dataset.id));
+        if (!venue) return;
+        if (button.dataset.action === 'edit') fillForm(venue);
+        if (button.dataset.action === 'calendar') await loadCalendar(venue.id);
+      });
+
+      calendarVenueSelect.addEventListener('change', () => loadCalendar(calendarVenueSelect.value));
+
+      addBlockBtn.addEventListener('click', async () => {
+        if (!selectedVenueId) return;
+        const response = await AdminApp.request(`/Admin/venues/${selectedVenueId}/availability-blocks`, {
+          method: 'POST',
+          body: JSON.stringify({
+            startDate: document.getElementById('blockStartDate').value,
+            endDate: document.getElementById('blockEndDate').value,
+            reason: document.getElementById('blockReason').value.trim()
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          window.alert(data.message || 'Failed to block dates');
+          return;
+        }
+        document.getElementById('blockStartDate').value = '';
+        document.getElementById('blockEndDate').value = '';
+        document.getElementById('blockReason').value = '';
+        await loadCalendar(selectedVenueId);
+      });
+
+      venueBlockList.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-block-id]');
+        if (!button) return;
+        const response = await AdminApp.request(`/Admin/venues/availability-blocks/${button.dataset.blockId}`, {
+          method: 'DELETE'
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          window.alert(data.message || 'Failed to delete blocked range');
+          return;
+        }
+        await loadCalendar(selectedVenueId);
+      });
+
+      venueBookingsBody.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-booking-action]');
+        if (!button) return;
+        const row = button.closest('tr[data-id]');
+        const action = button.dataset.bookingAction;
+        if (!row) return;
+        if (action === 'cancel' && !window.confirm('Cancel this venue booking and refund the host wallet?')) return;
+        const response = await AdminApp.request(`/Admin/venue-bookings/${row.dataset.id}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: action === 'confirm' ? 'confirmed' : 'cancelled' })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          window.alert(data.message || 'Failed to update venue booking');
+          return;
+        }
+        await loadData();
+      });
+
+      exportVenueBookingsBtn.addEventListener('click', async () => {
+        const response = await AdminApp.request('/Admin/venue-bookings/export');
+        if (!response.ok) {
+          window.alert('Failed to export venue bookings');
+          return;
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'venue-bookings.csv';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      document.getElementById('venueSubmissionsBody').addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-sub-action]');
+        if (!button) return;
+        const row = button.closest('tr[data-id]');
+        const venueId = row.dataset.id;
+        const action = button.dataset.subAction;
+
+        if (action === 'approve') {
+          if (!window.confirm('Approve this venue listing?')) return;
+          const response = await AdminApp.request(`/Admin/venue-submissions/${venueId}/approve`, {
+            method: 'PATCH'
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) {
+            window.alert(data.message || 'Failed to approve venue');
+            return;
+          }
+          await loadData();
+        } else if (action === 'reject') {
+          const reason = window.prompt('Enter rejection reason (sent to owner):');
+          if (reason === null) return;
+          if (!reason.trim()) {
+            window.alert('Rejection reason is required');
+            return;
+          }
+          const response = await AdminApp.request(`/Admin/venue-submissions/${venueId}/reject`, {
+            method: 'PATCH',
+            body: JSON.stringify({ reason: reason.trim() })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) {
+            window.alert(data.message || 'Failed to reject venue');
+            return;
+          }
+          await loadData();
+        } else if (action === 'changes') {
+          const comments = window.prompt('Enter requested changes/comments:');
+          if (comments === null) return;
+          if (!comments.trim()) {
+            window.alert('Comments are required');
+            return;
+          }
+          const response = await AdminApp.request(`/Admin/venue-submissions/${venueId}/request-changes`, {
+            method: 'PATCH',
+            body: JSON.stringify({ comments: comments.trim() })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) {
+            window.alert(data.message || 'Failed to request changes');
+            return;
+          }
+          await loadData();
+        }
+      });
+
+      resetForm();
+      await loadData();
+    })();
+  </script>
+</body>
+</html>

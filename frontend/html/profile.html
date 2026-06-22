@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/profile.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section class="quick-stats-card">
+      <div class="quick-stat wallet-stat">
+        <div class="quick-stat-head">
+          <span class="quick-stat-icon">&#128176;</span>
+          <span class="label">Wallet Balance</span>
+        </div>
+        <strong id="walletBalanceValue">0.00 EGP</strong>
+        <a href="/wallet" class="wallet-link-btn">Go to Wallet</a>
+      </div>
+      <div class="quick-stat">
+        <div class="quick-stat-head">
+          <span class="quick-stat-icon">&#127915;</span>
+          <span class="label">Active Upcoming Tickets</span>
+        </div>
+        <strong id="activeTicketsValue">0</strong>
+      </div>
+      <div class="quick-stat">
+        <div class="quick-stat-head">
+          <span class="quick-stat-icon">&#128197;</span>
+          <span class="label">Upcoming Events</span>
+        </div>
+        <strong id="upcomingEventsValue">0</strong>
+      </div>
+      <div class="quick-stat">
+        <div class="quick-stat-head">
+          <span class="quick-stat-icon">&#128198;</span>
+          <span class="label">Member Since</span>
+        </div>
+        <strong id="memberSinceValue">-</strong>
+      </div>
+    </section>
+
+    <section class="profile-layout">
+      <aside class="profile-sidebar">
+        <button class="tab-btn active" data-tab-target="personal">
+          <span class="tab-icon">&#128100;</span>
+          <span>Personal Info</span>
+        </button>
+        <button class="tab-btn" data-tab-target="security">
+          <span class="tab-icon">&#128274;</span>
+          <span>Security</span>
+        </button>
+        <button class="tab-btn" data-tab-target="activity">
+          <span class="tab-icon">&#128202;</span>
+          <span>My Activity</span>
+        </button>
+        <button class="tab-btn" data-tab-target="reviews">
+          <span class="tab-icon">&#11088;</span>
+          <span>My Reviews</span>
+        </button>
+        <button class="tab-btn" data-tab-target="notifications">
+          <span class="tab-icon">&#128276;</span>
+          <span>Notification Preferences</span>
+        </button>
+      </aside>
+
+      <div class="profile-content">
+        <section class="tab-panel active" data-tab-panel="personal">
+          <h2>Personal Information</h2>
+          <p class="section-subtitle">Manage your personal details and profile image.</p>
+
+          <div class="profile-avatar-row">
+            <div class="avatar-wrap">
+              <img id="profileAvatar" class="avatar-image" src="" alt="Profile picture">
+              <span id="avatarInitials" class="avatar-initials">U</span>
+              <button type="button" class="avatar-camera-overlay" id="avatarOverlayBtn" aria-label="Change photo">&#128247;</button>
+            </div>
+            <div class="avatar-actions">
+              <input type="file" id="profileImageInput" accept="image/*" hidden>
+              <div class="avatar-btn-row">
+                <button type="button" class="btn-secondary" id="uploadImageBtn">Upload / Change Photo</button>
+                <button type="button" class="btn-danger" id="removeImageBtn">Remove Photo</button>
+              </div>
+              <span class="hint">Max 5MB. PNG, JPG, WEBP.</span>
+            </div>
+          </div>
+
+          <form id="personalInfoForm" class="form-grid">
+            <label>
+              Full Name
+              <input id="fullName" name="fullName" type="text" required maxlength="100">
+            </label>
+
+            <label>
+              Username
+              <input id="username" name="username" type="text" required minlength="3" maxlength="30">
+            </label>
+
+            <label>
+              Email Address
+              <input id="email" name="email" type="email" required maxlength="255">
+            </label>
+
+            <label>
+              <span class="label-with-tip">
+                Current Password
+                <span class="info-tip" title="Required only when changing email." aria-label="Required only when changing email.">i</span>
+              </span>
+              <input id="emailChangePassword" name="emailChangePassword" type="password" maxlength="255">
+            </label>
+
+            <label>
+              Phone Number
+              <input id="phoneNumber" name="phoneNumber" type="tel" maxlength="30">
+            </label>
+
+            <label>
+              Date of Birth
+              <input id="dateOfBirth" name="dateOfBirth" type="date">
+            </label>
+
+            <label>
+              Gender
+              <select id="gender" name="gender">
+                <option value="">Select gender</option>
+              </select>
+            </label>
+
+            <label>
+              Governorate
+              <select id="governorate" name="governorate">
+                <option value="">Select governorate</option>
+              </select>
+            </label>
+
+            <div class="form-actions full-width">
+              <button type="submit" class="btn-primary">Save Changes</button>
+              <p id="personalInfoFeedback" class="feedback"></p>
+            </div>
+          </form>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="security">
+          <h2>Security & Account</h2>
+          <p class="section-subtitle">Keep your account secure and control account lifecycle actions.</p>
+
+          <div class="security-grid">
+            <article class="security-card">
+              <h3>Change Password</h3>
+              <form id="changePasswordForm" class="stack-form">
+                <label>
+                  Current Password
+                  <input id="currentPassword" type="password" required maxlength="255">
+                </label>
+                <label>
+                  New Password
+                  <input id="newPassword" type="password" required maxlength="255">
+                </label>
+                <div class="strength-meter">
+                  <div class="strength-meter-bar" id="passwordStrengthBar"></div>
+                </div>
+                <p id="passwordStrengthText" class="strength-text">Strength: -</p>
+                <label>
+                  Confirm New Password
+                  <input id="confirmNewPassword" type="password" required maxlength="255">
+                </label>
+                <button type="submit" class="btn-primary">Update Password</button>
+                <p id="passwordFeedback" class="feedback"></p>
+              </form>
+            </article>
+
+            <article class="security-card">
+              <h3>Session Details</h3>
+              <p class="detail-line">
+                Last Login:
+                <strong id="lastLoginAtValue">-</strong>
+              </p>
+              <p class="detail-line">
+                Browser:
+                <strong id="sessionBrowserValue">-</strong>
+              </p>
+              <p class="detail-line">
+                Device / OS:
+                <strong id="sessionDeviceValue">-</strong>
+              </p>
+              <p class="detail-line">
+                Timezone:
+                <strong id="sessionTimezoneValue">-</strong>
+              </p>
+            </article>
+
+            <article class="security-card danger-zone">
+              <h3>Delete Account</h3>
+              <p>This will permanently delete all your data, bookings, created events, and wallet balance.</p>
+              <button type="button" class="btn-danger btn-danger-outline" id="openDeleteModalBtn">Delete My Account</button>
+            </article>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="activity">
+          <h2>My Activity Summary</h2>
+          <p class="section-subtitle">Live totals from your account activity.</p>
+          <div class="activity-grid" id="activityGrid">
+            <article class="activity-item activity-booked">
+              <span class="activity-icon">&#127915;</span>
+              <strong id="statEventsBooked">0</strong>
+              <span class="activity-title">Total Events Booked</span>
+              <span class="activity-note">All bookings made on your account.</span>
+            </article>
+            <article class="activity-item activity-created">
+              <span class="activity-icon">&#127917;</span>
+              <strong id="statEventsCreated">0</strong>
+              <span class="activity-title">Total Events Created</span>
+              <span class="activity-note">Events you created as organizer.</span>
+            </article>
+            <article class="activity-item activity-attended">
+              <span class="activity-icon">&#9989;</span>
+              <strong id="statEventsAttended">0</strong>
+              <span class="activity-title">Total Events Attended</span>
+              <span class="activity-note">Past confirmed events you attended.</span>
+            </article>
+            <article class="activity-item activity-reviews">
+              <span class="activity-icon">&#11088;</span>
+              <strong id="statReviewsSubmitted">0</strong>
+              <span class="activity-title">Total Reviews Submitted</span>
+              <span class="activity-note">Reviews published by you.</span>
+            </article>
+            <article class="activity-item activity-tickets">
+              <span class="activity-icon">&#127903;</span>
+              <strong id="statTicketsPurchased">0</strong>
+              <span class="activity-title">Total Tickets Purchased</span>
+              <span class="activity-note">Tickets reserved across all events.</span>
+            </article>
+            <article class="activity-item activity-spent">
+              <span class="activity-icon">&#128184;</span>
+              <strong id="statAmountSpent">0.00 EGP</strong>
+              <span class="activity-title">Total Amount Spent</span>
+              <span class="activity-note">Total paid on the platform (EGP).</span>
+            </article>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="reviews">
+          <h2>My Reviews</h2>
+          <p class="section-subtitle">Manage the reviews you wrote for past events.</p>
+          <div id="reviewsContainer" class="reviews-list"></div>
+          <div id="reviewsEmptyState" class="empty-state hidden">
+            <div class="empty-icon">&#11088;</div>
+            <h3>No reviews yet</h3>
+            <p>You are almost there. Attend an event and share your first review to help other attendees.</p>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="notifications">
+          <h2>Notification Preferences</h2>
+          <p class="section-subtitle">Changes save automatically when you toggle a setting.</p>
+
+          <div class="preferences-list">
+            <label class="toggle-row">
+              <span class="toggle-left">
+                <span class="toggle-icon">&#9200;</span>
+                <span class="toggle-copy">
+                  <span class="toggle-title">Event reminders</span>
+                  <span class="toggle-desc">Get notified 24 hours before your events start.</span>
+                </span>
+              </span>
+              <input type="checkbox" id="prefEventReminders" data-pref-key="eventReminders">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-left">
+                <span class="toggle-icon">&#127903;</span>
+                <span class="toggle-copy">
+                  <span class="toggle-title">Booking confirmations</span>
+                  <span class="toggle-desc">Receive confirmation after each successful booking.</span>
+                </span>
+              </span>
+              <input type="checkbox" id="prefBookingConfirmations" data-pref-key="bookingConfirmations">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-left">
+                <span class="toggle-icon">&#128184;</span>
+                <span class="toggle-copy">
+                  <span class="toggle-title">Refund notifications</span>
+                  <span class="toggle-desc">Alert when money is refunded to your wallet.</span>
+                </span>
+              </span>
+              <input type="checkbox" id="prefRefundNotifications" data-pref-key="refundNotifications">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-left">
+                <span class="toggle-icon">&#10060;</span>
+                <span class="toggle-copy">
+                  <span class="toggle-title">Event cancellation alerts</span>
+                  <span class="toggle-desc">Get updates when booked events are canceled.</span>
+                </span>
+              </span>
+              <input type="checkbox" id="prefEventCancellationAlerts" data-pref-key="eventCancellationAlerts">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-left">
+                <span class="toggle-icon">&#127915;</span>
+                <span class="toggle-copy">
+                  <span class="toggle-title">New events matching your interests</span>
+                  <span class="toggle-desc">Discover new events based on your preferences.</span>
+                </span>
+              </span>
+              <input type="checkbox" id="prefNewEventsMatchingInterests" data-pref-key="newEventsMatchingInterests">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-left">
+                <span class="toggle-icon">&#128176;</span>
+                <span class="toggle-copy">
+                  <span class="toggle-title">Wallet top-up confirmations</span>
+                  <span class="toggle-desc">Get confirmation when your wallet is recharged.</span>
+                </span>
+              </span>
+              <input type="checkbox" id="prefWalletTopupConfirmations" data-pref-key="walletTopupConfirmations">
+            </label>
+          </div>
+
+          <p id="preferencesFeedback" class="feedback subtle"></p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form</a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <div id="deleteAccountModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <button type="button" class="modal-close" id="closeDeleteModalBtn" aria-label="Close">x</button>
+      <div id="deleteStep1">
+        <h3>Delete Account</h3>
+        <p>This action is permanent. All your data, bookings, events, and wallet balance will be deleted forever.</p>
+        <button type="button" class="btn-danger" id="continueDeleteBtn">I Understand, Continue</button>
+      </div>
+
+      <div id="deleteStep2" class="hidden">
+        <h3>Final Confirmation</h3>
+        <p>Type <strong>DELETE</strong> below to permanently remove your account.</p>
+        <input type="text" id="deleteConfirmInput" placeholder="Type DELETE">
+        <button type="button" class="btn-danger" id="confirmDeleteBtn">Delete Account Permanently</button>
+      </div>
+
+      <p id="deleteFeedback" class="feedback"></p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) setMenuState(false);
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/profile.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login | Elshaboury Events</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <link rel="stylesheet" href="/admin/css/admin-login.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+</head>
+<body class="admin-login-page">
+  <div class="auth-orb auth-orb--orange" aria-hidden="true"></div>
+  <div class="auth-orb auth-orb--pink" aria-hidden="true"></div>
+
+  <main class="admin-login-wrap">
+    <section class="admin-login-card">
+      <div class="card-brand">
+        <span class="brand-badge">EE</span>
+        <div class="brand-text">
+          <strong>Elshaboury Events</strong>
+          <p>Administrative Console</p>
+        </div>
+      </div>
+
+      <div class="shield">🛡️</div>
+      <h1 class="login-title">Administrator Access</h1>
+      <p class="login-subtitle">This area is restricted to authorized personnel only</p>
+
+      <div class="warning-banner">⚠️ Unauthorized access attempts are logged and monitored</div>
+
+      <form id="adminLoginForm" class="admin-login-form">
+        <label class="field-label" for="adminId">Admin ID</label>
+        <input id="adminId" class="field-input" placeholder="Enter Admin ID" autocomplete="username" required />
+
+        <label class="field-label" for="adminPassword">Password</label>
+        <div class="field-wrap">
+          <input id="adminPassword" class="field-input" type="password" placeholder="Enter Password" autocomplete="current-password" required />
+          <button type="button" id="passwordToggle" class="field-toggle" aria-label="Show password">&#128065;</button>
+        </div>
+
+        <button id="loginBtn" type="submit" class="btn-admin-signin">
+          <span class="btn-label">Sign In</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+
+      <p class="lock-indicator" aria-hidden="true">🔒 Secure Authentication</p>
+      <a href="/html/signin.html" class="back-link">Back to User Sign In</a>
+      <p id="msg" class="msg" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script>
+    const loginForm = document.getElementById('adminLoginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const msg = document.getElementById('msg');
+    const passwordInput = document.getElementById('adminPassword');
+    const passwordToggle = document.getElementById('passwordToggle');
+
+    function setLoading(loading) {
+      loginBtn.disabled = loading;
+      loginBtn.classList.toggle('is-loading', loading);
+      const label = loginBtn.querySelector('.btn-label');
+      if (label) label.textContent = loading ? 'Verifying...' : 'Sign In';
+    }
+
+    passwordToggle.addEventListener('click', () => {
+      const hidden = passwordInput.type === 'password';
+      passwordInput.type = hidden ? 'text' : 'password';
+      passwordToggle.innerHTML = hidden ? '&#128584;' : '&#128065;';
+      passwordToggle.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
+    });
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const adminId = document.getElementById('adminId').value.trim();
+      const password = passwordInput.value;
+      msg.className = 'msg';
+      msg.textContent = '';
+
+      if (!adminId || !password) {
+        msg.classList.add('error');
+        msg.textContent = 'Please enter your Admin ID and password.';
+        return;
+      }
+
+      setLoading(true);
+      msg.textContent = 'Signing in...';
+
+      try {
+        const response = await fetch(`${AdminApp.apiBaseUrl}/Admin/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminId, password })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Login failed');
+        }
+        AdminApp.setToken(data.token);
+        window.location.href = '/admin/index.html';
+      } catch (error) {
+        msg.classList.add('error');
+        msg.textContent = error.message;
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

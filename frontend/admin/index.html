@@ -1,0 +1,297 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Dashboard');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="stats-grid cols-6" id="statsGrid"></div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Revenue Trend</h3>
+              <p class="section-meta">Last 30 days based on completed payments</p>
+            </div>
+          </div>
+          <div id="revenueChart" class="line-chart">
+            <div class="empty-state">Loading revenue chart...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Recent Activity</h3>
+              <p class="section-meta">Administrator actions and system operations</p>
+            </div>
+          </div>
+          <div id="activityFeed" class="activity-list"></div>
+          <div class="load-more-wrap">
+            <button id="loadMoreActivity" class="btn btn-muted hidden">Load More</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Quick Actions</h3>
+              <p class="section-meta">Fast access to common admin workflows</p>
+            </div>
+          </div>
+          <div class="quick-actions">
+            <a class="btn btn-gradient" href="/admin/users.html">&#128101; Manage Users</a>
+            <a class="btn btn-gradient" href="/admin/events.html">&#127914; Review Events</a>
+            <a class="btn btn-gradient" href="/admin/bookings.html">&#127903;&#65039; Manage Bookings</a>
+            <a class="btn btn-gradient" href="/admin/notifications.html">&#128276; Send Notification</a>
+            <a class="btn btn-gradient" href="/admin/notifications.html?mode=bulk">&#128231; Send Bulk Notification</a>
+            <a class="btn btn-gradient" href="/admin/reports.html">&#128202; View Revenue Report</a>
+            <a class="btn btn-gradient" href="/admin/wallet-withdrawals.html">&#128179; Wallet Withdrawals</a>
+          </div>
+        </div>
+      `;
+
+      const statsGrid = document.getElementById('statsGrid');
+      const activityFeed = document.getElementById('activityFeed');
+      const loadMoreBtn = document.getElementById('loadMoreActivity');
+      const revenueChart = document.getElementById('revenueChart');
+
+      let activities = [];
+      let visibleActivityCount = 8;
+
+      const activityStyle = (action) => {
+        const key = String(action || '').toUpperCase();
+        if (key === 'ADMIN_LOGIN' || key === 'ADMIN_LOGOUT') {
+          return { color: 'activity-blue', icon: '\u{1F510}', label: key.replace(/_/g, ' ') };
+        }
+        if (key === 'UPDATE_USER_STATUS') {
+          return { color: 'activity-orange', icon: '\u{1F464}', label: key.replace(/_/g, ' ') };
+        }
+        if (key === 'UPDATE_EVENT_APPROVAL') {
+          return { color: 'activity-green', icon: '\u2705', label: key.replace(/_/g, ' ') };
+        }
+        if (key.includes('SUPPORT')) {
+          return { color: 'activity-purple', icon: '\u{1F4AC}', label: key.replace(/_/g, ' ') };
+        }
+        if (key.includes('DELETE')) {
+          return { color: 'activity-red', icon: '\u274C', label: key.replace(/_/g, ' ') };
+        }
+        return { color: 'activity-blue', icon: '\u2139\uFE0F', label: key.replace(/_/g, ' ') || 'SYSTEM ACTION' };
+      };
+
+      function renderStats(stats) {
+        const items = [
+          { id: 'users', icon: '\u{1F465}', label: 'Total Users', value: Number(stats.totalUsers || 0), type: 'number' },
+          { id: 'events', icon: '\u{1F3AA}', label: 'Total Events', value: Number(stats.totalEvents || 0), type: 'number' },
+          { id: 'bookings', icon: '\u{1F39F}\uFE0F', label: 'Total Bookings', value: Number(stats.totalBookings || 0), type: 'number' },
+          { id: 'revenue', icon: '\u{1F4B0}', label: 'Total Revenue', value: Number(stats.totalRevenue || 0), type: 'currency', className: 'revenue' },
+          { id: 'pendingEvents', icon: '\u23F3', label: 'Pending Events', value: Number(stats.pendingEvents || 0), type: 'number' },
+          { id: 'openSupport', icon: '\u{1F4AC}', label: 'Open Support Tickets', value: Number(stats.openSupportTickets || 0), type: 'number' }
+        ];
+
+        statsGrid.innerHTML = items.map((item) => `
+          <div class="stat-card ${item.className || ''}">
+            <div class="stat-head">
+              <span class="stat-label">${item.label}</span>
+              <span class="stat-icon">${item.icon}</span>
+            </div>
+            <div id="stat-${item.id}" class="stat-value">0</div>
+          </div>
+        `).join('');
+
+        items.forEach((item) => {
+          const el = document.getElementById(`stat-${item.id}`);
+          if (!el) return;
+          if (item.type === 'currency') {
+            AdminApp.animateCount(el, item.value, {
+              formatter: (value) => AdminApp.formatCurrency(value)
+            });
+            return;
+          }
+          AdminApp.animateCount(el, item.value);
+        });
+      }
+
+      function renderActivities() {
+        if (!activities.length) {
+          activityFeed.innerHTML = '<div class="empty-state">No activity found.</div>';
+          loadMoreBtn.classList.add('hidden');
+          return;
+        }
+
+        const visible = activities.slice(0, visibleActivityCount);
+        activityFeed.innerHTML = visible.map((activity) => {
+          const tone = activityStyle(activity.action);
+          return `
+            <div class="activity-item ${tone.color}">
+              <div class="activity-icon">${tone.icon}</div>
+              <div>
+                <div class="activity-title">${AdminApp.escapeHtml(tone.label)}</div>
+                <div class="activity-meta">${AdminApp.escapeHtml(activity.target_type || 'system')} · ${AdminApp.escapeHtml(activity.full_name || activity.admin_id || 'Admin')}</div>
+              </div>
+              <div class="section-meta">${AdminApp.formatDateTime(activity.created_at)}</div>
+            </div>
+          `;
+        }).join('');
+
+        if (activities.length > visibleActivityCount) {
+          loadMoreBtn.classList.remove('hidden');
+        } else {
+          loadMoreBtn.classList.add('hidden');
+        }
+      }
+
+      function dateToKey(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function buildLast30DaysSeries(rawRows) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const map = new Map((rawRows || []).map((row) => [String(row.day).slice(0, 10), Number(row.revenue || 0)]));
+        const points = [];
+        for (let i = 29; i >= 0; i -= 1) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - i);
+          const key = dateToKey(d);
+          points.push({
+            key,
+            label: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d),
+            value: Number(map.get(key) || 0)
+          });
+        }
+        return points;
+      }
+
+      function renderRevenueTrend(points) {
+        if (!points.length) {
+          revenueChart.innerHTML = '<div class="empty-state">No revenue data found.</div>';
+          return;
+        }
+
+        const width = 900;
+        const height = 230;
+        const padding = { top: 18, right: 18, bottom: 30, left: 40 };
+        const maxValue = Math.max(...points.map((p) => p.value), 1);
+
+        const x = (index) => {
+          const ratio = points.length === 1 ? 0 : index / (points.length - 1);
+          return padding.left + ratio * (width - padding.left - padding.right);
+        };
+
+        const y = (value) => padding.top + (1 - value / maxValue) * (height - padding.top - padding.bottom);
+
+        const path = points
+          .map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(index).toFixed(2)} ${y(point.value).toFixed(2)}`)
+          .join(' ');
+
+        const areaPath = `${path} L ${x(points.length - 1).toFixed(2)} ${height - padding.bottom} L ${x(0).toFixed(2)} ${height - padding.bottom} Z`;
+
+        const guideValues = [0.25, 0.5, 0.75, 1].map((ratio) => {
+          const val = maxValue * ratio;
+          return {
+            y: y(val),
+            value: AdminApp.formatCurrency(val)
+          };
+        });
+
+        const pointMarks = points
+          .filter((_, index) => index % 5 === 0 || index === points.length - 1)
+          .map((point, index, arr) => {
+            const sourceIndex = points.findIndex((p) => p.key === point.key && p.value === point.value);
+            const cx = x(sourceIndex);
+            const cy = y(point.value);
+            return `
+              <circle cx="${cx}" cy="${cy}" r="3.2" fill="#ff8a00"></circle>
+              <title>${point.label}: ${AdminApp.formatCurrency(point.value)}</title>
+            `;
+          })
+          .join('');
+
+        const first = points[0];
+        const middle = points[Math.floor(points.length / 2)];
+        const last = points[points.length - 1];
+
+        revenueChart.innerHTML = `
+          <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Revenue trend chart">
+            ${guideValues.map((g) => `
+              <line x1="${padding.left}" y1="${g.y}" x2="${width - padding.right}" y2="${g.y}" stroke="rgba(158,182,196,0.2)" stroke-dasharray="3 5"></line>
+              <text x="${padding.left - 6}" y="${g.y - 3}" fill="rgba(158,182,196,0.75)" text-anchor="end" font-size="10">${g.value}</text>
+            `).join('')}
+
+            <path d="${areaPath}" fill="rgba(255, 138, 0, 0.13)"></path>
+            <path d="${path}" fill="none" stroke="url(#grad)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"></path>
+            ${pointMarks}
+
+            <defs>
+              <linearGradient id="grad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ff8a00" />
+                <stop offset="100%" stop-color="#ff4f8b" />
+              </linearGradient>
+            </defs>
+
+            <text x="${padding.left}" y="${height - 8}" fill="rgba(158,182,196,0.75)" font-size="11">${first.label}</text>
+            <text x="${(width / 2)}" y="${height - 8}" fill="rgba(158,182,196,0.75)" font-size="11" text-anchor="middle">${middle.label}</text>
+            <text x="${width - padding.right}" y="${height - 8}" fill="rgba(158,182,196,0.75)" font-size="11" text-anchor="end">${last.label}</text>
+          </svg>
+          <p class="chart-caption">Peak day: ${AdminApp.formatCurrency(maxValue)}</p>
+        `;
+      }
+
+      loadMoreBtn.addEventListener('click', () => {
+        visibleActivityCount += 8;
+        renderActivities();
+      });
+
+      const [statsRes, pendingRes, supportRes, activityRes] = await Promise.all([
+        AdminApp.request('/Admin/dashboard/stats'),
+        AdminApp.request('/Admin/events?status=pending'),
+        AdminApp.request('/Admin/support'),
+        AdminApp.request('/Admin/dashboard/activity')
+      ]);
+
+      const statsData = await statsRes.json().catch(() => ({}));
+      const pendingData = await pendingRes.json().catch(() => ({}));
+      const supportData = await supportRes.json().catch(() => ({}));
+      const activityData = await activityRes.json().catch(() => ({}));
+
+      const baseStats = statsData.stats || {};
+      const pendingEvents = (pendingData.events || []).length;
+      const openSupportTickets = (supportData.tickets || []).filter((ticket) => String(ticket.status || '').toLowerCase() !== 'closed').length;
+      renderStats({ ...baseStats, pendingEvents, openSupportTickets });
+
+      activities = activityData.activities || [];
+      renderActivities();
+
+      let revenueRows = [];
+      try {
+        const trendRes = await AdminApp.request('/Admin/dashboard/revenue-trend');
+        if (trendRes.ok) {
+          const trendData = await trendRes.json().catch(() => ({}));
+          revenueRows = trendData.trend || [];
+        }
+      } catch (_) {}
+
+      renderRevenueTrend(buildLast30DaysSeries(revenueRows));
+    })();
+  </script>
+</body>
+</html>
+

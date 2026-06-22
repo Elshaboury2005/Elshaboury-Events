@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elshaboury Events | Event Payment</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../public/css/auth.css">
+    <script src="../public/js/auth-config.js"></script>
+    <script src="../public/js/auth-guard.js"></script>
+
+    <link rel="stylesheet" href="../css/pay-for-event.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+    <div class="page-shell fade-in">
+        <section class="publish-summary-banner" aria-live="polite">
+            <div>
+                <p class="summary-kicker">Publishing Event</p>
+                <h1 id="eventNameSummary">Untitled Event</h1>
+                <p id="summaryNote" class="summary-note">This fee covers platform hosting, ticketing infrastructure, and attendee management tools.</p>
+            </div>
+            <div class="summary-pill-group">
+                <div class="summary-pill">
+                    <span>Venue Path</span>
+                    <strong id="summaryVenueMode">My Venue</strong>
+                </div>
+                <div class="summary-pill">
+                    <span>Total Due</span>
+                    <strong id="summaryTotalPill">0 EGP</strong>
+                </div>
+            </div>
+        </section>
+
+        <div class="payment-wrapper">
+            <div class="col-left">
+                <h2><span class="heading-icon" aria-hidden="true">&#x1F3AA;</span>Confirm Your Details</h2>
+                <p class="subtitle">Review your event summary and confirm the publishing charges before going live.</p>
+
+                <form id="detailsForm">
+                    <p class="autofill-note"><span aria-hidden="true">&#x1F512;</span> Auto-filled from your profile</p>
+
+                    <div class="profile-readonly-grid">
+                        <div class="readonly-field">
+                            <label class="form-label">Host Name</label>
+                            <div class="readonly-value"><span class="readonly-lock" aria-hidden="true">&#x1F512;</span><span
+                                    id="hostNameDisplay">-</span></div>
+                        </div>
+                        <div class="readonly-field">
+                            <label class="form-label">Email</label>
+                            <div class="readonly-value"><span class="readonly-lock" aria-hidden="true">&#x1F512;</span><span
+                                    id="hostEmailDisplay">-</span></div>
+                        </div>
+                        <div class="readonly-field">
+                            <label class="form-label">Phone</label>
+                            <div class="readonly-value"><span class="readonly-lock" aria-hidden="true">&#x1F512;</span><span
+                                    id="hostPhoneDisplay">-</span></div>
+                        </div>
+                    </div>
+
+                    <div class="order-summary-box">
+                        <div class="order-summary-title">Payment Summary</div>
+                        <div id="venueFeeRow" class="order-summary-row hidden">
+                            <span>Venue Booking Fee</span>
+                            <strong id="venueFeeAmount">0 EGP</strong>
+                        </div>
+                        <div class="order-summary-row">
+                            <span>Platform Listing Fee</span>
+                            <strong id="listingFeeAmount">0 EGP</strong>
+                        </div>
+                        <div class="order-summary-row total">
+                            <span>Total Due Now</span>
+                            <strong id="orderTotalFee">0 EGP</strong>
+                        </div>
+                        <p class="order-summary-note">Venue fees are platform service revenue and do not enter an event vault.</p>
+                    </div>
+
+                    <div class="order-summary-box">
+                        <div class="order-summary-title">Event Snapshot</div>
+                        <div class="order-summary-row">
+                            <span>Venue</span>
+                            <strong id="venueNameLabel">-</strong>
+                        </div>
+                        <div class="order-summary-row">
+                            <span>Date</span>
+                            <strong id="eventDateLabel">-</strong>
+                        </div>
+                        <div class="order-summary-row">
+                            <span>Seat Breakdown</span>
+                            <strong id="seatBreakdownLabel">-</strong>
+                        </div>
+                        <div class="order-summary-row">
+                            <span>Listing Tier</span>
+                            <strong id="summaryListingFee">-</strong>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-right">
+                <h2>Payment Method</h2>
+                <p class="subtitle">Choose wallet, card, or split payment for the publishing charges due now.</p>
+
+                <div class="wallet-balance-banner">
+                    <span>Wallet Balance</span>
+                    <strong id="walletBalanceDisplay">0.00 EGP</strong>
+                </div>
+
+                <div class="order-summary-box">
+                    <div class="order-summary-title">Payment Options</div>
+                    <div class="payment-option-grid">
+                        <label class="payment-option-card active" data-payment-option="card">
+                            <input type="radio" id="paymentOptionCard" name="paymentOption" checked>
+                            <strong>Card</strong>
+                            <span>Pay the full amount by card.</span>
+                        </label>
+                        <label class="payment-option-card" data-payment-option="wallet">
+                            <input type="radio" id="paymentOptionWallet" name="paymentOption">
+                            <strong>Wallet</strong>
+                            <span>Use your wallet balance for the full amount.</span>
+                        </label>
+                        <label class="payment-option-card" data-payment-option="split">
+                            <input type="radio" id="paymentOptionSplit" name="paymentOption">
+                            <strong>Split</strong>
+                            <span>Split the payment between wallet and card.</span>
+                        </label>
+                    </div>
+                    <p id="walletOnlyHint" class="payment-hint hidden">Wallet-only becomes unavailable when your balance is lower than the total due.</p>
+                </div>
+
+                <div id="splitAmountSection" class="order-summary-box hidden">
+                    <div class="order-summary-title">Split Payment</div>
+                    <div class="order-summary-row">
+                        <span>Wallet amount to use</span>
+                        <strong id="paymentBreakdownLabel">Card only</strong>
+                    </div>
+                    <input type="range" id="walletSplitRange" min="0" max="0" step="0.01" value="0">
+                    <div class="split-inline">
+                        <input type="number" id="walletSplitAmount" class="custom-input" min="0" step="0.01" value="0.00">
+                    </div>
+                    <p id="splitCalculationLine" class="order-summary-note">Wallet: 0.00 EGP + Card: 0.00 EGP = Total: 0.00 EGP</p>
+                </div>
+
+                <div class="perspective-container">
+                    <div class="card-inner" id="cardInner">
+                        <div class="card-face">
+                            <div class="card-top">
+                                <div class="chip"></div>
+                                <div class="card-brand" id="cardBrandIndicator">
+                                    <i class="far fa-credit-card" aria-hidden="true"></i>
+                                    <span class="card-brand-label">Card</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <span class="card-label">Card Number</span>
+                                <div class="card-number font-mono-credit" id="displayCardNumber">#### #### #### ####
+                                </div>
+                            </div>
+
+                            <div class="card-bottom">
+                                <div>
+                                    <span class="card-label">Card Holder</span>
+                                    <strong id="displayCardName">YOUR NAME</strong>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span class="card-label">Expires</span>
+                                    <strong id="displayExpiry">MM/YY</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-face card-back">
+                            <div class="card-strip"></div>
+                            <div class="card-cvv-wrap">
+                                <span class="card-label">CVV</span>
+                                <div class="card-cvv-value" id="displayCvc">***</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="paymentForm" autocomplete="off" novalidate>
+                    <div id="cardFieldsWrap">
+                        <div class="form-group">
+                        <label class="form-label" for="cardNumberInput">Card Number</label>
+                        <div class="input-with-brand">
+                            <input type="text" id="cardNumberInput" class="custom-input"
+                                placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric" required>
+                            <span id="inlineCardBrand" class="inline-card-brand">
+                                <i class="far fa-credit-card" aria-hidden="true"></i><span>Card</span>
+                            </span>
+                        </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="cardNameInput">Card Holder</label>
+                            <input type="text" id="cardNameInput" class="custom-input" placeholder="Name on card"
+                                required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col">
+                                <label class="form-label" for="expiryInput">Expiry</label>
+                                <input type="text" id="expiryInput" class="custom-input" placeholder="MM/YY"
+                                    maxlength="5" inputmode="numeric" required>
+                            </div>
+                            <div class="col">
+                                <label class="form-label" for="cvcInput">CVC</label>
+                                <input type="password" id="cvcInput" class="custom-input" placeholder="123" maxlength="4"
+                                    inputmode="numeric" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="payButton" class="btn-pay">
+                        <span id="btnText">Pay 0.00 EGP</span>
+                        <div id="btnLoader" class="loader"></div>
+                    </button>
+
+                    <div class="trust-badges" aria-label="Payment security">
+                        <span class="trust-badge">&#x1F512; SSL Encrypted</span>
+                        <span class="trust-badge">&#x1F6E1;&#xFE0F; Secure Payment</span>
+                        <span class="trust-badge">&#x2705; 100% Safe</span>
+                    </div>
+                </form>
+            </div>
+
+            <div id="successOverlay" class="success-overlay">
+                <div class="checkmark-circle">
+                    <svg class="checkmark-svg" viewBox="0 0 52 52">
+                        <path d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+                    </svg>
+                </div>
+                <h3>Event Created Successfully!</h3>
+                <p id="successMessage" style="color: #9ca3af; margin-bottom: 2rem;">Your venue has been reserved and your event is live.</p>
+                <a href="/html/my-events.html" class="btn-outline">Go to Dashboard</a>
+            </div>
+        </div>
+    </div>
+    <script src="../js/pay-for-event-page.js"></script>
+    <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+

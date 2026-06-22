@@ -1,0 +1,311 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Revenue Reports</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Revenue & Financial Reports');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="card hero-revenue" id="overallRevenueCard">
+          <div>
+            <p class="stat-label">&#128176; Overall Revenue</p>
+            <div id="overallRevenueValue" class="stat-value">0 EGP</div>
+            <p class="stat-note">Completed payment transactions</p>
+          </div>
+          <div class="inline-actions">
+            <button id="exportExcel" class="btn btn-success">&#128202; Export Excel</button>
+            <button id="exportPdf" class="btn btn-danger">&#128196; Export PDF</button>
+          </div>
+        </div>
+
+        <div class="stats-grid cols-3" id="summaryCards"></div>
+
+        <div class="card" style="margin-bottom:12px;">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Revenue Per Event</h3>
+              <p class="section-meta">Visual comparison across all events</p>
+            </div>
+          </div>
+          <div id="barChart" class="bar-chart"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px;">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Revenue Distribution</h3>
+              <p class="section-meta">Pie breakdown by event contribution</p>
+            </div>
+          </div>
+          <div id="pieChartWrap"></div>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table id="reportTable">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Total Revenue</th>
+                  <th>Completed Payments</th>
+                  <th>Revenue by Ticket Type</th>
+                </tr>
+              </thead>
+              <tbody id="reportBody"></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      const overallRevenueValue = document.getElementById('overallRevenueValue');
+      const summaryCards = document.getElementById('summaryCards');
+      const barChart = document.getElementById('barChart');
+      const pieChartWrap = document.getElementById('pieChartWrap');
+      const reportBody = document.getElementById('reportBody');
+
+      function normalizeTicketType(type) {
+        const normalized = String(type || 'standard').toLowerCase();
+        if (normalized === 'vip') return 'vip';
+        if (normalized === 'special') return 'special';
+        return 'standard';
+      }
+
+      function buildTicketBreakdown(rows, events, bookings) {
+        const eventPriceMap = new Map((events || []).map((event) => [
+          String(event.id),
+          {
+            standard: Number(event.price_standard || 0),
+            special: Number(event.price_special || 0),
+            vip: Number(event.price_vip || 0)
+          }
+        ]));
+
+        const aggregate = new Map();
+
+        (bookings || []).forEach((booking) => {
+          const status = String(booking.status || '').toLowerCase();
+          if (status !== 'confirmed') return;
+
+          const eventId = String(booking.event_id || '');
+          if (!eventId) return;
+
+          const prices = eventPriceMap.get(eventId);
+          if (!prices) return;
+
+          const ticketType = normalizeTicketType(booking.ticket_type);
+          const value = Number(prices[ticketType] || 0);
+
+          if (!aggregate.has(eventId)) {
+            aggregate.set(eventId, { standard: 0, special: 0, vip: 0 });
+          }
+          aggregate.get(eventId)[ticketType] += value;
+        });
+
+        const breakdownByEvent = new Map();
+        rows.forEach((row) => {
+          const eventId = String(row.event_id || '');
+          breakdownByEvent.set(eventId, aggregate.get(eventId) || { standard: 0, special: 0, vip: 0 });
+        });
+
+        return breakdownByEvent;
+      }
+
+      function renderBarChart(rows) {
+        const topRows = [...rows]
+          .sort((a, b) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0))
+          .slice(0, 12);
+
+        if (!topRows.length) {
+          barChart.innerHTML = '<div class="empty-state">No revenue data available.</div>';
+          return;
+        }
+
+        const maxRevenue = Math.max(...topRows.map((row) => Number(row.total_revenue || 0)), 1);
+
+        barChart.innerHTML = topRows.map((row) => {
+          const revenue = Number(row.total_revenue || 0);
+          const width = (revenue / maxRevenue) * 100;
+          const muted = revenue === 0 ? 'muted' : '';
+          return `
+            <div class="bar-item ${muted}">
+              <div class="bar-label">${AdminApp.escapeHtml(row.event_title || 'Untitled Event')}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${width.toFixed(2)}%;"></div></div>
+              <div class="bar-value">${AdminApp.formatCurrency(revenue)}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function renderPieChart(rows, overallRevenue) {
+        const positiveRows = rows
+          .map((row) => ({ title: row.event_title || 'Untitled', value: Number(row.total_revenue || 0) }))
+          .filter((row) => row.value > 0)
+          .sort((a, b) => b.value - a.value);
+
+        if (!positiveRows.length || overallRevenue <= 0) {
+          pieChartWrap.innerHTML = '<div class="empty-state">No paid revenue distribution to display.</div>';
+          return;
+        }
+
+        const palette = ['#ff8a00', '#ff4f8b', '#18b67f', '#3b82f6', '#9b5de5', '#f2a624', '#7b8b95'];
+        const topSegments = positiveRows.slice(0, 6);
+
+        if (positiveRows.length > 6) {
+          const othersValue = positiveRows.slice(6).reduce((sum, row) => sum + row.value, 0);
+          topSegments.push({ title: 'Others', value: othersValue });
+        }
+
+        let start = 0;
+        const segmentsWithStops = topSegments.map((segment, index) => {
+          const pct = (segment.value / overallRevenue) * 100;
+          const end = start + pct;
+          const current = {
+            ...segment,
+            color: palette[index % palette.length],
+            start,
+            end,
+            pct
+          };
+          start = end;
+          return current;
+        });
+
+        const gradient = segmentsWithStops
+          .map((segment) => `${segment.color} ${segment.start}% ${segment.end}%`)
+          .join(', ');
+
+        pieChartWrap.innerHTML = `
+          <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center;">
+            <div style="width:220px; height:220px; border-radius:50%; background:conic-gradient(${gradient}); position:relative; border:1px solid var(--line);">
+              <div style="position:absolute; inset:44px; border-radius:50%; background:rgba(7,24,34,0.92); display:grid; place-items:center; text-align:center; padding:10px;">
+                <div>
+                  <div class="stat-label" style="margin-bottom:4px;">Total</div>
+                  <div style="font-weight:800;">${AdminApp.formatCurrency(overallRevenue)}</div>
+                </div>
+              </div>
+            </div>
+            <div class="summary-list" style="min-width:250px; flex:1;">
+              ${segmentsWithStops.map((segment) => `
+                <div class="summary-item">
+                  <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${segment.color};margin-right:7px;"></span>${AdminApp.escapeHtml(segment.title)}</span>
+                  <span>${segment.pct.toFixed(1)}%</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderSummaryCards(rows, overallRevenue) {
+        const paymentsCount = rows.reduce((sum, row) => sum + Number(row.completed_payments || 0), 0);
+        const eventCount = rows.length;
+        const average = eventCount ? overallRevenue / eventCount : 0;
+        const highest = rows[0] || null;
+
+        summaryCards.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-head"><span class="stat-label">Total Payments Count</span><span class="stat-icon">&#129534;</span></div>
+            <div class="stat-value">${AdminApp.formatNumber(paymentsCount)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-head"><span class="stat-label">Average Revenue Per Event</span><span class="stat-icon">&#128200;</span></div>
+            <div class="stat-value">${AdminApp.formatCurrency(average)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-head"><span class="stat-label">Highest Revenue Event</span><span class="stat-icon">&#127942;</span></div>
+            <div class="stat-value" style="font-size:1.1rem;">${AdminApp.escapeHtml(highest?.event_title || 'N/A')}</div>
+            <div class="stat-note">${highest ? AdminApp.formatCurrency(highest.total_revenue || 0) : '-'}</div>
+          </div>
+        `;
+      }
+
+      function renderTable(rows, breakdownByEvent) {
+        if (!rows.length) {
+          reportBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">No report rows available.</div></td></tr>';
+          return;
+        }
+
+        reportBody.innerHTML = rows.map((row) => {
+          const eventId = String(row.event_id || '');
+          const revenue = Number(row.total_revenue || 0);
+          const rowClass = revenue === 0 ? 'row-muted' : '';
+          const breakdown = breakdownByEvent.get(eventId) || { standard: 0, special: 0, vip: 0 };
+
+          return `
+            <tr class="${rowClass}">
+              <td>${AdminApp.escapeHtml(row.event_title || 'Untitled Event')}</td>
+              <td>${AdminApp.formatCurrency(revenue)}</td>
+              <td>${AdminApp.formatNumber(row.completed_payments || 0)}</td>
+              <td>
+                <span class="status-badge ticket-vip">VIP: ${AdminApp.formatCurrency(breakdown.vip || 0)}</span>
+                <span class="status-badge ticket-standard">Standard: ${AdminApp.formatCurrency(breakdown.standard || 0)}</span>
+                <span class="status-badge ticket-special">Special: ${AdminApp.formatCurrency(breakdown.special || 0)}</span>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      async function loadReport() {
+        const [reportRes, eventsRes, bookingsRes] = await Promise.all([
+          AdminApp.request('/Admin/reports/revenue'),
+          AdminApp.request('/Admin/events'),
+          AdminApp.request('/Admin/bookings')
+        ]);
+
+        const reportData = await reportRes.json().catch(() => ({}));
+        const eventsData = await eventsRes.json().catch(() => ({}));
+        const bookingsData = await bookingsRes.json().catch(() => ({}));
+
+        const rows = reportData.rows || [];
+        const overallRevenue = Number(reportData.overallRevenue || 0);
+        const breakdownByEvent = buildTicketBreakdown(rows, eventsData.events || [], bookingsData.bookings || []);
+
+        AdminApp.animateCount(overallRevenueValue, overallRevenue, {
+          formatter: (value) => AdminApp.formatCurrency(value)
+        });
+
+        renderSummaryCards(rows, overallRevenue);
+        renderBarChart(rows);
+        renderPieChart(rows, overallRevenue);
+        renderTable(rows, breakdownByEvent);
+      }
+
+      document.getElementById('exportExcel').addEventListener('click', async () => {
+        const response = await AdminApp.request('/Admin/reports/revenue/export');
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = 'revenue-report.csv';
+        anchor.click();
+        URL.revokeObjectURL(url);
+      });
+
+      document.getElementById('exportPdf').addEventListener('click', () => {
+        const html = document.getElementById('reportTable').outerHTML;
+        const win = window.open('', '_blank');
+        win.document.write(`<html><head><title>Revenue Report</title><style>body{font-family:Arial,sans-serif;padding:16px;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}th{background:#f5f5f5;}</style></head><body><h2>Revenue Report</h2>${html}</body></html>`);
+        win.document.close();
+        win.print();
+      });
+
+      await loadReport();
+    })();
+  </script>
+</body>
+</html>
+

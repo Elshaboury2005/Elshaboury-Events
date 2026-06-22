@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Venue | Elshaboury Events</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../public/css/auth.css">
+    <script src="../public/js/auth-config.js"></script>
+    <script src="../public/js/auth-guard.js"></script>
+    <link rel="stylesheet" href="../css/navbar.css">
+    <style>
+        :root {
+            --bg-color: #0b192c;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #f97316;
+            --primary-hover: #ea580c;
+            --text-color: #eaf7fb;
+            --muted-color: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-image: radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.08) 0%, transparent 40%),
+                              radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.08) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 100px auto 40px auto;
+            padding: 0 20px;
+        }
+
+        .header-section {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-section h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--card-border);
+            color: var(--text-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--primary);
+        }
+
+        .form-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(8px);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .form-group-full {
+            grid-column: 1 / -1;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--muted-color);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: white;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        select.form-control option {
+            background-color: #0f213b;
+            color: white;
+        }
+
+        .checkbox-group {
+            grid-column: 1 / -1;
+            margin-top: 10px;
+        }
+
+        .checkbox-group label.group-title {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--muted-color);
+            margin-bottom: 12px;
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            accent-color: var(--primary);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .message-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-weight: 500;
+            display: none;
+            text-align: center;
+        }
+
+        .message-box.success {
+            display: block;
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .message-box.error {
+            display: block;
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <header class="ee-navbar">
+        <a class="brand" href="/html/venue-owner-dashboard.html">
+            <div class="brand-mark">EE</div>
+            <div>
+                <strong>Elshaboury Events</strong>
+                <p class="brand-subtitle">Venue Owner Dashboard</p>
+            </div>
+        </a>
+        <nav class="ee-navbar-nav">
+            <div class="ee-nav-main">
+                <span style="font-weight: 600; color: var(--primary);">Venue Owner Portal</span>
+            </div>
+            <div class="ee-nav-actions">
+                <a class="nav-btn" href="/html/venue-owner-dashboard.html">Dashboard</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="header-section">
+            <h1>Submit Venue Details</h1>
+            <a href="/html/venue-owner-dashboard.html" class="btn-outline">Back to Dashboard</a>
+        </div>
+
+        <div class="form-card">
+            <form id="venueSubmitForm">
+                <div class="form-grid">
+                    <!-- Venue Name -->
+                    <div class="form-group form-group-full">
+                        <label for="name">Venue Name *</label>
+                        <input type="text" class="form-control" id="name" placeholder="e.g. Royal Nile Ballroom" required>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="form-group">
+                        <label for="category">Category *</label>
+                        <select class="form-control" id="category" required>
+                            <option value="conference_hall" selected>Conference Hall</option>
+                            <option value="wedding_hall">Wedding Hall</option>
+                            <option value="outdoor_garden">Outdoor Garden</option>
+                            <option value="rooftop">Rooftop Lounge</option>
+                            <option value="theater">Theater</option>
+                            <option value="hotel_ballroom">Hotel Ballroom</option>
+                            <option value="art_gallery">Art Gallery</option>
+                            <option value="beach_venue">Beach Venue</option>
+                            <option value="private_villa">Private Villa</option>
+                        </select>
+                    </div>
+
+                    <!-- Governorate -->
+                    <div class="form-group">
+                        <label for="governorate">Governorate *</label>
+                        <select class="form-control" id="governorate" required>
+                            <option value="Cairo" selected>Cairo</option>
+                            <option value="Alexandria">Alexandria</option>
+                            <option value="Giza">Giza</option>
+                            <option value="Luxor">Luxor</option>
+                            <option value="Aswan">Aswan</option>
+                            <option value="Hurghada">Hurghada</option>
+                            <option value="Sharm El Sheikh">Sharm El Sheikh</option>
+                            <option value="Mansoura">Mansoura</option>
+                            <option value="Tanta">Tanta</option>
+                            <option value="Asyut">Asyut</option>
+                            <option value="Ismailia">Ismailia</option>
+                            <option value="Port Said">Port Said</option>
+                            <option value="Suez">Suez</option>
+                            <option value="Zagazig">Zagazig</option>
+                            <option value="Minya">Minya</option>
+                            <option value="Sohag">Sohag</option>
+                            <option value="Qena">Qena</option>
+                            <option value="Beni Suef">Beni Suef</option>
+                            <option value="Fayoum">Fayoum</option>
+                            <option value="Damietta">Damietta</option>
+                            <option value="Kafr El Sheikh">Kafr El Sheikh</option>
+                            <option value="Monufia">Kafr El Sheikh (Monufia)</option>
+                            <option value="Beheira">Beheira</option>
+                            <option value="Sharqia">Sharqia</option>
+                            <option value="Dakahlia">Dakahlia</option>
+                            <option value="Gharbia">Gharbia</option>
+                        </select>
+                    </div>
+
+                    <!-- Full Address -->
+                    <div class="form-group form-group-full">
+                        <label for="address">Full Address *</label>
+                        <input type="text" class="form-control" id="address" placeholder="e.g. 15 El Nile St, Zamalek, Cairo" required>
+                    </div>
+
+                    <!-- Latitude / Longitude -->
+                    <div class="form-group">
+                        <label for="latitude">Latitude (Optional)</label>
+                        <input type="number" step="any" class="form-control" id="latitude" placeholder="e.g. 30.0444">
+                    </div>
+                    <div class="form-group">
+                        <label for="longitude">Longitude (Optional)</label>
+                        <input type="number" step="any" class="form-control" id="longitude" placeholder="e.g. 31.2357">
+                    </div>
+
+                    <!-- Capacity -->
+                    <div class="form-group">
+                        <label for="totalCapacity">Total Guest Capacity *</label>
+                        <input type="number" class="form-control" id="totalCapacity" min="1" placeholder="e.g. 500" required>
+                    </div>
+
+                    <!-- Pricing -->
+                    <div class="form-group">
+                        <label for="pricePerDay">Price Per Day (EGP) *</label>
+                        <input type="number" class="form-control" id="pricePerDay" min="1" placeholder="e.g. 10000" required>
+                    </div>
+
+                    <!-- Contact details -->
+                    <div class="form-group">
+                        <label for="contactPhone">Contact Phone</label>
+                        <input type="tel" class="form-control" id="contactPhone" placeholder="e.g. +201012345678">
+                    </div>
+                    <div class="form-group">
+                        <label for="contactEmail">Contact Email</label>
+                        <input type="email" class="form-control" id="contactEmail" placeholder="e.g. venue@example.com">
+                    </div>
+
+                    <!-- Cancellation policy -->
+                    <div class="form-group form-group-full">
+                        <label for="cancellationPolicy">Cancellation Policy *</label>
+                        <textarea class="form-control" id="cancellationPolicy" rows="3" placeholder="e.g. Full refund up to 7 days before event. 50% refund afterwards." required></textarea>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group form-group-full">
+                        <label for="description">Description</label>
+                        <textarea class="form-control" id="description" rows="4" placeholder="Briefly describe your venue, its unique features, and suitability for events..."></textarea>
+                    </div>
+
+                    <!-- Image URL -->
+                    <div class="form-group form-group-full">
+                        <label for="imageUrl">Photo Gallery URL (Provide one image link to showcase your venue)</label>
+                        <input type="url" class="form-control" id="imageUrl" placeholder="e.g. https://images.unsplash.com/... (or leave empty for default)">
+                    </div>
+
+                    <!-- Amenities multi-select checkboxes -->
+                    <div class="checkbox-group">
+                        <label class="group-title">Amenities & Facilities Available</label>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="parking"> Parking Slot</label>
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="ac"> Air Conditioning</label>
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="projector"> Projector Screen</label>
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="wifi"> High-speed Wifi</label>
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="wheelchair"> Accessibility</label>
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="security"> CCTV Security</label>
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="stage"> Elevated Stage</label>
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="catering"> Catering Available</label>
+                            <label class="checkbox-item"><input type="checkbox" name="amenity" value="photography"> Photography Areas</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">Submit Venue for Review</button>
+            </form>
+
+            <div id="messageBox" class="message-box"></div>
+        </div>
+    </div>
+
+    <script>
+        const userRaw = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
+        if (!token || !userRaw) {
+            window.location.href = '/html/signin.html';
+        }
+        const currentUser = JSON.parse(userRaw);
+        if (currentUser.role !== 'venue_owner') {
+            window.location.href = '/html/index.html';
+        }
+
+        const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+
+        document.getElementById('venueSubmitForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const messageBox = document.getElementById('messageBox');
+            messageBox.className = 'message-box';
+            messageBox.style.display = 'none';
+
+            // Gather inputs
+            const name = document.getElementById('name').value.trim();
+            const category = document.getElementById('category').value;
+            const governorate = document.getElementById('governorate').value;
+            const address = document.getElementById('address').value.trim();
+            
+            const latVal = document.getElementById('latitude').value;
+            const lngVal = document.getElementById('longitude').value;
+            const latitude = latVal ? parseFloat(latVal) : null;
+            const longitude = lngVal ? parseFloat(lngVal) : null;
+
+            const totalCapacity = parseInt(document.getElementById('totalCapacity').value, 10);
+            const pricePerDay = parseFloat(document.getElementById('pricePerDay').value);
+
+            const contactPhone = document.getElementById('contactPhone').value.trim() || null;
+            const contactEmail = document.getElementById('contactEmail').value.trim() || null;
+            
+            const cancellationPolicy = document.getElementById('cancellationPolicy').value.trim();
+            const description = document.getElementById('description').value.trim() || null;
+
+            const imageUrl = document.getElementById('imageUrl').value.trim();
+            const images = imageUrl ? [imageUrl] : [];
+
+            // Amenities checked
+            const amenities = [];
+            document.querySelectorAll('input[name="amenity"]:checked').forEach(cb => {
+                amenities.push(cb.value);
+            });
+
+            // Build request object
+            const payload = {
+                name,
+                category,
+                governorate,
+                address,
+                latitude,
+                longitude,
+                totalCapacity,
+                standardSeats: Math.floor(totalCapacity * 0.6), // default split
+                specialSeats: Math.floor(totalCapacity * 0.3),
+                vipSeats: totalCapacity - Math.floor(totalCapacity * 0.6) - Math.floor(totalCapacity * 0.3),
+                pricePerDay,
+                contactPhone,
+                contactEmail,
+                cancellationPolicy,
+                description,
+                amenities,
+                images
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/venue-owner/venues`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    messageBox.classList.add('success');
+                    messageBox.textContent = data.message || 'Venue submitted successfully! Redirecting...';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/html/venue-owner-dashboard.html';
+                    }, 2000);
+                } else {
+                    messageBox.classList.add('error');
+                    messageBox.textContent = data.message || 'Failed to submit venue.';
+                }
+            } catch (err) {
+                console.error(err);
+                messageBox.classList.add('error');
+                messageBox.textContent = 'An error occurred. Please check network connection.';
+            }
+        });
+    </script>
+    <script src="../js/ai-assistant.js"></script>
+</body>
+</html>

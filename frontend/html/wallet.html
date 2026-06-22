@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Wallet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/wallet.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section class="wallet-page-header">
+      <h1><span class="page-icon">&#128091;</span> My Wallet</h1>
+      <p>Manage your balance and track all transactions.</p>
+    </section>
+
+    <section class="wallet-summary-row" id="walletSummaryRow" aria-label="Wallet summary stats">
+      <article class="summary-card">
+        <span class="summary-icon">&#128176;</span>
+        <div>
+          <span class="summary-label">Total Top-Ups</span>
+          <strong id="statTotalTopups">0.00 EGP</strong>
+        </div>
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon">&#128184;</span>
+        <div>
+          <span class="summary-label">Total Spent from Wallet</span>
+          <strong id="statTotalSpent">0.00 EGP</strong>
+        </div>
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon">&#128260;</span>
+        <div>
+          <span class="summary-label">Total Refunds Received</span>
+          <strong id="statTotalRefunds">0.00 EGP</strong>
+        </div>
+      </article>
+    </section>
+
+    <section class="wallet-shell">
+      <article class="wallet-balance-card">
+        <div class="wallet-balance-head">
+          <span class="wallet-icon">&#128091;</span>
+          <p class="subtitle">Current Balance</p>
+        </div>
+        <strong id="walletBalanceValue" class="wallet-balance-value">
+          <span id="walletBalanceNumber">0.00</span>
+          <span class="wallet-currency">EGP</span>
+        </strong>
+        <p class="wallet-meta" id="walletUpdatedAt">Last updated: -</p>
+        <hr class="wallet-divider">
+
+        <form id="topupForm" class="topup-form">
+          <label for="topupAmount">Top-Up Amount (EGP)</label>
+          <div class="quick-amounts" aria-label="Quick amount selection">
+            <button type="button" class="quick-amount-btn" data-amount="100">+100</button>
+            <button type="button" class="quick-amount-btn" data-amount="200">+200</button>
+            <button type="button" class="quick-amount-btn" data-amount="500">+500</button>
+            <button type="button" class="quick-amount-btn" data-amount="1000">+1000</button>
+          </div>
+          <input type="number" id="topupAmount" min="50" max="10000" step="0.01" placeholder="100.00" required>
+          <button type="submit" class="btn-primary">
+            <span class="btn-icon">&#128179;</span>
+            <span class="btn-label">Proceed to Payment</span>
+          </button>
+          <small class="hint"><strong>Limits:</strong> Min 50 EGP | Max 10,000 EGP per transaction.</small>
+          <p id="topupFeedback" class="feedback"></p>
+        </form>
+
+        <hr class="wallet-divider">
+
+        <section class="withdraw-section" aria-labelledby="withdrawSectionTitle">
+          <h3 id="withdrawSectionTitle" class="withdraw-title">&#128179; Withdraw to Card</h3>
+          <p class="withdraw-subtitle">Transfer wallet funds to your credit/debit card in 3-5 business days.</p>
+          <button id="openWithdrawModalBtn" type="button" class="btn-secondary-action">
+            <span class="btn-icon">&#128179;</span>
+            <span class="btn-label">Withdraw Funds</span>
+          </button>
+        </section>
+      </article>
+
+      <article class="wallet-transactions-card">
+        <div class="transactions-header">
+          <h2>Transaction History</h2>
+          <div class="filter-group">
+            <button type="button" class="filter-btn active" data-filter="all">All</button>
+            <button type="button" class="filter-btn" data-filter="refunds">Refunds</button>
+            <button type="button" class="filter-btn" data-filter="payments">Payments</button>
+            <button type="button" class="filter-btn" data-filter="topups">Top-Ups</button>
+            <button type="button" class="filter-btn" data-filter="withdrawals">Withdrawals</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="wallet-table">
+            <thead>
+              <tr>
+                <th>DATE</th>
+                <th>DESCRIPTION</th>
+                <th>AMOUNT</th>
+                <th>TYPE</th>
+                <th>RUNNING BALANCE</th>
+              </tr>
+            </thead>
+            <tbody id="transactionsTableBody"></tbody>
+          </table>
+          <div id="transactionsEmptyState" class="transactions-empty hidden">
+            <div class="empty-icon">&#128235;</div>
+            <p>No transactions found for this filter.</p>
+          </div>
+        </div>
+
+        <section class="withdraw-history-section" aria-labelledby="withdrawHistoryTitle">
+          <div class="withdraw-history-head">
+            <h3 id="withdrawHistoryTitle">Withdrawal History</h3>
+            <p>Latest card withdrawal requests and statuses.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="wallet-table">
+              <thead>
+                <tr>
+                  <th>DATE</th>
+                  <th>CARD</th>
+                  <th>AMOUNT</th>
+                  <th>STATUS</th>
+                  <th>REFERENCE</th>
+                </tr>
+              </thead>
+              <tbody id="withdrawalsTableBody"></tbody>
+            </table>
+            <div id="withdrawalsEmptyState" class="transactions-empty hidden">
+              <div class="empty-icon">&#128179;</div>
+              <p>No withdrawals found.</p>
+            </div>
+          </div>
+        </section>
+      </article>
+    </section>
+  </main>
+
+  <div id="withdrawModal" class="withdraw-modal hidden" role="dialog" aria-modal="true" aria-labelledby="withdrawModalTitle">
+    <div class="withdraw-modal-backdrop" data-close-withdraw-modal="true"></div>
+    <div class="withdraw-modal-card">
+      <div class="withdraw-modal-header">
+        <h2 id="withdrawModalTitle">Withdraw Funds</h2>
+        <button id="closeWithdrawModalBtn" type="button" class="withdraw-close-btn" aria-label="Close withdrawal modal">&#10005;</button>
+      </div>
+      <div class="withdraw-modal-steps" id="withdrawModalSteps"></div>
+      <div class="withdraw-modal-body" id="withdrawModalBody"></div>
+    </div>
+  </div>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form</a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) setMenuState(false);
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/wallet.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+

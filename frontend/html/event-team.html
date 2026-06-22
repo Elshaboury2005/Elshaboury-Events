@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Team | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/event-team.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <header>
+    <a class="brand" href="/html/index.html">
+      <div class="brand-mark">EE</div>
+      <div>
+        <strong>Elshaboury Events</strong>
+        <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+      </div>
+    </a>
+    <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+      <span></span>
+    </button>
+    <nav>
+      <a class="nav-btn" href="/html/index.html">Home</a>
+      <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+      <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+      <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+      <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+      <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+      <a class="nav-btn" href="/html/support.html">Support</a>
+      <a class="nav-btn" href="/html/signin.html">Sign In</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="glass-card" id="tiltCard">
+      <div class="card-header">
+        <h1>Assemble Your Squad</h1>
+        <p>Add team members to collaborate on your event.</p>
+      </div>
+
+      <div class="members-container" id="membersContainer">
+        <!-- Initial Member Row -->
+        <div class="member-row">
+          <div class="input-group">
+            <input type="text" placeholder="Member Name">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="input-group">
+            <input type="text" placeholder="Role (e.g. Designer)">
+            <i class="fas fa-briefcase"></i>
+          </div>
+          <!-- Delete button hidden for first row usually, but lets keep it uniform -->
+          <button class="btn-icon" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button class="secondary-btn" id="addMemberBtn"><i class="fas fa-plus"></i> Add Member</button>
+        <div style="display:flex; gap:10px;">
+          <button class="secondary-btn" id="saveBtn">Save Draft</button>
+          <button class="main-btn" id="paymentBtn"><span>Process Payment</span></button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Payment Modal -->
+  <div class="modal-overlay" id="paymentModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fas fa-credit-card" style="color:var(--primary); margin-right:10px;"></i> Secure Checkout</h3>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:1rem;">
+        <div class="input-group">
+          <input type="text" placeholder="Card Number" maxlength="19">
+          <i class="far fa-credit-card"></i>
+        </div>
+        <div style="display:flex; gap:1rem;">
+          <div class="input-group">
+            <input type="text" placeholder="MM/YY" style="text-align:center;">
+            <i class="far fa-calendar"></i>
+          </div>
+          <div class="input-group">
+            <input type="text" placeholder="CVC" style="text-align:center;" maxlength="3">
+            <i class="fas fa-lock"></i>
+          </div>
+        </div>
+        <button class="main-btn" onclick="simulatePayment()"><span>Pay 500 EGP</span></button>
+        <button class="secondary-btn" style="text-align:center; border:none;"
+          onclick="toggleModal(false)">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 Elshaboury Events. Crafted with <i class="fas fa-heart" style="color:var(--primary)"></i></p>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => {
+        setMenuState(!header.classList.contains('menu-open'));
+      });
+
+      header.addEventListener('click', (event) => {
+        if (window.innerWidth <= 768 && event.target.closest('nav a, nav button')) {
+          setMenuState(false);
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script>
+    // --- 1. Tilt Effect (Vanilla JS) ---
+    const card = document.getElementById('tiltCard');
+
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      // Limit tilt angle
+      const rotateX = ((y - centerY) / centerY) * -5; // Max 5 deg
+      const rotateY = ((x - centerX) / centerX) * 5;
+
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    });
+
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
+      card.style.transition = 'transform 0.5s ease';
+    });
+
+    card.addEventListener('mouseenter', () => {
+      card.style.transition = 'none'; // Remove transition for instant follow
+    });
+
+    // --- 2. Parallax Background ---
+    document.addEventListener('mousemove', (e) => {
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+
+      document.querySelector('.orb-1').style.transform = `translate(${x * 30}px, ${y * 30}px)`;
+      document.querySelector('.orb-2').style.transform = `translate(${x * -30}px, ${y * -30}px)`;
+      document.querySelector('.orb-3').style.transform = `translate(${x * 20}px, ${y * 40}px)`;
+    });
+
+    // --- 3. Logic ---
+    const membersContainer = document.getElementById('membersContainer');
+    const addMemberBtn = document.getElementById('addMemberBtn');
+    const paymentBtn = document.getElementById('paymentBtn');
+    const paymentModal = document.getElementById('paymentModal');
+
+    // Add Member
+    addMemberBtn.addEventListener('click', () => {
+      const div = document.createElement('div');
+      div.className = 'member-row';
+      div.innerHTML = `
+                <div class="input-group">
+                    <input type="text" placeholder="Member Name">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="input-group">
+                    <input type="text" placeholder="Role">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <button class="btn-icon" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+            `;
+      membersContainer.appendChild(div);
+    });
+
+    // Save
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const btn = document.getElementById('saveBtn');
+      btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+      btn.style.color = '#4ade80';
+      btn.style.borderColor = '#4ade80';
+      setTimeout(() => {
+        btn.innerHTML = 'Save Draft';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 2000);
+    });
+
+    // Toggle Modal
+    function toggleModal(show) {
+      if (show) paymentModal.classList.add('active');
+      else paymentModal.classList.remove('active');
+    }
+
+    paymentBtn.addEventListener('click', () => toggleModal(true));
+
+    function simulatePayment() {
+      const btn = document.querySelector('.modal-card .main-btn');
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+      setTimeout(() => {
+        alert('Payment Successful!');
+        toggleModal(false);
+        btn.innerHTML = '<span>Pay 500 EGP</span>';
+      }, 1500);
+    }
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+

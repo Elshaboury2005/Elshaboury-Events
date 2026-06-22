@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Confirmation | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/accepted-event.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section class="confirmation-section">
+      <div class="success-header">
+        <div id="confettiLayer" class="confetti-layer" aria-hidden="true"></div>
+        <div class="success-icon">&#10003;</div>
+        <h1>Booking Confirmed!</h1>
+        <p>Your tickets are ready. Keep this page for check-in and printing.</p>
+        <p class="booking-summary" id="bookingSummary">Loading your booking summary...</p>
+      </div>
+
+      <div id="ticketsWrapper">
+        <div class="loading-state">Loading tickets...</div>
+      </div>
+
+      <div class="page-actions">
+        <a href="my-events.html#bookingsGrid" class="page-action-btn primary">View All My Bookings</a>
+        <a href="/html/my-events.html" class="page-action-btn">View My Events</a>
+        <a href="/html/index.html" class="page-action-btn ghost">Back Home</a>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop hidden" id="cancelModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="cancelModalTitle">
+    <div class="modal-card">
+      <h3 id="cancelModalTitle">Confirm Ticket Cancellation</h3>
+      <p id="cancelModalBody">Are you sure you want to cancel this ticket?</p>
+      <div class="modal-refund">
+        <span>Refund to wallet:</span>
+        <strong id="cancelRefundAmount">0.00 EGP</strong>
+      </div>
+      <p id="cancelModalReason">Refund policy will be applied automatically.</p>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn neutral" id="cancelModalCloseBtn">Keep Ticket</button>
+        <button type="button" class="modal-btn danger" id="cancelModalConfirmBtn">Yes, Cancel Ticket</button>
+      </div>
+    </div>
+  </div>
+
+  <footer id="support">
+    <div class="footer-top">
+      <div class="footer-col">
+        <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+            <strong>Elshaboury Events</strong>
+            <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+          </div>
+      </a>
+        <p class="footer-copy">Premium event booking and management experience.</p>
+      </div>
+      <div class="footer-col">
+        <h3>Contact</h3>
+        <ul class="contact-list">
+          <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+          <li><span>Phone:</span> +20-1013077615</li>
+          <li><span>Hotline:</span> +20-1029123440</li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Visit</h3>
+        <ul class="contact-list">
+          <li>Alexandria, Borg El-Arab, Egypt</li>
+          <li>or Gharbia, Tanta</li>
+          <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Connect</h3>
+        <div class="socials">
+          <span class="chip">Instagram</span>
+          <span class="chip">LinkedIn</span>
+          <span class="chip">Twitter</span>
+        </div>
+        <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form &rarr;</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+
+      if (!header || !menuToggle) return;
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) setMenuState(false);
+        });
+      });
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+
+    const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+    const params = new URLSearchParams(window.location.search);
+    const bookingId = params.get('bookingId');
+    const eventId = params.get('eventId');
+    const ticketsWrapper = document.getElementById('ticketsWrapper');
+    const bookingSummary = document.getElementById('bookingSummary');
+    const confettiLayer = document.getElementById('confettiLayer');
+    const cancelModalBackdrop = document.getElementById('cancelModalBackdrop');
+    const cancelModalBody = document.getElementById('cancelModalBody');
+    const cancelRefundAmount = document.getElementById('cancelRefundAmount');
+    const cancelModalReason = document.getElementById('cancelModalReason');
+    const cancelModalCloseBtn = document.getElementById('cancelModalCloseBtn');
+    const cancelModalConfirmBtn = document.getElementById('cancelModalConfirmBtn');
+
+    let preferredTypeKey = '';
+    let confettiPlayed = false;
+    let pendingCancelPayload = null;
+
+    function getAuthToken() {
+      return localStorage.getItem('token');
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function buildTicketCode(bookingIdValue, seatNumber) {
+      const compact = String(bookingIdValue || '').replace(/-/g, '').toUpperCase();
+      const head = compact.slice(0, 12);
+      const seat = String(parseInt(seatNumber, 10) || 1).padStart(3, '0');
+      return `${head}-${seat}`;
+    }
+
+    function parseSeatList(booking) {
+      const seats = [];
+      if (booking.seat_numbers && booking.seat_numbers.toString().trim() !== '') {
+        booking.seat_numbers.toString().split(',').forEach((value) => {
+          const seat = parseInt(value.trim(), 10);
+          if (!isNaN(seat) && seat > 0) seats.push(seat);
+        });
+      } else {
+        const count = parseInt(booking.seat_number, 10) || 1;
+        for (let i = 1; i <= Math.max(1, count); i += 1) seats.push(i);
+      }
+      return Array.from(new Set(seats)).sort((a, b) => a - b);
+    }
+
+    function getCheckedInSet(booking) {
+      return new Set(
+        String(booking.checked_in_seat_numbers || '')
+          .split(',')
+          .map((item) => parseInt(item.trim(), 10))
+          .filter((item) => !isNaN(item) && item > 0)
+      );
+    }
+
+    function normalizeTicketType(value) {
+      const type = String(value || 'standard').trim().toLowerCase();
+      if (type === 'vip') return 'vip';
+      if (type === 'special') return 'special';
+      return 'standard';
+    }
+
+    function ticketTypeLabel(typeKey) {
+      if (typeKey === 'vip') return 'VIP';
+      if (typeKey === 'special') return 'Special';
+      return 'Standard';
+    }
+
+    function ticketTypeIcon(typeKey) {
+      if (typeKey === 'vip') return '&#127915;';
+      if (typeKey === 'special') return '&#127915;';
+      return '&#127915;';
+    }
+
+    function groupBookingsByType(bookings) {
+      const map = {};
+      bookings.forEach((booking) => {
+        const key = normalizeTicketType(booking.ticket_type);
+        if (!map[key]) {
+          map[key] = { key, label: ticketTypeLabel(key), bookings: [], seatCount: 0 };
+        }
+        map[key].bookings.push(booking);
+        map[key].seatCount += parseSeatList(booking).length;
+      });
+      const typeOrder = { standard: 0, special: 1, vip: 2 };
+      return Object.values(map).sort((a, b) => (typeOrder[a.key] ?? 9) - (typeOrder[b.key] ?? 9));
+    }
+
+    function formatDateTime(dateRaw) {
+      const date = new Date(dateRaw);
+      if (Number.isNaN(date.getTime())) return { date: 'Date TBA', time: 'Time TBA' };
+      return {
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+    }
+
+    function formatMoneyValue(value) {
+      return `${Number(value || 0).toFixed(2)} EGP`;
+    }
+
+    function calculateSeatRefundPreview(eventDateRaw, seatAmountPaidRaw) {
+      const seatAmountPaid = Number(seatAmountPaidRaw || 0);
+      if (seatAmountPaid <= 0) {
+        return {
+          refundRate: 0,
+          refundAmount: 0,
+          reason: 'No paid amount found for this ticket.'
+        };
+      }
+
+      return {
+        refundRate: 1,
+        refundAmount: Number(seatAmountPaid.toFixed(2)),
+        reason: 'Ticket cancelled successfully. Full amount refunded to your wallet.'
+      };
+    }
+
+    function toCalendarDate(date) {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    }
+
+    function buildCalendarLink(booking) {
+      const startDate = new Date(booking.event_date);
+      if (Number.isNaN(startDate.getTime())) return '#';
+      const endDate = new Date(startDate.getTime() + (2 * 60 * 60 * 1000));
+      const title = encodeURIComponent(booking.event_title || 'Event');
+      const details = encodeURIComponent('Ticket booked via Elshaboury Events.');
+      const location = encodeURIComponent(booking.location || 'TBA');
+      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${toCalendarDate(startDate)}/${toCalendarDate(endDate)}&details=${details}&location=${location}`;
+    }
+
+    function statusBadgeMarkup(bookingStatus, isCheckedIn) {
+      if (bookingStatus === 'cancelled') {
+        return '<span class="ticket-status status-cancelled">Cancelled</span>';
+      }
+      if (isCheckedIn) {
+        return '<span class="ticket-status status-checked-in">Checked-in</span>';
+      }
+      return '<span class="ticket-status status-active">Active</span>';
+    }
+
+    function renderTypeTabs(typeGroups, activeTypeKey) {
+      if (typeGroups.length <= 1) return '';
+      return `
+        <div class="ticket-type-tabs">
+          ${typeGroups.map((group) => `
+            <button
+              type="button"
+              class="ticket-type-tab ${group.key === activeTypeKey ? 'active' : ''}"
+              data-ticket-type="${group.key}"
+            >
+              <span>${ticketTypeIcon(group.key)}</span>
+              ${group.label} (${group.seatCount})
+            </button>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function playConfettiOnce() {
+      if (confettiPlayed || !confettiLayer) return;
+      confettiPlayed = true;
+
+      const colors = ['#ff8a00', '#e73886', '#22c55e', '#38bdf8', '#fde047'];
+      for (let i = 0; i < 90; i += 1) {
+        const piece = document.createElement('span');
+        const left = Math.random() * 100;
+        const delay = Math.random() * 0.55;
+        const duration = 1.8 + (Math.random() * 1.6);
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        piece.className = 'confetti-piece';
+        piece.style.left = `${left}%`;
+        piece.style.animationDelay = `${delay}s`;
+        piece.style.animationDuration = `${duration}s`;
+        piece.style.background = color;
+        piece.style.transform = `translateY(-20px) rotate(${Math.random() * 360}deg)`;
+        confettiLayer.appendChild(piece);
+      }
+
+      window.setTimeout(() => {
+        confettiLayer.innerHTML = '';
+      }, 4200);
+    }
+
+    function updateBookingSummary(totalSeats, eventName) {
+      if (!bookingSummary) return;
+      const safeSeats = Math.max(0, Number(totalSeats || 0));
+      const seatLabel = safeSeats === 1 ? 'seat' : 'seats';
+      bookingSummary.textContent = `You have booked ${safeSeats} ${seatLabel} for ${eventName || 'this event'}.`;
+    }
+
+    function copyTicketCode(ticketCode, triggerBtn) {
+      const onCopied = () => {
+        if (!triggerBtn) return;
+        const original = triggerBtn.textContent;
+        triggerBtn.textContent = 'Copied';
+        triggerBtn.disabled = true;
+        window.setTimeout(() => {
+          triggerBtn.textContent = original;
+          triggerBtn.disabled = false;
+        }, 1200);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ticketCode).then(onCopied).catch(() => {
+          window.prompt('Copy ticket code:', ticketCode);
+        });
+      } else {
+        window.prompt('Copy ticket code:', ticketCode);
+      }
+    }
+
+    function printTicket(cardId) {
+      const card = document.getElementById(cardId);
+      if (!card) {
+        window.print();
+        return;
+      }
+      document.body.classList.add('print-ticket-mode');
+      document.querySelectorAll('.ticket-card-shell.print-focus').forEach((node) => node.classList.remove('print-focus'));
+      card.classList.add('print-focus');
+      window.print();
+      window.setTimeout(() => {
+        document.body.classList.remove('print-ticket-mode');
+        card.classList.remove('print-focus');
+      }, 200);
+    }
+
+    function openCancelModal(payload) {
+      pendingCancelPayload = payload;
+      cancelModalBody.textContent = `Cancel seat ${payload.seatNumber} (${payload.ticketCode}) for this event?`;
+      cancelRefundAmount.textContent = formatMoneyValue(payload.preview?.refundAmount || 0);
+      cancelModalReason.textContent = payload.preview?.reason || 'Refund policy will be applied automatically.';
+      cancelModalBackdrop.classList.remove('hidden');
+      cancelModalConfirmBtn.focus();
+    }
+
+    function closeCancelModal() {
+      pendingCancelPayload = null;
+      cancelModalBackdrop.classList.add('hidden');
+    }
+
+    async function requestCancelTicketSeat(
+      bookingIdValue,
+      seatNumber,
+      ticketCode,
+      bookingAmountPaid,
+      totalSeats,
+      eventDateRaw,
+      ticketTypeRaw,
+      priceStandardRaw,
+      priceSpecialRaw,
+      priceVipRaw
+    ) {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = '/html/signin.html';
+        return;
+      }
+
+      const paidAmount = Number(bookingAmountPaid || 0);
+      const seatsCount = Math.max(1, Number(totalSeats || 1));
+      let seatAmountPaid = seatsCount > 0 ? paidAmount / seatsCount : paidAmount;
+      if (seatAmountPaid <= 0) {
+        const ticketType = normalizeTicketType(ticketTypeRaw || 'standard');
+        let unitPrice = Number(priceStandardRaw || 0);
+        if (ticketType === 'special') unitPrice = Number(priceSpecialRaw || 0);
+        if (ticketType === 'vip') unitPrice = Number(priceVipRaw || 0);
+        seatAmountPaid = unitPrice > 0 ? unitPrice : 0;
+      }
+      const preview = calculateSeatRefundPreview(eventDateRaw, seatAmountPaid);
+
+      openCancelModal({
+        bookingId: bookingIdValue,
+        seatNumber,
+        ticketCode,
+        preview
+      });
+    }
+
+    async function executeCancelTicketSeat(payload) {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = '/html/signin.html';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Bookings/${payload.bookingId}/cancel-seat`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            seatNumber: payload.seatNumber,
+            ticketCode: payload.ticketCode
+          })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to cancel this ticket');
+        }
+        const refundAmount = Number(data?.refund?.refundAmount || 0);
+        const walletBalance = Number(
+          data?.wallet_balance != null
+            ? data.wallet_balance
+            : data?.wallet?.balance
+        );
+        let successMessage = data.message || 'Ticket cancelled successfully.';
+        if (refundAmount > 0) {
+          successMessage += `\nRefund added: ${formatMoneyValue(refundAmount)}.`;
+        }
+        if (Number.isFinite(walletBalance)) {
+          successMessage += `\nWallet balance: ${formatMoneyValue(walletBalance)}.`;
+        }
+        alert(successMessage);
+        await loadTickets();
+      } catch (error) {
+        alert(error.message || 'Error cancelling ticket.');
+      }
+    }
+
+    function renderTickets(typeGroups, selectedTypeKey) {
+      const selectedGroup = typeGroups.find((group) => group.key === selectedTypeKey) || typeGroups[0];
+      if (!selectedGroup) {
+        ticketsWrapper.innerHTML = '<div class="loading-state">No active tickets found for this event.</div>';
+        return;
+      }
+      preferredTypeKey = selectedGroup.key;
+
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userName = user.fullName || user.username || 'Guest';
+      const qrQueue = [];
+      let cardIndex = 0;
+
+      const ticketBlocks = [];
+      selectedGroup.bookings.forEach((booking) => {
+        const seats = parseSeatList(booking);
+        const checkedInSet = getCheckedInSet(booking);
+        const dateTime = formatDateTime(booking.event_date);
+        const typeKey = normalizeTicketType(booking.ticket_type);
+        const ticketStyleClass = `ticket-style-${typeKey}`;
+        const calendarUrl = buildCalendarLink(booking);
+
+        seats.forEach((seatNum) => {
+          const ticketCode = buildTicketCode(booking.id, seatNum);
+          const isCheckedIn = checkedInSet.has(seatNum);
+          const isCancelled = booking.status === 'cancelled';
+          const qrData = JSON.stringify({
+            ticketId: ticketCode,
+            bookingId: booking.id,
+            eventId: booking.event_id,
+            seat: seatNum,
+            user: userName
+          });
+          const cardId = `ticket-card-${booking.id}-${seatNum}-${cardIndex}`.replace(/[^a-zA-Z0-9_-]/g, '');
+          const qrId = `qrcode-${booking.id}-${seatNum}-${cardIndex++}`.replace(/[^a-zA-Z0-9_-]/g, '');
+          const disableCancel = isCheckedIn || isCancelled;
+          const cancelTooltip = isCheckedIn ? 'Cannot cancel - already checked in' : (isCancelled ? 'Ticket already cancelled' : '');
+          const safeEventDate = String(booking.event_date || '').replace(/'/g, "\\'");
+          const safeTicketType = String(booking.ticket_type || '').replace(/'/g, "\\'");
+
+          ticketBlocks.push(`
+            <article class="ticket-card-shell ${ticketStyleClass} ${isCheckedIn ? 'is-checked-in' : ''} ${isCancelled ? 'is-cancelled' : ''}" id="${cardId}">
+              ${isCheckedIn ? '<div class="checked-in-watermark">CHECKED IN &#10003;</div>' : ''}
+              <div class="ticket-card-layout">
+                <section class="ticket-left">
+                  <p class="ticket-event-header">${escapeHtml(booking.event_title || 'Event Ticket')}</p>
+                  <div class="qr-box">
+                    <div class="qr-code" id="${qrId}"></div>
+                  </div>
+                  <div class="ticket-code-row">
+                    <span class="mono-ticket-code">${escapeHtml(ticketCode)}</span>
+                    <button type="button" class="tiny-copy-btn" onclick="copyTicketCode('${ticketCode}', this)">Copy</button>
+                  </div>
+                  <div class="status-wrap">${statusBadgeMarkup(booking.status, isCheckedIn)}</div>
+                </section>
+
+                <div class="ticket-divider">
+                  <span class="divider-dot top"></span>
+                  <span class="divider-line"></span>
+                  <span class="divider-dot bottom"></span>
+                </div>
+
+                <section class="ticket-right">
+                  <h3>${escapeHtml(booking.event_title || 'Event')}</h3>
+                  <div class="ticket-info-list">
+                    <div class="info-row"><span>&#127915; Event Name</span><strong>${escapeHtml(booking.event_title || 'Event')}</strong></div>
+                    <div class="info-row"><span>&#128197; Date & Time</span><strong>${escapeHtml(dateTime.date)} - ${escapeHtml(dateTime.time)}</strong></div>
+                    <div class="info-row"><span>&#128205; Location</span><strong>${escapeHtml(booking.location || 'TBA')}</strong></div>
+                    <div class="info-row"><span>&#128186; Seat</span><strong class="seat-text">Seat ${seatNum}</strong></div>
+                    <div class="info-row"><span>&#127915; Ticket Type</span><strong>${ticketTypeLabel(typeKey)}</strong></div>
+                    <div class="info-row"><span>&#128100; Attendee</span><strong>${escapeHtml(userName)}</strong></div>
+                  </div>
+                  <a class="calendar-btn" href="${calendarUrl}" target="_blank" rel="noopener noreferrer">Add to Calendar</a>
+                  <div class="ticket-actions">
+                    <button
+                      type="button"
+                      class="action-btn outline-danger"
+                      ${disableCancel ? 'disabled' : ''}
+                      ${cancelTooltip ? `title="${cancelTooltip}" data-tooltip="${cancelTooltip}"` : ''}
+                      onclick="${disableCancel ? '' : `requestCancelTicketSeat('${booking.id}', ${seatNum}, '${ticketCode}', ${Number(booking.amount_paid || 0)}, ${seats.length}, '${safeEventDate}', '${safeTicketType}', ${Number(booking.price_standard || 0)}, ${Number(booking.price_special || 0)}, ${Number(booking.price_vip || 0)})`}"
+                    >
+                      Cancel This Ticket
+                    </button>
+                    <button type="button" class="action-btn outline-neutral" onclick="printTicket('${cardId}')">Print Ticket</button>
+                  </div>
+                </section>
+              </div>
+            </article>
+          `);
+          qrQueue.push({ qrId, qrData });
+        });
+      });
+
+      ticketsWrapper.innerHTML = `
+        ${renderTypeTabs(typeGroups, selectedGroup.key)}
+        <div class="ticket-type-summary">
+          <strong>${selectedGroup.label} Tickets</strong> - ${selectedGroup.seatCount} seat(s)
+        </div>
+        <div class="tickets-grid">
+          ${ticketBlocks.length ? ticketBlocks.join('') : '<div class="loading-state">No tickets found for this type.</div>'}
+        </div>
+      `;
+
+      qrQueue.forEach(({ qrId, qrData }) => {
+        const qrNode = document.getElementById(qrId);
+        if (!qrNode) return;
+        new QRCode(qrNode, {
+          text: qrData,
+          width: 192,
+          height: 192,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      });
+
+      ticketsWrapper.querySelectorAll('.ticket-type-tab').forEach((button) => {
+        button.addEventListener('click', () => {
+          const nextType = button.getAttribute('data-ticket-type');
+          if (!nextType || nextType === preferredTypeKey) return;
+          renderTickets(typeGroups, nextType);
+        });
+      });
+    }
+
+    async function loadTickets() {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = '/html/signin.html';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Bookings/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success || !Array.isArray(data.bookings)) {
+          throw new Error(data.message || 'Failed to fetch bookings');
+        }
+
+        const selectedBooking = bookingId
+          ? data.bookings.find((item) => item.id === bookingId)
+          : null;
+        const targetEventId = eventId || selectedBooking?.event_id || null;
+
+        if (!targetEventId) {
+          ticketsWrapper.innerHTML = '<div class="loading-state">No booking information found. <a href="/html/my-events.html" class="inline-link">Go to My Events</a></div>';
+          return;
+        }
+
+        const eventBookings = data.bookings.filter((item) => item.event_id === targetEventId);
+        if (eventBookings.length === 0) {
+          ticketsWrapper.innerHTML = '<div class="loading-state">Booking not found for this event. <a href="/html/my-events.html" class="inline-link">Go to My Events</a></div>';
+          return;
+        }
+
+        const activeBookings = eventBookings.filter((item) => item.status === 'confirmed' && !item.is_past_event);
+        if (activeBookings.length === 0) {
+          const hasPastBooking = eventBookings.some((item) => item.is_past_event);
+          if (hasPastBooking) {
+            ticketsWrapper.innerHTML = '<div class="loading-state">This event has ended. Tickets are available only in booking history.</div>';
+          } else {
+            ticketsWrapper.innerHTML = '<div class="loading-state">All tickets for this event are cancelled.</div>';
+          }
+          return;
+        }
+
+        const eventName = activeBookings[0]?.event_title || 'this event';
+        const totalSeats = activeBookings.reduce((sum, booking) => sum + parseSeatList(booking).length, 0);
+        updateBookingSummary(totalSeats, eventName);
+
+        const typeGroups = groupBookingsByType(activeBookings);
+        let initialTypeKey = preferredTypeKey;
+        if (!initialTypeKey && selectedBooking) {
+          initialTypeKey = normalizeTicketType(selectedBooking.ticket_type);
+        }
+        renderTickets(typeGroups, initialTypeKey);
+        playConfettiOnce();
+      } catch (error) {
+        console.error('Error loading tickets:', error);
+        ticketsWrapper.innerHTML = '<div class="loading-state">Error loading tickets. Please try again.</div>';
+      }
+    }
+
+    cancelModalCloseBtn.addEventListener('click', closeCancelModal);
+    cancelModalBackdrop.addEventListener('click', (event) => {
+      if (event.target === cancelModalBackdrop) closeCancelModal();
+    });
+    cancelModalConfirmBtn.addEventListener('click', async () => {
+      if (!pendingCancelPayload) return;
+      const payload = { ...pendingCancelPayload };
+      closeCancelModal();
+      await executeCancelTicketSeat(payload);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !cancelModalBackdrop.classList.contains('hidden')) {
+        closeCancelModal();
+      }
+    });
+
+    window.copyTicketCode = copyTicketCode;
+    window.printTicket = printTicket;
+    window.requestCancelTicketSeat = requestCancelTicketSeat;
+
+    loadTickets();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+

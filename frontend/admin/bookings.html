@@ -1,0 +1,217 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Bookings</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Bookings Management');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="card">
+          <div class="filters-inline">
+            <label class="label-stack">Search Bookings
+              <input id="bookingSearch" class="search-input" placeholder="Search by event name or user name" />
+            </label>
+            <label class="label-stack">Status Filter
+              <select id="bookingStatusFilter">
+                <option value="all">All</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="pending">Pending</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="stats-grid cols-3" id="bookingStats"></div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>User</th>
+                  <th>Status</th>
+                  <th>Ticket Type</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      const bookingSearch = document.getElementById('bookingSearch');
+      const bookingStatusFilter = document.getElementById('bookingStatusFilter');
+      const bookingStats = document.getElementById('bookingStats');
+      const bookingsBody = document.getElementById('bookingsBody');
+
+      let bookings = [];
+      let filteredBookings = [];
+
+      function statusBadge(status) {
+        const normalized = String(status || 'pending').toLowerCase();
+        return `<span class="status-badge status-${AdminApp.escapeHtml(normalized)}">${AdminApp.escapeHtml(normalized)}</span>`;
+      }
+
+      function ticketBadge(ticketType) {
+        const normalized = String(ticketType || 'standard').toLowerCase();
+        if (normalized === 'vip') {
+          return '<span class="status-badge ticket-vip">VIP</span>';
+        }
+        if (normalized === 'special') {
+          return '<span class="status-badge ticket-special">Special</span>';
+        }
+        return '<span class="status-badge ticket-standard">Standard</span>';
+      }
+
+      function parseSeats(booking) {
+        if (Array.isArray(booking.seat_numbers) && booking.seat_numbers.length) {
+          return booking.seat_numbers.join(', ');
+        }
+        if (typeof booking.seat_numbers === 'string' && booking.seat_numbers.trim()) {
+          return booking.seat_numbers;
+        }
+        return booking.seat_number != null ? String(booking.seat_number) : '-';
+      }
+
+      function renderStats() {
+        const total = bookings.length;
+        const confirmed = bookings.filter((booking) => String(booking.status || '').toLowerCase() === 'confirmed').length;
+        const cancelled = bookings.filter((booking) => String(booking.status || '').toLowerCase() === 'cancelled').length;
+
+        bookingStats.innerHTML = `
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Total Bookings</span><span class="stat-icon">&#127903;&#65039;</span></div><div class="stat-value">${AdminApp.formatNumber(total)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Confirmed</span><span class="stat-icon">?</span></div><div class="stat-value">${AdminApp.formatNumber(confirmed)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Cancelled</span><span class="stat-icon">?</span></div><div class="stat-value">${AdminApp.formatNumber(cancelled)}</div></div>
+        `;
+      }
+
+      function applyFilters() {
+        const query = bookingSearch.value.trim().toLowerCase();
+        const status = bookingStatusFilter.value;
+
+        filteredBookings = bookings.filter((booking) => {
+          const haystack = `${booking.event_title || ''} ${booking.user_name || ''} ${booking.user_email || ''}`.toLowerCase();
+          const statusMatch = status === 'all' ? true : String(booking.status || '').toLowerCase() === status;
+          return statusMatch && (!query || haystack.includes(query));
+        });
+
+        renderTable();
+      }
+
+      function renderTable() {
+        if (!filteredBookings.length) {
+          bookingsBody.innerHTML = '<tr><td colspan="6"><div class="empty-state">No bookings match this filter.</div></td></tr>';
+          return;
+        }
+
+        bookingsBody.innerHTML = filteredBookings.map((booking) => {
+          const id = booking.id;
+          const normalizedStatus = String(booking.status || 'pending').toLowerCase();
+          const canConfirm = normalizedStatus !== 'confirmed';
+          const canPending = normalizedStatus !== 'pending';
+
+          return `
+            <tr data-id="${id}">
+              <td>${AdminApp.escapeHtml(booking.event_title || '-')}</td>
+              <td>
+                <div>${AdminApp.escapeHtml(booking.user_name || '-')}</div>
+                <div class="user-sub">${AdminApp.escapeHtml(booking.user_email || '-')}</div>
+              </td>
+              <td>${statusBadge(normalizedStatus)}</td>
+              <td>${ticketBadge(booking.ticket_type)}</td>
+              <td>${AdminApp.formatDateTime(booking.booking_date)}</td>
+              <td>
+                <div class="inline-actions">
+                  <button class="btn btn-success" data-action="confirm" ${canConfirm ? '' : 'disabled'}>Confirm</button>
+                  <button class="btn btn-outline-warning" data-action="pending" ${canPending ? '' : 'disabled'}>Pending</button>
+                  <button class="btn btn-outline-danger" data-action="cancel">Cancel</button>
+                  <button class="btn btn-outline-primary" data-action="details">Details</button>
+                </div>
+              </td>
+            </tr>
+            <tr class="hidden" id="details-${id}">
+              <td colspan="6">
+                <div class="info-grid" style="margin-bottom:0;">
+                  <div class="info-item"><div class="info-label">Booking ID</div><div class="info-value">${AdminApp.escapeHtml(id || '-')}</div></div>
+                  <div class="info-item"><div class="info-label">User ID</div><div class="info-value">${AdminApp.escapeHtml(booking.user_id || '-')}</div></div>
+                  <div class="info-item"><div class="info-label">Event ID</div><div class="info-value">${AdminApp.escapeHtml(booking.event_id || '-')}</div></div>
+                  <div class="info-item"><div class="info-label">Ticket Type</div><div class="info-value">${AdminApp.escapeHtml(booking.ticket_type || 'Standard')}</div></div>
+                  <div class="info-item"><div class="info-label">Seats</div><div class="info-value">${AdminApp.escapeHtml(parseSeats(booking))}</div></div>
+                  <div class="info-item"><div class="info-label">Status</div><div class="info-value">${statusBadge(normalizedStatus)}</div></div>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      async function loadBookings() {
+        const response = await AdminApp.request('/Admin/bookings');
+        const data = await response.json().catch(() => ({}));
+        bookings = data.bookings || [];
+        renderStats();
+        applyFilters();
+      }
+
+      async function setStatus(bookingId, status) {
+        await AdminApp.request(`/Admin/bookings/${bookingId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status })
+        });
+        await loadBookings();
+      }
+
+      async function cancelBooking(bookingId) {
+        if (!window.confirm('Cancel this booking?')) return;
+        await AdminApp.request(`/Admin/bookings/${bookingId}`, { method: 'DELETE' });
+        await loadBookings();
+      }
+
+      bookingsBody.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+
+        const row = button.closest('tr[data-id]');
+        if (!row) return;
+
+        const bookingId = row.dataset.id;
+        const action = button.dataset.action;
+
+        if (action === 'confirm') await setStatus(bookingId, 'confirmed');
+        if (action === 'pending') await setStatus(bookingId, 'pending');
+        if (action === 'cancel') await cancelBooking(bookingId);
+
+        if (action === 'details') {
+          const detailsRow = document.getElementById(`details-${bookingId}`);
+          if (detailsRow) {
+            detailsRow.classList.toggle('hidden');
+          }
+        }
+      });
+
+      bookingSearch.addEventListener('input', AdminApp.debounce(applyFilters, 120));
+      bookingStatusFilter.addEventListener('change', applyFilters);
+
+      await loadBookings();
+    })();
+  </script>
+</body>
+</html>
+

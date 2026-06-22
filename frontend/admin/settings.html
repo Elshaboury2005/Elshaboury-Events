@@ -1,0 +1,288 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Settings</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Platform Settings');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Platform Settings</h3>
+              <p class="section-meta">Configure global platform behavior and communication defaults.</p>
+            </div>
+          </div>
+          <div id="settingsForm" class="grid"></div>
+          <div style="margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button id="saveSettings" class="btn btn-gradient">Save Settings</button>
+            <span id="settingsMsg" class="section-meta"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Audit Trail</h3>
+              <p class="section-meta">Administrative actions and system logs</p>
+            </div>
+          </div>
+
+          <div class="filters-inline" style="margin-bottom:10px;">
+            <label class="label-stack">Search Logs
+              <input id="auditSearch" placeholder="Search by action, target, admin, or details" />
+            </label>
+            <label class="label-stack">Filter by Category
+              <select id="auditCategory">
+                <option value="all">All</option>
+                <option value="auth">Auth</option>
+                <option value="user">User</option>
+                <option value="event">Event</option>
+                <option value="support">Support</option>
+                <option value="notification">Notification</option>
+                <option value="settings">Settings</option>
+                <option value="delete">Delete</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="auditLogs" class="audit-list"></div>
+          <div class="pagination">
+            <button id="prevAuditPage" class="btn btn-muted">Previous</button>
+            <span id="auditPageInfo" class="section-meta">Page 1</span>
+            <button id="nextAuditPage" class="btn btn-muted">Next</button>
+          </div>
+        </div>
+      `;
+
+      const settingsForm = document.getElementById('settingsForm');
+      const settingsMsg = document.getElementById('settingsMsg');
+
+      const auditLogs = document.getElementById('auditLogs');
+      const auditSearch = document.getElementById('auditSearch');
+      const auditCategory = document.getElementById('auditCategory');
+      const auditPageInfo = document.getElementById('auditPageInfo');
+      const prevAuditPage = document.getElementById('prevAuditPage');
+      const nextAuditPage = document.getElementById('nextAuditPage');
+
+      const SETTINGS_CONFIG = [
+        {
+          key: 'site_name',
+          label: '\u{1F3F7}\uFE0F Site Name',
+          description: 'Public-facing platform name displayed in headers and communications.',
+          type: 'text'
+        },
+        {
+          key: 'support_email',
+          label: '\u{1F4E7} Support Email',
+          description: 'Primary email used for customer support responses and escalations.',
+          type: 'email'
+        },
+        {
+          key: 'maintenance_mode',
+          label: '\u{1F6E0}\uFE0F Maintenance Mode',
+          description: 'When enabled, users are informed that the platform is under maintenance.',
+          type: 'toggle'
+        },
+        {
+          key: 'platform_lockdown',
+          label: '\u{1F512} Platform Lockdown',
+          description: 'Immediately blocks all user pages, sign-in, register, guest access, and user APIs. Only the admin console stays available until you turn it off.',
+          type: 'toggle'
+        },
+        {
+          key: 'booking_cancellation_window_hours',
+          label: '\u23F1\uFE0F Cancellation Window (Hours)',
+          description: 'Number of hours allowed for booking cancellation before event time.',
+          type: 'number'
+        }
+      ];
+
+      let auditEntries = [];
+      let filteredAuditEntries = [];
+      let currentPage = 1;
+      const pageSize = 20;
+
+      function parseBool(value) {
+        const normalized = String(value || '').trim().toLowerCase();
+        return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on';
+      }
+
+      function renderSettings(valuesMap) {
+        settingsForm.innerHTML = SETTINGS_CONFIG.map((setting) => {
+          const rawValue = valuesMap.get(setting.key) || '';
+
+          if (setting.type === 'toggle') {
+            return `
+              <div class="switch-row">
+                <div>
+                  <div style="font-weight:700;">${setting.label}</div>
+                  <div class="field-desc">${setting.description}</div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" data-setting-key="${setting.key}" ${parseBool(rawValue) ? 'checked' : ''} />
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            `;
+          }
+
+          return `
+            <label class="label-stack">
+              <span>${setting.label}</span>
+              <input type="${setting.type}" data-setting-key="${setting.key}" value="${AdminApp.escapeHtml(rawValue)}" />
+              <span class="field-desc">${setting.description}</span>
+            </label>
+          `;
+        }).join('');
+      }
+
+      function auditTone(action) {
+        const key = String(action || '').toUpperCase();
+        if (key === 'ADMIN_LOGIN' || key === 'ADMIN_LOGOUT') {
+          return { className: 'activity-blue', icon: '\u{1F510}' };
+        }
+        if (key === 'UPDATE_USER_STATUS') {
+          return { className: 'activity-orange', icon: '\u{1F464}' };
+        }
+        if (key === 'UPDATE_EVENT_APPROVAL') {
+          return { className: 'activity-green', icon: '?' };
+        }
+        if (key.includes('SUPPORT')) {
+          return { className: 'activity-purple', icon: '\u{1F4AC}' };
+        }
+        if (key.includes('DELETE')) {
+          return { className: 'activity-red', icon: '?' };
+        }
+        return { className: 'activity-blue', icon: '\u2139\uFE0F' };
+      }
+
+      function matchesCategory(entry, category) {
+        const action = String(entry.action || '').toUpperCase();
+        if (category === 'all') return true;
+        if (category === 'auth') return action.includes('LOGIN') || action.includes('LOGOUT') || action.includes('AUTH');
+        if (category === 'user') return action.includes('USER');
+        if (category === 'event') return action.includes('EVENT') || action.includes('BOOKING');
+        if (category === 'support') return action.includes('SUPPORT');
+        if (category === 'notification') return action.includes('NOTIFICATION');
+        if (category === 'settings') return action.includes('SETTING');
+        if (category === 'delete') return action.includes('DELETE');
+        return true;
+      }
+
+      function filterAuditEntries() {
+        const query = auditSearch.value.trim().toLowerCase();
+        const category = auditCategory.value;
+
+        filteredAuditEntries = auditEntries.filter((entry) => {
+          const detailsText = typeof entry.details === 'string' ? entry.details : JSON.stringify(entry.details || {});
+          const haystack = `${entry.action || ''} ${entry.target_type || ''} ${entry.full_name || ''} ${detailsText}`.toLowerCase();
+          return matchesCategory(entry, category) && (!query || haystack.includes(query));
+        });
+
+        currentPage = 1;
+        renderAuditPage();
+      }
+
+      function renderAuditPage() {
+        const totalPages = Math.max(1, Math.ceil(filteredAuditEntries.length / pageSize));
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const start = (currentPage - 1) * pageSize;
+        const pageItems = filteredAuditEntries.slice(start, start + pageSize);
+
+        if (!pageItems.length) {
+          auditLogs.innerHTML = '<div class="empty-state">No audit logs found.</div>';
+        } else {
+          auditLogs.innerHTML = pageItems.map((entry) => {
+            const tone = auditTone(entry.action);
+            return `
+              <div class="audit-item ${tone.className}">
+                <div class="audit-icon">${tone.icon}</div>
+                <div>
+                  <div style="font-weight:700;">${AdminApp.escapeHtml(String(entry.action || '').replace(/_/g, ' '))}</div>
+                  <div class="section-meta">${AdminApp.escapeHtml(entry.target_type || 'system')} · ${AdminApp.escapeHtml(entry.full_name || entry.admin_id || 'Admin')}</div>
+                </div>
+                <div class="section-meta">${AdminApp.formatDateTime(entry.created_at)}</div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        auditPageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        prevAuditPage.disabled = currentPage <= 1;
+        nextAuditPage.disabled = currentPage >= totalPages;
+      }
+
+      async function loadSettings() {
+        const response = await AdminApp.request('/Admin/settings');
+        const data = await response.json().catch(() => ({}));
+        const map = new Map((data.settings || []).map((row) => [row.setting_key, row.setting_value]));
+        renderSettings(map);
+      }
+
+      async function loadAuditLogs() {
+        const response = await AdminApp.request('/Admin/audit-logs');
+        const data = await response.json().catch(() => ({}));
+        auditEntries = data.logs || [];
+        filteredAuditEntries = [...auditEntries];
+        currentPage = 1;
+        renderAuditPage();
+      }
+
+      document.getElementById('saveSettings').addEventListener('click', async () => {
+        const payload = SETTINGS_CONFIG.map((setting) => {
+          const input = settingsForm.querySelector(`[data-setting-key="${setting.key}"]`);
+          if (!input) return null;
+
+          if (setting.type === 'toggle') {
+            return { key: setting.key, value: input.checked ? 'true' : 'false' };
+          }
+
+          return { key: setting.key, value: input.value };
+        }).filter(Boolean);
+
+        const response = await AdminApp.request('/Admin/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ settings: payload })
+        });
+        const data = await response.json().catch(() => ({}));
+
+        settingsMsg.textContent = data.message || 'Settings saved.';
+        await loadAuditLogs();
+      });
+
+      auditSearch.addEventListener('input', AdminApp.debounce(filterAuditEntries, 120));
+      auditCategory.addEventListener('change', filterAuditEntries);
+
+      prevAuditPage.addEventListener('click', () => {
+        currentPage = Math.max(1, currentPage - 1);
+        renderAuditPage();
+      });
+
+      nextAuditPage.addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil(filteredAuditEntries.length / pageSize));
+        currentPage = Math.min(totalPages, currentPage + 1);
+        renderAuditPage();
+      });
+
+      await loadSettings();
+      await loadAuditLogs();
+    })();
+  </script>
+</body>
+</html>
+

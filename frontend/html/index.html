@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/index.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section class="hero reveal is-visible" id="home">
+      <div class="hero-decor" aria-hidden="true">
+        <span class="hero-pattern"></span>
+        <span class="hero-orb hero-orb--orange"></span>
+        <span class="hero-orb hero-orb--pink"></span>
+      </div>
+
+      <div class="hero-grid">
+        <div class="hero-content">
+          <p class="hero-eyebrow">Elshaboury Events Platform</p>
+          <h1>Design, launch, and fill standout events from one premium command center.</h1>
+          <p class="hero-subtitle">
+            Move from planning to sold-out seats with smart workflows, instant booking tools, and live visibility for
+            every organizer and attendee.
+          </p>
+
+          <div class="hero-ctas">
+            <a class="btn btn-gradient" href="/html/book-event.html">Browse Events</a>
+            <a class="btn btn-outline" href="/html/create-event.html" id="heroCreateBtn">Create Event</a>
+          </div>
+
+          <div class="hero-mini-stats" aria-label="Platform highlights">
+            <span>500+ Events Created</span>
+            <span>10,000+ Tickets Booked</span>
+            <span>50+ Cities</span>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <p class="visual-title">Live Platform Preview</p>
+          <div class="hero-visual-grid" id="heroVisualGrid">
+            <article class="preview-card">
+              <p class="preview-date">Loading</p>
+              <h3>Fetching upcoming events</h3>
+              <p class="preview-meta">Preparing preview cards...</p>
+            </article>
+            <article class="preview-card">
+              <p class="preview-date">Loading</p>
+              <h3>Syncing event feed</h3>
+              <p class="preview-meta">Connecting to data source...</p>
+            </article>
+            <article class="preview-card">
+              <p class="preview-date">Live</p>
+              <h3>Event analytics</h3>
+              <p class="preview-meta">Trends and registrations update in real time.</p>
+            </article>
+            <article class="preview-card">
+              <p class="preview-date">Live</p>
+              <h3>Team collaboration</h3>
+              <p class="preview-meta">Coordinate organizers, speakers, and vendors.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="featured section reveal" id="featured">
+      <div class="section-heading">
+        <h2>Featured Upcoming Events</h2>
+        <p>Closest upcoming opportunities curated directly from the live event feed.</p>
+      </div>
+      <div class="featured-grid" id="featuredEventsGrid">
+        <article class="featured-card loading-card">
+          <p>Loading featured events...</p>
+        </article>
+      </div>
+      <div class="featured-footer">
+        <a class="view-all-link" href="/html/book-event.html">View All Events &rarr;</a>
+      </div>
+    </section>
+
+    <section class="actions section reveal">
+      <div class="card card--create" id="create-event">
+        <div class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+            <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+          </svg>
+        </div>
+        <h2>Create Event</h2>
+        <p>
+          Build high-impact experiences with timeline automation, team collaboration, and organizer-grade control over
+          every operational detail.
+        </p>
+        <ul class="card-list">
+          <li><span class="list-icon">&#10003;</span><span>Smart timeline builder with auto-reminders</span></li>
+          <li><span class="list-icon">&#10003;</span><span>Collaborative dashboards for teams and vendors</span></li>
+          <li><span class="list-icon">&#10003;</span><span>Embedded budget tracker with live variance alerts</span></li>
+        </ul>
+        <div class="card-footer">
+          <a class="cta" href="/html/create-event.html" id="launchEventBtn">Launch Event</a>
+        </div>
+      </div>
+
+      <div class="card card--book" id="book-event">
+        <div class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 8h16v8H4z"></path>
+            <path d="M8 8V6a2 2 0 1 1 4 0v2"></path>
+            <path d="M16 8V6a2 2 0 1 0-4 0v2"></path>
+          </svg>
+        </div>
+        <h2>Book Event</h2>
+        <p>
+          Discover curated experiences, secure seats instantly, and track reservations through a clean booking flow
+          built for speed and reliability.
+        </p>
+        <ul class="card-list">
+          <li><span class="list-icon">&#10003;</span><span>Dynamic catalog with live seat availability</span></li>
+          <li><span class="list-icon">&#10003;</span><span>One-click ticketing and group reservations</span></li>
+          <li><span class="list-icon">&#10003;</span><span>Personalized alerts for schedule changes</span></li>
+        </ul>
+        <div class="card-footer">
+          <a class="cta" href="/html/book-event.html">Reserve Spot</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="how-it-works section reveal" id="how-it-works">
+      <div class="section-heading">
+        <h2>How It Works</h2>
+        <p>A fast three-step flow for organizers and attendees.</p>
+      </div>
+      <div class="steps-grid">
+        <article class="step-card">
+          <div class="step-number">1</div>
+          <h3>Create an account</h3>
+          <p>Set up your profile once to access booking, hosting, and wallet tools.</p>
+        </article>
+        <article class="step-card">
+          <div class="step-number">2</div>
+          <h3>Browse or create events</h3>
+          <p>Discover upcoming experiences or launch your own event with guided setup.</p>
+        </article>
+        <article class="step-card">
+          <div class="step-number">3</div>
+          <h3>Book your seat and enjoy</h3>
+          <p>Reserve quickly, stay informed through notifications, and attend with confidence.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="platform-stats section reveal" id="platform-stats">
+      <div class="section-heading">
+        <h2>Platform Stats</h2>
+        <p>Live growth indicators powered by the event feed.</p>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="6" width="18" height="14" rx="2"></rect>
+              <path d="M3 10h18"></path>
+              <path d="M8 3v6"></path>
+              <path d="M16 3v6"></path>
+            </svg>
+          </div>
+          <strong class="stat-number" data-counter="events" data-format="full" data-suffix="+">0</strong>
+          <p>Total events hosted</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 8h16v8H4z"></path>
+              <path d="M8 8V6a2 2 0 1 1 4 0v2"></path>
+              <path d="M16 8V6a2 2 0 1 0-4 0v2"></path>
+            </svg>
+          </div>
+          <strong class="stat-number" data-counter="tickets" data-format="full" data-suffix="+">0</strong>
+          <p>Total tickets sold</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="7.5" r="3.5"></circle>
+              <path d="M5 20a7 7 0 0 1 14 0"></path>
+            </svg>
+          </div>
+          <strong class="stat-number" data-counter="users" data-format="full" data-suffix="+">0</strong>
+          <p>Total users registered</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="10" r="7"></circle>
+              <path d="M12 21c3-3 5-6 5-9a5 5 0 1 0-10 0c0 3 2 6 5 9z"></path>
+            </svg>
+          </div>
+          <strong class="stat-number" data-counter="cities" data-format="full" data-suffix="+">0</strong>
+          <p>Cities covered</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer id="support">
+    <div class="footer-top">
+      <div class="footer-col footer-brand">
+        <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+            <strong>Elshaboury Events</strong>
+            <p class="footer-tagline">Curate. Celebrate. Connect.</p>
+          </div>
+      </a>
+        <p class="footer-copy">
+          A professional event ecosystem for planning, publishing, booking, and managing memorable experiences at
+          scale.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h3>Quick Links</h3>
+        <ul class="quick-links">
+          <li><a href="/html/index.html">Home</a></li>
+          <li><a href="/html/book-event.html">Book Event</a></li>
+          <li><a href="/html/create-event.html" id="footerCreateLink">Create Event</a></li>
+          <li><a href="/html/contact-form.html">Support</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h3>Contact</h3>
+        <ul class="contact-list">
+          <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+          <li><span>Phone:</span> +20-1013077615</li>
+          <li><span>Hotline:</span> +20-1029123440</li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h3>Connect</h3>
+        <div class="socials">
+          <a class="social-link" href="#" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="5"></rect>
+              <circle cx="12" cy="12" r="4"></circle>
+              <circle cx="17.5" cy="6.5" r="1"></circle>
+            </svg>
+          </a>
+          <a class="social-link" href="#" aria-label="LinkedIn">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-12h4v2"></path>
+              <rect x="2" y="9" width="4" height="12"></rect>
+              <circle cx="4" cy="4" r="2"></circle>
+            </svg>
+          </a>
+          <a class="social-link" href="#" aria-label="Twitter">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M23 3a10.9 10.9 0 0 1-3.1 1.5A4.5 4.5 0 0 0 12 8v1A10.7 10.7 0 0 1 3 4s-4 9 5 13a11.2 11.2 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0 0-.8A7.7 7.7 0 0 0 23 3z">
+              </path>
+            </svg>
+          </a>
+        </div>
+        <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form &rarr;</a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; 2026 Elshaboury Events. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => {
+        const isOpen = header.classList.contains('menu-open');
+        setMenuState(!isOpen);
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            setMenuState(false);
+          }
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+          setMenuState(false);
+        }
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      const guardCreateButtons = [
+        document.getElementById('launchEventBtn'),
+        document.getElementById('heroCreateBtn'),
+        document.getElementById('footerCreateLink')
+      ].filter(Boolean);
+
+      guardCreateButtons.forEach((btn) => {
+        btn.addEventListener('click', function (e) {
+          const token = localStorage.getItem('token');
+          const isLoggedIn = localStorage.getItem('isLoggedIn');
+          const isGuest = !token || isLoggedIn === 'guest' || isLoggedIn === 'false';
+
+          if (isGuest) {
+            e.preventDefault();
+            alert('You need to sign in first.');
+            window.location.href = '/html/signin.html';
+          }
+        });
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+      const featuredGrid = document.getElementById('featuredEventsGrid');
+      const heroVisualGrid = document.getElementById('heroVisualGrid');
+      const statElements = {
+        events: document.querySelector('[data-counter="events"]'),
+        tickets: document.querySelector('[data-counter="tickets"]'),
+        users: document.querySelector('[data-counter="users"]'),
+        cities: document.querySelector('[data-counter="cities"]')
+      };
+      const revealElements = document.querySelectorAll('.reveal');
+
+      const fallbackStats = {
+        events: 500,
+        tickets: 10000,
+        users: 8000,
+        cities: 50
+      };
+
+      function toNumber(value, fallback = 0) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : fallback;
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatDate(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Date TBA';
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      function normalizeCategory(rawType) {
+        const source = String(rawType || '').toLowerCase();
+        if (source.includes('music')) return { label: 'Music', className: 'badge-music' };
+        if (source.includes('workshop')) return { label: 'Workshop', className: 'badge-workshop' };
+        if (source.includes('art')) return { label: 'Art', className: 'badge-art' };
+        if (source.includes('tour')) return { label: 'Tour', className: 'badge-tour' };
+        if (source.includes('sport')) return { label: 'Sports', className: 'badge-sports' };
+        if (source.includes('business')) return { label: 'Business', className: 'badge-business' };
+        return { label: rawType || 'Event', className: 'badge-default' };
+      }
+
+      function formatCounterValue(value, formatType) {
+        const safeValue = Math.max(0, Math.round(value));
+        if (formatType === 'compact') {
+          return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(safeValue);
+        }
+        return safeValue.toLocaleString('en-US');
+      }
+
+      function animateCounter(element, target) {
+        if (!element) return;
+        const safeTarget = Math.max(0, Math.round(target));
+        const suffix = element.dataset.suffix || '';
+        const formatType = element.dataset.format || 'full';
+        const duration = 1400;
+        const start = performance.now();
+
+        function frame(now) {
+          const elapsed = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - elapsed, 3);
+          const current = Math.round(safeTarget * eased);
+          element.textContent = `${formatCounterValue(current, formatType)}${suffix}`;
+          if (elapsed < 1) requestAnimationFrame(frame);
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      function initRevealAnimations() {
+        if (!('IntersectionObserver' in window)) {
+          revealElements.forEach((el) => el.classList.add('is-visible'));
+          return;
+        }
+
+        const revealObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.2 });
+
+        revealElements.forEach((el) => {
+          if (!el.classList.contains('is-visible')) {
+            revealObserver.observe(el);
+          }
+        });
+      }
+
+      function renderFeaturedEvents(events) {
+        if (!featuredGrid) return;
+        if (!Array.isArray(events) || events.length === 0) {
+          featuredGrid.innerHTML = `
+            <article class="featured-card empty-card">
+              <h3>No featured events yet</h3>
+              <p>New upcoming events will appear here as soon as they are published.</p>
+            </article>
+          `;
+          return;
+        }
+
+        featuredGrid.innerHTML = events.map((event) => {
+          const title = escapeHtml(event.title || 'Untitled Event');
+          const location = escapeHtml(event.location || 'TBA');
+          const date = escapeHtml(formatDate(event.event_date));
+          const category = normalizeCategory(event.event_type);
+          const seatsRemaining = Math.max(0, toNumber(event.available_seats));
+          return `
+            <article class="featured-card">
+              <span class="featured-badge ${category.className}">${escapeHtml(category.label)}</span>
+              <h3>${title}</h3>
+              <ul class="featured-meta">
+                <li><span>Date</span><strong>${date}</strong></li>
+                <li><span>Location</span><strong>${location}</strong></li>
+                <li><span>Seats Remaining</span><strong>${seatsRemaining}</strong></li>
+              </ul>
+              <a class="featured-btn" href="/html/event-details.html?id=${encodeURIComponent(event.id)}">Get Info</a>
+            </article>
+          `;
+        }).join('');
+      }
+
+      function renderHeroPreview(events) {
+        if (!heroVisualGrid) return;
+        if (!Array.isArray(events) || events.length === 0) {
+          heroVisualGrid.innerHTML = `
+            <article class="preview-card">
+              <p class="preview-date">Coming Soon</p>
+              <h3>Upcoming events will appear here</h3>
+              <p class="preview-meta">Publish new events to refresh your hero preview.</p>
+            </article>
+          `;
+          return;
+        }
+
+        heroVisualGrid.innerHTML = events.slice(0, 4).map((event) => `
+          <article class="preview-card">
+            <p class="preview-date">${escapeHtml(formatDate(event.event_date))}</p>
+            <h3>${escapeHtml(event.title || 'Untitled Event')}</h3>
+            <p class="preview-meta">${escapeHtml(event.location || 'Location TBA')}</p>
+          </article>
+        `).join('');
+      }
+
+      function getUniqueCities(events) {
+        const cities = new Set();
+        (events || []).forEach((event) => {
+          const rawLocation = String(event.location || '').trim();
+          if (!rawLocation) return;
+          const city = rawLocation.split(',')[0].trim().toLowerCase();
+          if (city) cities.add(city);
+        });
+        return cities.size;
+      }
+
+      function deriveStats(events) {
+        if (!Array.isArray(events) || events.length === 0) return fallbackStats;
+
+        const totalEvents = events.length;
+        const ticketsSold = events.reduce((sum, event) => {
+          const maxSeats = Math.max(0, toNumber(event.max_seats));
+          const available = Math.max(0, toNumber(event.available_seats));
+          return sum + Math.max(0, maxSeats - available);
+        }, 0);
+        const organizers = new Set(events.map((event) => event.organizer_id).filter(Boolean)).size;
+        const attendanceSignals = events.reduce((sum, event) => sum + Math.max(0, toNumber(event.final_attendance_count)), 0);
+        const inferredUsers = Math.max(organizers, Math.round(attendanceSignals * 0.6));
+        const coveredCities = getUniqueCities(events);
+
+        return {
+          events: Math.max(totalEvents, fallbackStats.events),
+          tickets: Math.max(ticketsSold, fallbackStats.tickets),
+          users: Math.max(inferredUsers, fallbackStats.users),
+          cities: Math.max(coveredCities, fallbackStats.cities)
+        };
+      }
+
+      function initStatsObserver(finalStats) {
+        const statsSection = document.getElementById('platform-stats');
+        if (!statsSection) return;
+
+        let hasAnimated = false;
+
+        function runCounters() {
+          if (hasAnimated) return;
+          hasAnimated = true;
+          animateCounter(statElements.events, finalStats.events);
+          animateCounter(statElements.tickets, finalStats.tickets);
+          animateCounter(statElements.users, finalStats.users);
+          animateCounter(statElements.cities, finalStats.cities);
+        }
+
+        if (!('IntersectionObserver' in window)) {
+          runCounters();
+          return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              runCounters();
+              observer.disconnect();
+            }
+          });
+        }, { threshold: 0.35 });
+
+        observer.observe(statsSection);
+      }
+
+      async function fetchEvents(view) {
+        const response = await fetch(`${API_BASE_URL}/Events?view=${encodeURIComponent(view)}`, { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok || !data.success || !Array.isArray(data.events)) {
+          throw new Error(data.message || `Failed to load ${view} events`);
+        }
+        return data.events;
+      }
+
+      async function loadHomepageData() {
+        try {
+          const [upcomingEvents, allEvents] = await Promise.all([fetchEvents('upcoming'), fetchEvents('all')]);
+          const featured = upcomingEvents.slice(0, 4);
+
+          renderFeaturedEvents(featured);
+          renderHeroPreview(featured);
+          initStatsObserver(deriveStats(allEvents));
+        } catch (error) {
+          console.error('Homepage data load error:', error);
+          renderFeaturedEvents([]);
+          renderHeroPreview([]);
+          initStatsObserver(fallbackStats);
+        }
+      }
+
+      initRevealAnimations();
+      loadHomepageData();
+    })();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+

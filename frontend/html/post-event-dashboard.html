@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post-Event Dashboard | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/post-event-dashboard.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header class="dashboard-header">
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p class="brand-subtitle">Post-Event Analytics Dashboard</p>
+        </div>
+      </a>
+      <a class="btn back-btn" href="/html/my-events.html">Back to My Events</a>
+    </header>
+
+    <section class="panel event-hero">
+      <div class="hero-content">
+        <p class="section-kicker">Event Performance Report</p>
+        <div class="hero-title-row">
+          <h1 id="eventTitle">Loading event...</h1>
+          <span class="event-status-badge">ENDED</span>
+        </div>
+        <p id="eventMeta" class="event-meta">Loading event details...</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn action-btn excel-btn" id="exportExcelBtn" type="button">&#128202; Export Excel</button>
+        <button class="btn action-btn pdf-btn" id="exportPdfBtn" type="button">&#128196; Export PDF</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Key Stats</h2>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-head"><span>Loading...</span></div>
+          <div class="stat-value">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel vault-panel" id="vaultPanel">
+      <div class="vault-panel-head">
+        <div>
+          <h2 class="section-title"><span aria-hidden="true">💰</span> Event Vault</h2>
+          <p class="vault-panel-subtitle">Held in escrow and released after the event ends</p>
+        </div>
+        <span id="vaultStatusBadge" class="vault-status-badge">Loading...</span>
+      </div>
+
+      <div class="vault-panel-grid">
+        <article class="vault-highlight-card">
+          <p class="vault-highlight-label">Vault Balance</p>
+          <p class="vault-highlight-value" id="vaultBalanceValue">0.00 EGP</p>
+          <p class="vault-highlight-note" id="vaultAvailableDate">Withdrawal availability date: -</p>
+          <button class="btn vault-withdraw-btn" id="vaultWithdrawBtn" type="button" disabled>Withdraw to Wallet</button>
+          <p class="vault-withdraw-hint" id="vaultWithdrawHint">Checking withdrawal eligibility...</p>
+        </article>
+
+        <div class="vault-mini-stats">
+          <article class="mini-card">
+            <p class="mini-label">💰 Total Collected</p>
+            <p class="mini-value" id="vaultCollectedValue">0.00 EGP</p>
+          </article>
+          <article class="mini-card">
+            <p class="mini-label">🔄 Total Refunded</p>
+            <p class="mini-value" id="vaultRefundedValue">0.00 EGP</p>
+          </article>
+          <article class="mini-card">
+            <p class="mini-label">📊 Net Balance</p>
+            <p class="mini-value" id="vaultNetValue">0.00 EGP</p>
+          </article>
+          <article class="mini-card">
+            <p class="mini-label">🏦 Total Withdrawn</p>
+            <p class="mini-value" id="vaultWithdrawnValue">0.00 EGP</p>
+          </article>
+        </div>
+      </div>
+
+      <div class="analytics-card vault-timeline-card">
+        <h3 class="sub-heading">Vault Transactions Timeline</h3>
+        <canvas id="vaultTimelineChart" class="chart-canvas timeline-canvas"></canvas>
+        <div id="vaultTimelineEmpty" class="empty-note" hidden>No vault transaction data available yet.</div>
+      </div>
+    </section>
+
+    <section class="panel analytics-layout">
+      <div class="analytics-card">
+        <h3 class="sub-heading">Ticket Breakdown</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticket Type</th>
+                <th>Booked Seats</th>
+                <th>Empty Seats</th>
+                <th>Revenue</th>
+                <th>Fill Rate</th>
+              </tr>
+            </thead>
+            <tbody id="breakdownBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="analytics-card">
+        <div class="chart-heading-row">
+          <h3 class="sub-heading">Booking Distribution</h3>
+          <div class="chart-toggle">
+            <button class="toggle-btn is-active" id="barBookingsBtn" type="button">Bookings Count</button>
+            <button class="toggle-btn" id="barRevenueBtn" type="button">Revenue</button>
+          </div>
+        </div>
+        <canvas id="distributionChart" class="chart-canvas"></canvas>
+      </div>
+    </section>
+
+    <section class="panel analytics-layout charts-second-row">
+      <div class="analytics-card">
+        <h3 class="sub-heading">Revenue by Ticket Type</h3>
+        <canvas id="revenueDonutChart" class="chart-canvas donut-canvas"></canvas>
+      </div>
+      <div class="analytics-card">
+        <h3 class="sub-heading">Revenue Timeline</h3>
+        <canvas id="timelineChart" class="chart-canvas timeline-canvas"></canvas>
+      </div>
+    </section>
+
+    <section class="panel analytics-layout">
+      <div class="analytics-card">
+        <h3 class="sub-heading">Attendee Demographics</h3>
+        <canvas id="governorateChart" class="chart-canvas demographics-canvas"></canvas>
+        <div id="demographicsEmpty" class="empty-note" hidden>No demographics data available for this event.</div>
+      </div>
+      <div class="analytics-card">
+        <h3 class="sub-heading">Gender Distribution</h3>
+        <canvas id="genderChart" class="chart-canvas donut-canvas"></canvas>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Cancellations Summary</h2>
+      <div class="cancellation-grid">
+        <article class="mini-card">
+          <p class="mini-label">Total Cancellations</p>
+          <p class="mini-value" id="cancelCount">0</p>
+        </article>
+        <article class="mini-card">
+          <p class="mini-label">Total Refunded Amount</p>
+          <p class="mini-value" id="refundTotal">0 EGP</p>
+        </article>
+        <article class="mini-card">
+          <p class="mini-label">Cancellation Rate</p>
+          <p class="mini-value" id="cancelRate">0%</p>
+        </article>
+      </div>
+      <div class="cancel-reasons">
+        <h4>Cancellation Reasons</h4>
+        <ul id="cancelReasonsList"></ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="rating-top-row">
+        <h2 class="section-title">Ratings & Reviews</h2>
+        <span class="summary-chip" id="ratingSummary">Average: 0.0 / 5</span>
+      </div>
+      <div class="ratings-layout">
+        <div class="rating-overview">
+          <p class="avg-score" id="avgRatingNumber">0.0</p>
+          <p class="avg-stars" id="avgRatingStars">&#9734;&#9734;&#9734;&#9734;&#9734;</p>
+          <p class="avg-note" id="ratingCountNote">0 reviews</p>
+          <div class="rating-distribution" id="ratingDistribution"></div>
+        </div>
+        <div class="reviews-column" id="reviewsList">
+          <p class="empty-note">Loading reviews...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../js/post-event-dashboard.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+

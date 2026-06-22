@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Notifications</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/notification.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn active auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Notifications</h1>
+      <p>Track bookings, payments, event activity, and support updates in one organized feed.</p>
+    </section>
+
+    <section class="container">
+      <div class="container-head">
+        <div>
+          <h2>Inbox</h2>
+          <p>Latest updates from Elshaboury Events.</p>
+        </div>
+        <div class="actions">
+          <button id="markAllBtn" class="action-btn mark-all" type="button">Mark All as Read</button>
+          <button id="deleteAllBtn" class="action-btn delete-all" type="button">Delete All</button>
+        </div>
+      </div>
+
+      <div class="notification-stats">
+        <article class="stat-box">
+          <span class="stat-icon stat-total">&#128233;</span>
+          <div>
+            <div class="stat-value" id="totalCount">0</div>
+            <div class="stat-label">Total Messages</div>
+          </div>
+        </article>
+        <article class="stat-box">
+          <span class="stat-icon stat-unread">&#128276;</span>
+          <div>
+            <div class="stat-value accent" id="unreadCount">0</div>
+            <div class="stat-label">Unread</div>
+          </div>
+        </article>
+        <article class="stat-box">
+          <span class="stat-icon stat-read">&#9989;</span>
+          <div>
+            <div class="stat-value success" id="readCount">0</div>
+            <div class="stat-label">Read Messages</div>
+          </div>
+        </article>
+      </div>
+
+      <div class="notification-tabs" id="notificationTabs" role="tablist" aria-label="Notification categories">
+        <button class="tab-btn active" type="button" role="tab" data-tab="all" aria-selected="true">
+          All <span class="tab-count" id="tabCountAll">0</span>
+        </button>
+        <button class="tab-btn" type="button" role="tab" data-tab="bookings" aria-selected="false">
+          Bookings <span class="tab-count" id="tabCountBookings">0</span>
+        </button>
+        <button class="tab-btn" type="button" role="tab" data-tab="payments" aria-selected="false">
+          Payments <span class="tab-count" id="tabCountPayments">0</span>
+        </button>
+        <button class="tab-btn" type="button" role="tab" data-tab="events" aria-selected="false">
+          Events <span class="tab-count" id="tabCountEvents">0</span>
+        </button>
+        <button class="tab-btn" type="button" role="tab" data-tab="support" aria-selected="false">
+          Support <span class="tab-count" id="tabCountSupport">0</span>
+        </button>
+      </div>
+
+      <div id="notificationList" class="notification-list">
+        <div class="notifications-feedback">Loading notifications...</div>
+      </div>
+
+      <div class="load-more-wrap">
+        <button id="loadMoreBtn" class="load-more-btn" type="button" hidden>Load More</button>
+      </div>
+    </section>
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form -></a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => {
+        const isOpen = header.classList.contains('menu-open');
+        setMenuState(!isOpen);
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            setMenuState(false);
+          }
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+          setMenuState(false);
+        }
+      });
+    })();
+
+    const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+    const PAGE_SIZE = 8;
+
+    const notificationList = document.getElementById('notificationList');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const notificationTabs = document.getElementById('notificationTabs');
+    const markAllBtn = document.getElementById('markAllBtn');
+    const deleteAllBtn = document.getElementById('deleteAllBtn');
+
+    let allNotifications = [];
+    let activeTab = 'all';
+    let visibleCount = PAGE_SIZE;
+
+        const iconMap = {
+      payment: { emoji: '\u{1F4B3}', className: 'icon-payment' },
+      booking: { emoji: '\u{1F39F}\u{FE0F}', className: 'icon-booking' },
+      cancellation: { emoji: '\u274C', className: 'icon-cancellation' },
+      event: { emoji: '\u{1F3DF}\u{FE0F}', className: 'icon-event' },
+      support: { emoji: '\u{1F4AC}', className: 'icon-support' }
+    };
+
+    function getAuthToken() {
+      return localStorage.getItem('token');
+    }
+
+    function isRead(notification) {
+      const value = notification?.is_read;
+      return value === true || value === 1 || value === '1';
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatTimestamp(input) {
+      const date = new Date(input);
+      if (Number.isNaN(date.getTime())) return '';
+
+      const now = new Date();
+      const diffMs = now - date;
+      const minute = 60 * 1000;
+      const hour = 60 * minute;
+      const day = 24 * hour;
+
+      if (diffMs < minute) return 'Just now';
+      if (diffMs < hour) {
+        const minutes = Math.max(1, Math.floor(diffMs / minute));
+        return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+      }
+      if (diffMs < day) {
+        const hours = Math.max(1, Math.floor(diffMs / hour));
+        return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+      }
+
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      if (date.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+      }
+
+      if (diffMs < 7 * day) {
+        const days = Math.floor(diffMs / day);
+        return `${days} day${days === 1 ? '' : 's'} ago`;
+      }
+
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+
+        function classifyNotification(notification) {
+      const text = `${notification.title || ''} ${notification.message || ''}`.toLowerCase();
+
+      const isSupport = text.includes('support reply') || text.includes('support request') || text.includes('support');
+      const isCancellation = text.includes('cancelled') || text.includes('canceled');
+      const isBooking =
+        text.includes('booking confirmed') ||
+        text.includes('ticket cancelled') ||
+        text.includes('booking cancelled') ||
+        text.includes('booking canceled');
+      const isEventCancellation =
+        text.includes('event cancelled') ||
+        text.includes('event canceled');
+      const isPayment =
+        text.includes('payment successful') ||
+        text.includes('wallet') ||
+        text.includes('top-up') ||
+        text.includes('top up') ||
+        text.includes('transaction') ||
+        (text.includes('refund') && !isBooking && !isEventCancellation);
+
+      let tab = 'events';
+      if (isSupport) tab = 'support';
+      else if (isBooking) tab = 'bookings';
+      else if (isPayment) tab = 'payments';
+
+      let visual = 'event';
+      if (isSupport) visual = 'support';
+      else if (isCancellation) visual = 'cancellation';
+      else if (isPayment) visual = 'payment';
+      else if (isBooking) visual = 'booking';
+
+      return { tab, visual };
+    }
+
+    function getFilteredNotifications() {
+      if (activeTab === 'all') return allNotifications;
+      return allNotifications.filter((notification) => classifyNotification(notification).tab === activeTab);
+    }
+
+    function updateStats() {
+      const total = allNotifications.length;
+      const unread = allNotifications.filter((notification) => !isRead(notification)).length;
+      const read = Math.max(0, total - unread);
+
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('unreadCount').textContent = unread;
+      document.getElementById('readCount').textContent = read;
+    }
+
+    function updateTabCounts() {
+      const counts = {
+        all: allNotifications.length,
+        bookings: 0,
+        payments: 0,
+        events: 0,
+        support: 0
+      };
+
+      allNotifications.forEach((notification) => {
+        const { tab } = classifyNotification(notification);
+        counts[tab] += 1;
+      });
+
+      document.getElementById('tabCountAll').textContent = counts.all;
+      document.getElementById('tabCountBookings').textContent = counts.bookings;
+      document.getElementById('tabCountPayments').textContent = counts.payments;
+      document.getElementById('tabCountEvents').textContent = counts.events;
+      document.getElementById('tabCountSupport').textContent = counts.support;
+    }
+
+    function renderFeedback(message, withRetry = false) {
+      notificationList.innerHTML = `
+        <div class="notifications-feedback">
+          <p>${escapeHtml(message)}</p>
+          ${withRetry ? '<button class="retry-btn" type="button" id="retryLoadBtn">Retry</button>' : ''}
+        </div>
+      `;
+
+      if (withRetry) {
+        const retryBtn = document.getElementById('retryLoadBtn');
+        if (retryBtn) retryBtn.addEventListener('click', loadNotifications);
+      }
+    }
+
+    function renderEmptyState() {
+      notificationList.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">&#128236;</div>
+          <h3>You are all caught up!</h3>
+          <p>No notifications in this category right now.</p>
+        </div>
+      `;
+      loadMoreBtn.hidden = true;
+    }
+
+    function renderNotifications() {
+      updateStats();
+      updateTabCounts();
+
+      const filtered = getFilteredNotifications();
+      if (filtered.length === 0) {
+        renderEmptyState();
+        return;
+      }
+
+      const visibleItems = filtered.slice(0, visibleCount);
+      notificationList.innerHTML = visibleItems.map((notification, index) => {
+        const { visual } = classifyNotification(notification);
+        const icon = iconMap[visual] || iconMap.event;
+        const readClass = isRead(notification) ? 'read' : 'unread';
+        const safeTitle = escapeHtml(notification.title || 'Notification');
+        const safeMessage = escapeHtml(notification.message || '');
+        const timeLabel = escapeHtml(formatTimestamp(notification.created_at));
+
+        return `
+          <article class="notification-card ${readClass}" data-id="${notification.id}" style="animation-delay:${Math.min(index * 40, 300)}ms">
+            <div class="notification-icon ${icon.className}" aria-hidden="true">${icon.emoji}</div>
+            <div class="notification-body">
+              <div class="notification-head-row">
+                <h3>${safeTitle}</h3>
+                <span class="notification-time">${timeLabel}</span>
+              </div>
+              <p>${safeMessage}</p>
+            </div>
+            <button class="delete-btn" type="button" data-action="delete" data-id="${notification.id}">Delete</button>
+          </article>
+        `;
+      }).join('');
+
+      const remaining = filtered.length - visibleItems.length;
+      if (remaining > 0) {
+        loadMoreBtn.hidden = false;
+        loadMoreBtn.textContent = `Load More (${remaining} remaining)`;
+      } else {
+        loadMoreBtn.hidden = true;
+      }
+    }
+
+    async function loadNotifications() {
+      const token = getAuthToken();
+
+      if (!token) {
+        allNotifications = [];
+        updateStats();
+        updateTabCounts();
+        renderFeedback('Please sign in to view notifications.');
+        loadMoreBtn.hidden = true;
+        return;
+      }
+
+      renderFeedback('Loading notifications...');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Notifications`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success || !Array.isArray(data.notifications)) {
+          throw new Error(data.message || 'Error loading notifications');
+        }
+
+        allNotifications = data.notifications;
+        visibleCount = PAGE_SIZE;
+        renderNotifications();
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+        allNotifications = [];
+        updateStats();
+        updateTabCounts();
+        renderFeedback(error.message || 'Error loading notifications.', true);
+        loadMoreBtn.hidden = true;
+      }
+    }
+
+    async function markRead(id) {
+      const notification = allNotifications.find((item) => String(item.id) === String(id));
+      if (!notification || isRead(notification)) return;
+
+      const token = getAuthToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Notifications/${id}/read`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to mark notification as read');
+
+        notification.is_read = true;
+        renderNotifications();
+      } catch (error) {
+        console.error('Error marking as read:', error);
+      }
+    }
+
+    async function deleteNotification(id) {
+      const token = getAuthToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Notifications/${id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to delete notification');
+
+        allNotifications = allNotifications.filter((item) => String(item.id) !== String(id));
+        renderNotifications();
+      } catch (error) {
+        console.error('Error deleting notification:', error);
+      }
+    }
+
+    async function markAllRead() {
+      const token = getAuthToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Notifications/read-all`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to mark all as read');
+
+        allNotifications = allNotifications.map((notification) => ({
+          ...notification,
+          is_read: true
+        }));
+        renderNotifications();
+      } catch (error) {
+        console.error('Error marking all as read:', error);
+      }
+    }
+
+    async function deleteAll() {
+      const token = getAuthToken();
+      if (!token) return;
+
+      const confirmed = confirm('Delete all notifications permanently? This action cannot be undone.');
+      if (!confirmed) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/Notifications`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to delete all notifications');
+
+        allNotifications = [];
+        visibleCount = PAGE_SIZE;
+        renderNotifications();
+      } catch (error) {
+        console.error('Error deleting all notifications:', error);
+      }
+    }
+
+    notificationTabs.addEventListener('click', (event) => {
+      const target = event.target.closest('.tab-btn');
+      if (!target) return;
+
+      activeTab = target.dataset.tab || 'all';
+      visibleCount = PAGE_SIZE;
+
+      Array.from(notificationTabs.querySelectorAll('.tab-btn')).forEach((button) => {
+        const isActive = button === target;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-selected', String(isActive));
+      });
+
+      renderNotifications();
+    });
+
+    notificationList.addEventListener('click', async (event) => {
+      const deleteButton = event.target.closest('[data-action="delete"]');
+      if (deleteButton) {
+        event.stopPropagation();
+        const id = deleteButton.dataset.id;
+        if (id) await deleteNotification(id);
+        return;
+      }
+
+      const card = event.target.closest('.notification-card');
+      if (!card) return;
+      const id = card.dataset.id;
+      if (id) await markRead(id);
+    });
+
+    markAllBtn.addEventListener('click', markAllRead);
+    deleteAllBtn.addEventListener('click', deleteAll);
+
+    loadMoreBtn.addEventListener('click', () => {
+      visibleCount += PAGE_SIZE;
+      renderNotifications();
+    });
+
+    loadNotifications();
+  </script>
+
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
+

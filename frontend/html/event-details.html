@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Details | Elshaboury Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/event-details.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <section class="event-details-section" id="detailsSection">
+      <div class="loading-state">Loading event details...</div>
+    </section>
+  </main>
+
+  <div class="sticky-action-bar" id="stickyActionBar"></div>
+
+  <footer id="support">
+    <div class="footer-top">
+      <div class="footer-col">
+        <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+            <strong>Elshaboury Events</strong>
+            <p class="brand-subtitle">Curate. Celebrate. Connect.</p>
+          </div>
+      </a>
+        <p class="footer-copy">Professional event planning and booking in one smooth experience.</p>
+      </div>
+
+      <div class="footer-col">
+        <h3>Quick Links</h3>
+        <ul class="quick-links">
+          <li><a href="/html/index.html">Home</a></li>
+          <li><a href="/html/book-event.html">Book Event</a></li>
+          <li><a href="/html/create-event.html">Create Event</a></li>
+          <li><a href="/html/contact-form.html">Support</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h3>Contact</h3>
+        <ul class="contact-list">
+          <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+          <li><span>Phone:</span> +20-1013077615</li>
+          <li><span>Hotline:</span> +20-1029123440</li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h3>Connect</h3>
+        <div class="socials">
+          <span class="chip">Instagram</span>
+          <span class="chip">LinkedIn</span>
+          <span class="chip">Twitter</span>
+        </div>
+        <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form &rarr;</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => {
+        setMenuState(!header.classList.contains('menu-open'));
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) setMenuState(false);
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+      const params = new URLSearchParams(window.location.search);
+      const eventId = params.get('id');
+      const forcedPublicPreview = window.__eeForcePublicPreview === true || params.get('viewer') === 'public';
+      const detailsSection = document.getElementById('detailsSection');
+      const stickyActionBar = document.getElementById('stickyActionBar');
+
+      let mapInstance = null;
+      let currentEvent = null;
+      let currentBookingInfo = null;
+      let currentStatus = null;
+      let currentFavorite = false;
+      let reviewFormVisible = false;
+      let countdownIntervalId = null;
+      let viewsIntervalId = null;
+
+      function getAuthToken() {
+        if (forcedPublicPreview) return null;
+        return localStorage.getItem('token');
+      }
+
+      function isGuestUser() {
+        if (forcedPublicPreview) return true;
+        const token = getAuthToken();
+        const loginState = localStorage.getItem('isLoggedIn');
+        return !token || loginState === 'guest' || loginState === 'false';
+      }
+
+      function toNumber(value, fallback) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : (fallback || 0);
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatDate(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Date TBA';
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      function formatTime(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Time TBA';
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      }
+
+      function formatDateTime(value) {
+        return `${formatDate(value)} at ${formatTime(value)}`;
+      }
+
+      function formatPrice(value) {
+        const amount = toNumber(value);
+        if (amount <= 0) return 'Free';
+        return `${amount.toLocaleString('en-US')} EGP`;
+      }
+
+      function toBoolean(value) {
+        return value === true || value === 1 || value === '1' || value === 'true';
+      }
+
+      function formatCompactNumber(value) {
+        const safe = Math.max(0, toNumber(value, 0));
+        return safe.toLocaleString('en-US');
+      }
+
+      function isNewEvent(createdAt) {
+        const createdDate = new Date(createdAt);
+        if (Number.isNaN(createdDate.getTime())) return false;
+        const ageMs = Date.now() - createdDate.getTime();
+        return ageMs >= 0 && ageMs < (7 * 24 * 60 * 60 * 1000);
+      }
+
+      function getUrgencyMeta(event) {
+        const maxSeats = Math.max(0, toNumber(event.max_seats, 0));
+        const seatsRemaining = Math.max(0, toNumber(event.available_seats, 0));
+        const seatsSold = Math.max(0, maxSeats - seatsRemaining);
+        const soldPercent = maxSeats > 0
+          ? (toNumber(event.seats_sold_percentage, (seatsSold / maxSeats) * 100))
+          : 0;
+
+        const isSellingFast = toBoolean(event.is_selling_fast) || soldPercent >= 70;
+        const isAlmostFull = toBoolean(event.is_almost_full) || soldPercent >= 85;
+        const isLastFewSeats = toBoolean(event.is_last_few_seats) || (seatsRemaining > 0 && seatsRemaining < 10);
+        const isNew = event.is_new_event != null ? toBoolean(event.is_new_event) : isNewEvent(event.created_at);
+
+        return {
+          maxSeats,
+          seatsRemaining,
+          seatsSold,
+          soldPercent: Math.max(0, Math.min(100, soldPercent)),
+          isSellingFast,
+          isAlmostFull,
+          isLastFewSeats,
+          isNew
+        };
+      }
+
+      function getCountdownDayState(eventDate) {
+        const now = new Date();
+        if (eventDate.getTime() <= now.getTime()) return 'ended';
+
+        const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startTomorrow = new Date(startToday);
+        startTomorrow.setDate(startTomorrow.getDate() + 1);
+        const startAfterTomorrow = new Date(startTomorrow);
+        startAfterTomorrow.setDate(startAfterTomorrow.getDate() + 1);
+
+        if (eventDate >= startToday && eventDate < startTomorrow) return 'today';
+        if (eventDate >= startTomorrow && eventDate < startAfterTomorrow) return 'tomorrow';
+        return 'upcoming';
+      }
+
+      function formatCountdownParts(diffMs) {
+        const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return { days, hours, minutes, seconds };
+      }
+
+      function clearRealtimeIntervals() {
+        if (countdownIntervalId) {
+          window.clearInterval(countdownIntervalId);
+          countdownIntervalId = null;
+        }
+        if (viewsIntervalId) {
+          window.clearInterval(viewsIntervalId);
+          viewsIntervalId = null;
+        }
+      }
+
+      function startCountdown(eventDateValue) {
+        const countdownWrap = document.getElementById('countdownWrap');
+        const badgeEl = document.getElementById('countdownBadge');
+        const daysEl = document.getElementById('countdownDays');
+        const hoursEl = document.getElementById('countdownHours');
+        const minutesEl = document.getElementById('countdownMinutes');
+        const secondsEl = document.getElementById('countdownSeconds');
+        if (!countdownWrap || !badgeEl || !daysEl || !hoursEl || !minutesEl || !secondsEl) return;
+
+        const eventDate = new Date(eventDateValue);
+        if (Number.isNaN(eventDate.getTime())) {
+          countdownWrap.className = 'countdown-wrap state-ended';
+          badgeEl.textContent = 'EVENT ENDED';
+          daysEl.textContent = '0';
+          hoursEl.textContent = '0';
+          minutesEl.textContent = '0';
+          secondsEl.textContent = '0';
+          return;
+        }
+
+        const tick = () => {
+          const now = new Date();
+          const diffMs = eventDate.getTime() - now.getTime();
+          const parts = formatCountdownParts(diffMs);
+          const dayState = getCountdownDayState(eventDate);
+
+          daysEl.textContent = String(parts.days);
+          hoursEl.textContent = String(parts.hours).padStart(2, '0');
+          minutesEl.textContent = String(parts.minutes).padStart(2, '0');
+          secondsEl.textContent = String(parts.seconds).padStart(2, '0');
+
+          countdownWrap.className = `countdown-wrap state-${dayState}`;
+          if (dayState === 'today') {
+            badgeEl.textContent = 'TODAY';
+          } else if (dayState === 'tomorrow') {
+            badgeEl.textContent = 'TOMORROW';
+          } else if (dayState === 'ended') {
+            badgeEl.textContent = 'EVENT ENDED';
+          } else {
+            badgeEl.textContent = '';
+          }
+
+          if (diffMs <= 0 && countdownIntervalId) {
+            window.clearInterval(countdownIntervalId);
+            countdownIntervalId = null;
+          }
+        };
+
+        if (countdownIntervalId) {
+          window.clearInterval(countdownIntervalId);
+          countdownIntervalId = null;
+        }
+        tick();
+        countdownIntervalId = window.setInterval(tick, 1000);
+      }
+
+      async function trackEventView(eventIdValue) {
+        try {
+          await fetch(`${API_BASE_URL}/Events/${eventIdValue}/view`, {
+            method: 'POST',
+            cache: 'no-store'
+          });
+        } catch (_) {}
+      }
+
+      async function loadViewsCounter(eventIdValue) {
+        const counterEl = document.getElementById('viewCounter');
+        if (!counterEl) return;
+        try {
+          const response = await fetch(`${API_BASE_URL}/Events/${eventIdValue}/views`, {
+            cache: 'no-store'
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to load views');
+          }
+          const total = Math.max(0, toNumber(data.views_last_24_hours, 0));
+          counterEl.innerHTML = `<span>&#128065;</span> ${formatCompactNumber(total)} people viewed today`;
+        } catch (_) {
+          counterEl.innerHTML = '<span>&#128065;</span> View count unavailable';
+        }
+      }
+
+      function startViewsPolling(eventIdValue) {
+        if (viewsIntervalId) {
+          window.clearInterval(viewsIntervalId);
+          viewsIntervalId = null;
+        }
+        loadViewsCounter(eventIdValue);
+        viewsIntervalId = window.setInterval(() => loadViewsCounter(eventIdValue), 30000);
+      }
+
+      function normalizeCategory(rawType) {
+        const source = String(rawType || '').toLowerCase();
+        if (source.includes('music')) return { label: 'Music', className: 'badge-music' };
+        if (source.includes('workshop')) return { label: 'Workshop', className: 'badge-workshop' };
+        if (source.includes('art')) return { label: 'Art', className: 'badge-art' };
+        if (source.includes('tour')) return { label: 'Tour', className: 'badge-tour' };
+        if (source.includes('sport')) return { label: 'Sports', className: 'badge-sports' };
+        if (source.includes('business')) return { label: 'Business', className: 'badge-business' };
+        return { label: rawType || 'Event', className: 'badge-default' };
+      }
+
+      function getCityName(locationText) {
+        const raw = String(locationText || '').trim();
+        if (!raw) return '';
+        return raw.split(',')[0].trim().toLowerCase();
+      }
+
+      function getStatus(event, eventDate) {
+        const rawEventStatus = String(event.event_status || '').toLowerCase();
+        const now = new Date();
+        const forcedExpiredFuture = event.lifecycle_status === 'expired' && eventDate > now;
+        if (rawEventStatus === 'rejected' || rawEventStatus === 'cancelled' || forcedExpiredFuture) {
+          return { key: 'cancelled', label: 'Cancelled', className: 'status-cancelled' };
+        }
+
+        const isEnded = event.lifecycle_status === 'expired' || eventDate <= now;
+        if (isEnded) {
+          return { key: 'ended', label: 'Ended', className: 'status-ended' };
+        }
+
+        return { key: 'active', label: 'Active', className: 'status-active' };
+      }
+
+      function computeTicketLimits(totalSeats) {
+        const safeTotal = Math.max(0, toNumber(totalSeats));
+        const standard = Math.floor(safeTotal * 0.5);
+        const special = Math.floor(safeTotal * (2 / 6));
+        const vip = Math.max(0, safeTotal - standard - special);
+        return { standard, special, vip };
+      }
+
+      function getTicketState(available, capacity) {
+        if (available <= 0) {
+          return { key: 'soldout', label: 'Sold Out', className: 'state-soldout', progress: 0 };
+        }
+        if (capacity <= 0) {
+          return { key: 'unknown', label: 'Availability', className: 'state-warning', progress: 35 };
+        }
+        const ratio = Math.max(0, Math.min(1, available / capacity));
+        if (ratio <= 0.18) {
+          return { key: 'critical', label: 'Almost Full', className: 'state-critical', progress: Math.round(ratio * 100) };
+        }
+        if (ratio <= 0.4) {
+          return { key: 'limited', label: 'Limited', className: 'state-warning', progress: Math.round(ratio * 100) };
+        }
+        return { key: 'healthy', label: 'Available', className: 'state-healthy', progress: Math.round(ratio * 100) };
+      }
+
+      function getInitials(name) {
+        const safeName = String(name || 'OR').trim();
+        if (!safeName) return 'OR';
+        const parts = safeName.split(/\s+/).slice(0, 2);
+        return parts.map((item) => item.charAt(0).toUpperCase()).join('');
+      }
+
+      function agendaToItems(agendaText) {
+        const rows = String(agendaText || '')
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .map((line) => line.replace(/^[-*]\s*/, ''))
+          .filter(Boolean);
+        return rows;
+      }
+
+      function buildStars(rating) {
+        const safe = Math.max(0, Math.min(5, Math.round(toNumber(rating, 0))));
+        let stars = '';
+        for (let i = 1; i <= 5; i += 1) {
+          stars += `<span class="${i <= safe ? 'star-filled' : 'star-empty'}">&#9733;</span>`;
+        }
+        return stars;
+      }
+
+      function buildAverageStars(rating) {
+        const safe = Math.max(0, Math.min(5, toNumber(rating, 0)));
+        const rounded = Math.round(safe);
+        let stars = '';
+        for (let i = 1; i <= 5; i += 1) {
+          stars += `<span class="${i <= rounded ? 'star-filled' : 'star-empty'}">&#9733;</span>`;
+        }
+        return stars;
+      }
+
+      function buildShareLinks(event) {
+        const pageUrl = encodeURIComponent(window.location.href);
+        const title = encodeURIComponent(`Check out ${event.title} on Elshaboury Events`);
+        return {
+          facebook: `https://www.facebook.com/sharer/sharer.php?u=${pageUrl}`,
+          twitter: `https://twitter.com/intent/tweet?text=${title}&url=${pageUrl}`,
+          whatsapp: `https://wa.me/?text=${title}%20${pageUrl}`
+        };
+      }
+
+      function buildDirectionsUrl(event) {
+        const lat = Number(event.latitude);
+        const lng = Number(event.longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+        }
+        const query = event.venue_address || event.location || event.title || '';
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+      }
+
+      function getBookingAction(event, status, bookingInfo) {
+        const seatsAvailable = Math.max(0, toNumber(event.available_seats, 0));
+        const isLoggedIn = !isGuestUser();
+
+        if (status.key === 'cancelled') {
+          return {
+            disabled: true,
+            label: 'Event Cancelled',
+            hint: 'This event is no longer available for booking.',
+            mode: 'unavailable'
+          };
+        }
+
+        if (status.key === 'ended') {
+          return {
+            disabled: true,
+            label: 'Event Ended',
+            hint: 'This event has ended. Reservations are closed.',
+            mode: 'unavailable'
+          };
+        }
+
+        if (seatsAvailable <= 0) {
+          return {
+            disabled: false,
+            label: isLoggedIn ? 'Join Waitlist' : 'Sign In to Join Waitlist',
+            hint: 'All seats are taken right now.',
+            mode: 'waitlist'
+          };
+        }
+
+        if (!isLoggedIn) {
+          return {
+            disabled: false,
+            label: 'Sign In to Reserve',
+            hint: 'Sign in to continue with seat reservation.',
+            mode: 'signin'
+          };
+        }
+
+        if (bookingInfo) {
+          return {
+            disabled: false,
+            label: 'Book Another Seat',
+            hint: 'You are already attending this event.',
+            mode: 'book-more'
+          };
+        }
+
+        return {
+          disabled: false,
+          label: 'Reserve Seat',
+          hint: 'Secure your seat before availability changes.',
+          mode: 'reserve'
+        };
+      }
+
+      function renderStickyAction(action, hasBooking) {
+        if (!stickyActionBar) return;
+        const attendingBadge = hasBooking
+          ? '<span class="attending-badge">&#10003; You Are Attending</span>'
+          : '';
+        const disabledAttr = action.disabled ? 'disabled' : '';
+
+        stickyActionBar.innerHTML = `
+          <div class="sticky-action-inner">
+            <div class="sticky-meta">
+              ${attendingBadge}
+              <p>${escapeHtml(action.hint)}</p>
+            </div>
+            <button class="sticky-book-btn ${action.mode === 'unavailable' ? 'is-disabled' : ''}" data-action="primary-booking" ${disabledAttr}>
+              ${escapeHtml(action.label)}
+            </button>
+          </div>
+        `;
+      }
+
+      function renderMainLayout(event, status, bookingInfo) {
+        const category = normalizeCategory(event.event_type);
+        const organizerName = event.host_name || event.organizer_name || 'Organizer';
+        const organizerEmail = event.host_email || 'N/A';
+        const organizerPhone = event.host_phone || 'N/A';
+        const organizerProfileUrl = event.organizer_id
+          ? `/organizer/${encodeURIComponent(event.organizer_id)}`
+          : '';
+        const eventDateTime = formatDateTime(event.event_date);
+        const terms = event.terms_conditions ? escapeHtml(event.terms_conditions) : 'No additional terms.';
+        const seatsTotal = Math.max(0, toNumber(event.max_seats, 0));
+        const directionsUrl = buildDirectionsUrl(event);
+        const shareLinks = buildShareLinks(event);
+        const limits = computeTicketLimits(seatsTotal);
+        const agendaItems = agendaToItems(event.event_agenda);
+        const urgency = getUrgencyMeta(event);
+        const seatsFillClass = urgency.soldPercent >= 85
+          ? 'seats-danger'
+          : (urgency.soldPercent >= 70 ? 'seats-warning' : 'seats-healthy');
+
+        const ticketTypes = [
+          {
+            key: 'standard',
+            label: 'Standard',
+            price: toNumber(event.price_standard, 0),
+            available: Math.max(0, toNumber(event.available_standard, Math.floor(seatsTotal * 0.5))),
+            capacity: Math.max(0, toNumber(event.limit_standard, limits.standard))
+          },
+          {
+            key: 'special',
+            label: 'Special',
+            price: toNumber(event.price_special, 0),
+            available: Math.max(0, toNumber(event.available_special, Math.floor(seatsTotal * (2 / 6)))),
+            capacity: Math.max(0, toNumber(event.limit_special, limits.special))
+          },
+          {
+            key: 'vip',
+            label: 'VIP',
+            price: toNumber(event.price_vip, 0),
+            available: Math.max(0, toNumber(event.available_vip, limits.vip)),
+            capacity: Math.max(0, toNumber(event.limit_vip, limits.vip))
+          }
+        ];
+
+        const ticketCards = ticketTypes.map((ticket) => {
+          const state = getTicketState(ticket.available, ticket.capacity);
+          const capacityText = ticket.capacity > 0
+            ? `${ticket.available} of ${ticket.capacity} seats remaining`
+            : `${ticket.available} seats remaining`;
+          const soldOutBadge = state.key === 'soldout' ? '<span class="sold-out-pill">SOLD OUT</span>' : '';
+
+          return `
+            <article class="ticket-card ${state.className}">
+              <div class="ticket-top">
+                <h4>${ticket.label}</h4>
+                <span class="ticket-state">${state.label}</span>
+              </div>
+              <p class="ticket-price">${formatPrice(ticket.price)}</p>
+              <div class="ticket-progress-track">
+                <div class="ticket-progress-fill" style="width:${state.progress}%;"></div>
+              </div>
+              <p class="ticket-capacity">${capacityText}</p>
+              ${soldOutBadge}
+            </article>
+          `;
+        }).join('');
+
+        const heroImage = event.image_url
+          ? `<img class="event-hero-image" src="${escapeHtml(event.image_url)}" alt="${escapeHtml(event.title || 'Event image')}" onerror="this.remove()">`
+          : '';
+        const heroGradientClass = event.image_url ? '' : 'hero-gradient-only';
+
+        const agendaMarkup = agendaItems.length
+          ? `
+            <div class="agenda-wrap">
+              <h3>Agenda Timeline</h3>
+              <ol class="agenda-timeline">
+                ${agendaItems.map((item, idx) => `
+                  <li>
+                    <span class="agenda-index">${idx + 1}</span>
+                    <p>${escapeHtml(item)}</p>
+                  </li>
+                `).join('')}
+              </ol>
+            </div>
+          `
+          : '';
+
+        const bookingBadge = bookingInfo
+          ? '<span class="attendance-pill">&#10003; You are attending this event</span>'
+          : '';
+        const urgencyBadgeItems = [];
+        if (urgency.isSellingFast) {
+          urgencyBadgeItems.push('<span class="urgency-pill urgency-selling-fast">&#128293; Selling Fast</span>');
+        }
+        if (urgency.isAlmostFull) {
+          urgencyBadgeItems.push('<span class="urgency-pill urgency-almost-full">&#9889; Almost Full</span>');
+        }
+        if (urgency.isNew) {
+          urgencyBadgeItems.push('<span class="urgency-pill urgency-new-event">&#128280; New Event</span>');
+        }
+        const urgencyBadgesMarkup = urgencyBadgeItems.join('');
+        const lastFewSeatsMarkup = urgency.isLastFewSeats
+          ? `<p class="last-seats-text">&#127915; Only ${Math.max(0, urgency.seatsRemaining)} seats left</p>`
+          : '';
+        const bookingUrgencyBanner = urgency.isAlmostFull && urgency.seatsRemaining > 0
+          ? `<div class="booking-urgency-banner">Hurry! Only ${Math.max(0, urgency.seatsRemaining)} seats left at this price</div>`
+          : '';
+        const organizerNameMarkup = organizerProfileUrl
+          ? `
+            <a class="organizer-link" href="${organizerProfileUrl}">${escapeHtml(organizerName)}</a>
+            <a class="organizer-profile-link" href="${organizerProfileUrl}">View Profile &rarr;</a>
+          `
+          : `<span>${escapeHtml(organizerName)}</span>`;
+
+        detailsSection.innerHTML = `
+          <article class="event-hero ${heroGradientClass}">
+            ${heroImage}
+            <div class="event-hero-overlay"></div>
+            <button class="favorite-toggle" id="favoriteToggleBtn" data-action="toggle-favorite" type="button">
+              Add to Favorites <span>&#10084;</span>
+            </button>
+            <div class="event-hero-content">
+              <div class="hero-badges">
+                <span class="category-badge ${category.className}">${escapeHtml(category.label)}</span>
+                <span class="status-badge ${status.className}">${status.label}</span>
+                ${urgencyBadgesMarkup}
+                ${bookingBadge}
+              </div>
+              <h1>${escapeHtml(event.title || 'Untitled Event')}</h1>
+              <div class="countdown-wrap" id="countdownWrap">
+                <div class="countdown-head">
+                  <p>Starts In</p>
+                  <span class="countdown-badge" id="countdownBadge"></span>
+                </div>
+                <div class="countdown-grid" id="eventCountdown">
+                  <div class="countdown-box">
+                    <strong id="countdownDays">0</strong>
+                    <span>Days</span>
+                  </div>
+                  <div class="countdown-box">
+                    <strong id="countdownHours">00</strong>
+                    <span>Hours</span>
+                  </div>
+                  <div class="countdown-box">
+                    <strong id="countdownMinutes">00</strong>
+                    <span>Minutes</span>
+                  </div>
+                  <div class="countdown-box">
+                    <strong id="countdownSeconds">00</strong>
+                    <span>Seconds</span>
+                  </div>
+                </div>
+              </div>
+              <p class="view-counter" id="viewCounter"><span>&#128065;</span> Loading views...</p>
+              ${lastFewSeatsMarkup}
+              <div class="hero-facts">
+                <span>&#x1F4C5; ${escapeHtml(eventDateTime)}</span>
+                <span>&#x1F4CD; ${escapeHtml(event.location || 'Location TBA')}</span>
+              </div>
+            </div>
+          </article>
+
+          <div class="content-stack">
+            <section class="info-grid">
+              <article class="info-card">
+                <div class="card-head">
+                  <div class="organizer-avatar">${escapeHtml(getInitials(organizerName))}</div>
+                  <div>
+                    <h2>Organizer Contact</h2>
+                    <p>Get in touch with the host team for direct assistance.</p>
+                  </div>
+                </div>
+                <div class="info-list">
+                  <div class="info-row info-row-organizer"><span>&#x1F464; Name</span><strong>${organizerNameMarkup}</strong></div>
+                  <div class="info-row"><span>&#x1F4E7; Email</span><strong>${escapeHtml(organizerEmail)}</strong></div>
+                  <div class="info-row"><span>&#x1F4DE; Phone</span><strong>${escapeHtml(organizerPhone)}</strong></div>
+                </div>
+              </article>
+
+              <article class="info-card">
+                <h2>Event Information</h2>
+                <div class="info-list">
+                  <div class="info-row"><span>&#x1F4C5; Date</span><strong>${escapeHtml(eventDateTime)}</strong></div>
+                  <div class="info-row"><span>&#x1F4CD; Location</span><strong>${escapeHtml(event.location || 'TBA')}</strong></div>
+                  <div class="info-row"><span>&#x1F512; Restrictions</span><strong>${escapeHtml(event.age_restriction || 'None')}</strong></div>
+                  <div class="info-row"><span>&#x1F465; Capacity</span><strong>${Math.max(0, seatsTotal)} seats</strong></div>
+                  <div class="info-row"><span>&#x2705; Status</span><strong><span class="inline-status ${status.className}">${status.label}</span></strong></div>
+                </div>
+              </article>
+            </section>
+
+            <section class="surface-card">
+              ${bookingUrgencyBanner}
+              <div class="section-header">
+                <h2>Ticket Availability</h2>
+                <p>Choose the right ticket type based on price and remaining seats.</p>
+              </div>
+              <div class="overall-seats-progress ${seatsFillClass}">
+                <div class="overall-seats-head">
+                  <span>${Math.max(0, urgency.seatsSold)} sold of ${Math.max(0, urgency.maxSeats)} seats</span>
+                  <strong>${Math.round(urgency.soldPercent)}% full</strong>
+                </div>
+                <div class="overall-seats-track">
+                  <div class="overall-seats-fill" style="width:${Math.max(0, Math.min(100, urgency.soldPercent))}%;"></div>
+                </div>
+                <div class="overall-seats-meta">
+                  <span>${Math.max(0, urgency.seatsRemaining)} seats remaining</span>
+                </div>
+              </div>
+              <div class="ticket-grid">
+                ${ticketCards}
+              </div>
+            </section>
+
+            <section class="surface-card">
+              <div class="section-header">
+                <h2>Location & Map</h2>
+                <p>View exact coordinates and open directions in Google Maps.</p>
+              </div>
+              <div id="map" class="event-map"></div>
+              <a class="directions-btn" href="${escapeHtml(directionsUrl)}" target="_blank" rel="noopener noreferrer">Get Directions</a>
+              <p class="map-title">${escapeHtml(event.title || 'Event')}</p>
+              <p class="map-address">${escapeHtml(event.venue_address || event.location || 'Address not provided')}</p>
+            </section>
+
+            <section class="surface-card">
+              <div class="section-header">
+                <h2>About This Event</h2>
+              </div>
+              <p class="about-description">${escapeHtml(event.description || 'No description provided for this event yet.')}</p>
+              ${agendaMarkup}
+              <div class="terms-box">
+                <h3>Terms & Conditions</h3>
+                <p>${terms}</p>
+              </div>
+              <div class="share-row">
+                <a class="share-btn share-facebook" href="${shareLinks.facebook}" target="_blank" rel="noopener noreferrer">
+                  <span>&#x24D5;</span> Facebook
+                </a>
+                <a class="share-btn share-twitter" href="${shareLinks.twitter}" target="_blank" rel="noopener noreferrer">
+                  <span>&#x1D54F;</span> Twitter
+                </a>
+                <a class="share-btn share-whatsapp" href="${shareLinks.whatsapp}" target="_blank" rel="noopener noreferrer">
+                  <span>&#x1F4AC;</span> WhatsApp
+                </a>
+              </div>
+            </section>
+
+            <section class="surface-card" id="reviewsSection">
+              <div class="reviews-head">
+                <div>
+                  <h2>Ratings & Reviews</h2>
+                  <p class="reviews-sub">Feedback from attendees after event completion.</p>
+                </div>
+                <button class="write-review-btn" id="writeReviewBtn" data-action="toggle-review-form" type="button">Write a Review</button>
+              </div>
+              <div id="reviewsSummary"></div>
+              <div id="reviewsBreakdown"></div>
+              <div id="reviewFormWrap"></div>
+              <div id="reviewsList"></div>
+            </section>
+
+            <section class="surface-card">
+              <div class="section-header">
+                <h2>You Might Also Like</h2>
+                <p>Similar upcoming events based on category or city.</p>
+              </div>
+              <div class="related-grid" id="relatedEventsGrid">
+                <article class="related-card related-loading">Loading recommendations...</article>
+              </div>
+            </section>
+          </div>
+        `;
+      }
+
+      function renderMap(event) {
+        const mapContainer = document.getElementById('map');
+        if (!mapContainer) return;
+
+        if (mapInstance) {
+          mapInstance.remove();
+          mapInstance = null;
+        }
+
+        const lat = Number(event.latitude);
+        const lng = Number(event.longitude);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          mapContainer.innerHTML = '<div class="map-empty">Coordinates not available for this event.</div>';
+          return;
+        }
+
+        mapInstance = L.map('map').setView([lat, lng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(mapInstance);
+
+        L.marker([lat, lng]).addTo(mapInstance).bindPopup(escapeHtml(event.title || 'Event')).openPopup();
+      }
+
+      async function loadFavoriteStatus(eventIdValue) {
+        const favoriteButton = document.getElementById('favoriteToggleBtn');
+        if (!favoriteButton) return;
+
+        if (isGuestUser()) {
+          currentFavorite = false;
+          favoriteButton.classList.remove('is-favorited');
+          favoriteButton.innerHTML = 'Add to Favorites <span>&#10084;</span>';
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/Favorites/check/${eventIdValue}`, {
+            headers: { Authorization: `Bearer ${getAuthToken()}` }
+          });
+          const data = await response.json();
+          currentFavorite = Boolean(data.success && data.isFavorited);
+        } catch (error) {
+          currentFavorite = false;
+        }
+
+        if (currentFavorite) {
+          favoriteButton.classList.add('is-favorited');
+          favoriteButton.innerHTML = 'Favorited <span>&#10084;</span>';
+        } else {
+          favoriteButton.classList.remove('is-favorited');
+          favoriteButton.innerHTML = 'Add to Favorites <span>&#10084;</span>';
+        }
+      }
+
+      async function toggleFavorite() {
+        if (!currentEvent) return;
+        if (isGuestUser()) {
+          window.location.href = '/html/signin.html';
+          return;
+        }
+
+        const token = getAuthToken();
+        const method = currentFavorite ? 'DELETE' : 'POST';
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/Favorites/${currentEvent.id}`, {
+            method,
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to update favorite');
+          }
+          currentFavorite = !currentFavorite;
+          await loadFavoriteStatus(currentEvent.id);
+        } catch (error) {
+          alert(error.message || 'Error updating favorites');
+        }
+      }
+
+      function buildReviewBreakdown(reviews) {
+        const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        reviews.forEach((review) => {
+          const safeRating = Math.max(1, Math.min(5, Math.round(toNumber(review.rating, 0))));
+          if (counts[safeRating] != null) counts[safeRating] += 1;
+        });
+        const total = reviews.length || 1;
+
+        return [5, 4, 3, 2, 1].map((rating) => {
+          const count = counts[rating];
+          const width = Math.round((count / total) * 100);
+          return { rating, count, width };
+        });
+      }
+
+      function renderReviewForm(show) {
+        const formWrap = document.getElementById('reviewFormWrap');
+        if (!formWrap) return;
+
+        if (!show) {
+          formWrap.innerHTML = '';
+          return;
+        }
+
+        formWrap.innerHTML = `
+          <div class="review-form-card">
+            <h4>Write Your Review</h4>
+            <div class="review-form-row">
+              <label for="reviewRating">Rating</label>
+              <select id="reviewRating">
+                <option value="5">5 Stars</option>
+                <option value="4">4 Stars</option>
+                <option value="3">3 Stars</option>
+                <option value="2">2 Stars</option>
+                <option value="1">1 Star</option>
+              </select>
+            </div>
+            <textarea id="reviewText" rows="4" placeholder="Share your experience..."></textarea>
+            <button type="button" class="submit-review-btn" data-action="submit-review">Submit Review</button>
+            <p id="reviewMsg"></p>
+          </div>
+        `;
+      }
+
+      async function loadReviews(eventIdValue, token, hasBooking, status) {
+        const summaryEl = document.getElementById('reviewsSummary');
+        const breakdownEl = document.getElementById('reviewsBreakdown');
+        const listEl = document.getElementById('reviewsList');
+        const writeReviewBtn = document.getElementById('writeReviewBtn');
+        if (!summaryEl || !breakdownEl || !listEl || !writeReviewBtn) return;
+
+        const canWriteReview = Boolean(token && hasBooking && status.key === 'ended');
+        writeReviewBtn.classList.toggle('is-hidden', !canWriteReview);
+        if (!canWriteReview) reviewFormVisible = false;
+        renderReviewForm(reviewFormVisible && canWriteReview);
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/Events/${eventIdValue}/reviews`);
+          const data = await response.json();
+          const summary = data.summary || { count: 0, avgRating: 0 };
+          const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+          const avgRating = toNumber(summary.avgRating, 0);
+
+          summaryEl.innerHTML = `
+            <div class="reviews-summary-card">
+              <div class="average-score">${avgRating.toFixed(1)}</div>
+              <div>
+                <div class="average-stars">${buildAverageStars(avgRating)}</div>
+                <p>${toNumber(summary.count, 0)} review(s)</p>
+              </div>
+            </div>
+          `;
+
+          if (status.key !== 'ended') {
+            breakdownEl.innerHTML = '';
+            listEl.innerHTML = '<div class="review-empty">Reviews become available after the event ends.</div>';
+            return;
+          }
+
+          const breakdown = buildReviewBreakdown(reviews);
+          breakdownEl.innerHTML = `
+            <div class="ratings-breakdown">
+              ${breakdown.map((row) => `
+                <div class="breakdown-row">
+                  <span>${row.rating} &#9733;</span>
+                  <div class="breakdown-track">
+                    <div class="breakdown-fill" style="width:${row.width}%"></div>
+                  </div>
+                  <strong>${row.count}</strong>
+                </div>
+              `).join('')}
+            </div>
+          `;
+
+          if (reviews.length === 0) {
+            listEl.innerHTML = '<div class="review-empty">No reviews submitted yet.</div>';
+            return;
+          }
+
+          listEl.innerHTML = reviews.map((review) => `
+            <article class="review-card">
+              <div class="review-head">
+                <strong>${escapeHtml(review.full_name || review.username || 'User')}</strong>
+                <span>${buildStars(review.rating)}</span>
+              </div>
+              <p class="review-text">${escapeHtml(review.review || 'No text review provided.')}</p>
+              <p class="review-date">${escapeHtml(formatDate(review.created_at))}</p>
+            </article>
+          `).join('');
+        } catch (error) {
+          summaryEl.innerHTML = '<div class="review-empty">Unable to load ratings right now.</div>';
+          breakdownEl.innerHTML = '';
+          listEl.innerHTML = '';
+        }
+      }
+
+      async function submitReview() {
+        if (!currentEvent) return;
+        const token = getAuthToken();
+        if (!token) return;
+
+        const ratingSelect = document.getElementById('reviewRating');
+        const reviewText = document.getElementById('reviewText');
+        const reviewMsg = document.getElementById('reviewMsg');
+        if (!ratingSelect || !reviewText || !reviewMsg) return;
+
+        const rating = Math.max(1, Math.min(5, parseInt(ratingSelect.value, 10) || 5));
+        const review = reviewText.value.trim();
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/Events/${currentEvent.id}/reviews`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ rating, review })
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to submit review');
+          }
+          reviewMsg.textContent = data.message || 'Review submitted successfully.';
+          reviewText.value = '';
+          await loadReviews(currentEvent.id, token, Boolean(currentBookingInfo), currentStatus);
+        } catch (error) {
+          reviewMsg.textContent = error.message || 'Error submitting review.';
+        }
+      }
+
+      async function joinWaitlist() {
+        if (!currentEvent) return;
+        const token = getAuthToken();
+        if (!token || isGuestUser()) {
+          alert('Please sign in first.');
+          window.location.href = '/html/signin.html';
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/Events/${currentEvent.id}/waitlist`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json();
+          alert(data.message || (response.ok ? 'Joined waitlist successfully.' : 'Unable to join waitlist.'));
+        } catch (error) {
+          alert('Error joining waitlist.');
+        }
+      }
+
+      async function loadRelatedEvents(baseEvent) {
+        const relatedGrid = document.getElementById('relatedEventsGrid');
+        if (!relatedGrid) return;
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/Events?view=upcoming`, { cache: 'no-store' });
+          const data = await response.json();
+          if (!response.ok || !data.success || !Array.isArray(data.events)) {
+            throw new Error(data.message || 'Failed to load related events');
+          }
+
+          const baseCity = getCityName(baseEvent.location);
+          const baseCategory = String(baseEvent.event_type || '').toLowerCase().trim();
+
+          const related = data.events
+            .filter((event) => String(event.id) !== String(baseEvent.id))
+            .map((event) => {
+              const sameCity = getCityName(event.location) === baseCity;
+              const eventCategory = String(event.event_type || '').toLowerCase();
+              const sameCategory = baseCategory
+                ? eventCategory === baseCategory ||
+                  eventCategory.includes(baseCategory) ||
+                  baseCategory.includes(eventCategory)
+                : false;
+              return {
+                event,
+                score: (sameCategory ? 2 : 0) + (sameCity ? 1 : 0),
+                sameCategory,
+                sameCity
+              };
+            })
+            .filter((item) => item.sameCategory || item.sameCity)
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              return new Date(a.event.event_date).getTime() - new Date(b.event.event_date).getTime();
+            })
+            .slice(0, 3);
+
+          if (related.length === 0) {
+            relatedGrid.innerHTML = '<article class="related-card related-loading">No related upcoming events found.</article>';
+            return;
+          }
+
+          relatedGrid.innerHTML = related.map((item) => {
+            const relatedEvent = item.event;
+            const category = normalizeCategory(relatedEvent.event_type);
+            return `
+              <article class="related-card">
+                <span class="category-badge ${category.className}">${escapeHtml(category.label)}</span>
+                <h3>${escapeHtml(relatedEvent.title || 'Untitled Event')}</h3>
+                <p>&#x1F4C5; ${escapeHtml(formatDate(relatedEvent.event_date))}</p>
+                <p>&#x1F4CD; ${escapeHtml(relatedEvent.location || 'TBA')}</p>
+                <p>&#x1F465; ${Math.max(0, toNumber(relatedEvent.available_seats, 0))} seats left</p>
+                <a href="/html/event-details.html?id=${encodeURIComponent(relatedEvent.id)}">View Event</a>
+              </article>
+            `;
+          }).join('');
+        } catch (error) {
+          relatedGrid.innerHTML = '<article class="related-card related-loading">Unable to load recommendations.</article>';
+        }
+      }
+
+      async function loadBookingStatusForEvent(eventIdValue, token) {
+        if (!token) return null;
+        try {
+          const response = await fetch(`${API_BASE_URL}/Bookings/my`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success || !Array.isArray(data.bookings)) return null;
+          return data.bookings.find((booking) => String(booking.event_id) === String(eventIdValue) && booking.status === 'confirmed') || null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      async function handlePrimaryBookingAction() {
+        if (!currentEvent || !currentStatus) return;
+        const action = getBookingAction(currentEvent, currentStatus, currentBookingInfo);
+
+        if (action.mode === 'unavailable') return;
+        if (action.mode === 'signin') {
+          window.location.href = '/html/signin.html';
+          return;
+        }
+        if (action.mode === 'waitlist') {
+          await joinWaitlist();
+          return;
+        }
+
+        window.location.href = `reserve-seat.html?eventId=${encodeURIComponent(currentEvent.id)}`;
+      }
+
+      async function loadEventDetails() {
+        clearRealtimeIntervals();
+
+        if (!eventId) {
+          detailsSection.innerHTML = '<div class="loading-state">Event ID is missing.</div>';
+          stickyActionBar.innerHTML = '';
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/Events/${eventId}`);
+          const data = await response.json();
+          if (!response.ok || !data.success || !data.event) {
+            throw new Error(data.message || 'Event not found');
+          }
+
+          const event = data.event;
+          const eventDate = new Date(event.event_date);
+          const status = getStatus(event, eventDate);
+          const token = isGuestUser() ? null : getAuthToken();
+          const bookingInfo = await loadBookingStatusForEvent(eventId, token);
+
+          currentEvent = event;
+          currentBookingInfo = bookingInfo;
+          currentStatus = status;
+          reviewFormVisible = false;
+
+          renderMainLayout(event, status, bookingInfo);
+          renderMap(event);
+          startCountdown(event.event_date);
+          await trackEventView(event.id);
+          startViewsPolling(event.id);
+
+          await Promise.all([
+            loadFavoriteStatus(event.id),
+            loadReviews(event.id, token, Boolean(bookingInfo), status),
+            loadRelatedEvents(event)
+          ]);
+
+          const action = getBookingAction(event, status, bookingInfo);
+          renderStickyAction(action, Boolean(bookingInfo));
+        } catch (error) {
+          detailsSection.innerHTML = '<div class="loading-state">Failed to load event details.</div>';
+          stickyActionBar.innerHTML = '';
+          clearRealtimeIntervals();
+        }
+      }
+
+      function handleClick(event) {
+        const actionTarget = event.target.closest('[data-action]');
+        if (!actionTarget) return;
+        const action = actionTarget.dataset.action;
+
+        if (action === 'toggle-favorite') {
+          toggleFavorite();
+          return;
+        }
+
+        if (action === 'primary-booking') {
+          handlePrimaryBookingAction();
+          return;
+        }
+
+        if (action === 'toggle-review-form') {
+          const button = document.getElementById('writeReviewBtn');
+          reviewFormVisible = !reviewFormVisible;
+          if (button) {
+            button.textContent = reviewFormVisible ? 'Hide Review Form' : 'Write a Review';
+          }
+          renderReviewForm(reviewFormVisible);
+          return;
+        }
+
+        if (action === 'submit-review') {
+          submitReview();
+          return;
+        }
+
+      }
+
+      detailsSection.addEventListener('click', handleClick);
+      stickyActionBar.addEventListener('click', handleClick);
+      window.addEventListener('beforeunload', clearRealtimeIntervals);
+
+      loadEventDetails();
+    })();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
