@@ -19,14 +19,16 @@ const VenueBooking = {
       eventDate,
       totalPrice,
       status = 'pending',
-      paymentStatus = 'unpaid'
+      paymentStatus = 'unpaid',
+      pendingVenueFee = 0,
+      pendingPlatformFee = 0
     } = data;
 
     const [result] = await db.execute(
       `INSERT INTO venue_bookings (
-        venue_id, event_id, host_id, event_date, total_price, status, payment_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [venueId, eventId, hostId, eventDate, totalPrice, status, paymentStatus]
+        venue_id, event_id, host_id, event_date, total_price, status, payment_status, pending_venue_fee, pending_platform_fee
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [venueId, eventId, hostId, eventDate, totalPrice, status, paymentStatus, pendingVenueFee, pendingPlatformFee]
     );
 
     return result.insertId;
@@ -117,11 +119,12 @@ const VenueBooking = {
        INNER JOIN venues v ON v.id = vb.venue_id AND v.owner_id = ?
        LEFT JOIN events e ON e.id = vb.event_id
        LEFT JOIN users u ON u.id = vb.host_id
-       WHERE vb.status IN ('awaiting_event_approval', 'pending_venue_response')
+       WHERE vb.status IN ('awaiting_event_approval', 'pending_venue_response', 'awaiting_dual_approval')
        ORDER BY
          CASE vb.status
            WHEN 'pending_venue_response' THEN 0
-           ELSE 1
+           WHEN 'awaiting_dual_approval' THEN 1
+           ELSE 2
          END,
          vb.booked_at ASC`,
       [ownerId]
@@ -232,7 +235,9 @@ const VenueBooking = {
       status: 'status',
       paymentStatus: 'payment_status',
       respondedAt: 'responded_at',
-      ownerNotes: 'owner_notes'
+      ownerNotes: 'owner_notes',
+      pendingVenueFee: 'pending_venue_fee',
+      pendingPlatformFee: 'pending_platform_fee'
     };
     const fields = [];
     const values = [];

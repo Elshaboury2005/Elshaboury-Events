@@ -19,6 +19,8 @@ router.get('/:id/vault/transactions', authenticateToken, eventController.getVaul
 router.post('/:id/vault/withdraw', authenticateToken, eventController.withdrawVault);
 router.get('/:id/cancellation-summary', authenticateToken, eventController.getCancellationSummary);
 router.post('/:id/cancel', authenticateToken, eventController.cancelEventWithRefunds);
+router.patch('/:id/select-venue', authenticateToken, eventController.selectVenue);
+router.get('/:id/venue-details', authenticateToken, eventController.getVenueDetails);
 router.get('/:id/marketing/access', authenticateToken, marketingController.getAccess);
 router.get('/:id/marketing/setup', authenticateToken, marketingController.getSetup);
 router.put('/:id/marketing/setup', authenticateToken, marketingController.saveSetup);

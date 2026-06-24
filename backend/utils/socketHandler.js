@@ -9,6 +9,13 @@ const {
   getUnreadCountForEvent
 } = require('../services/chatService');
 
+const {
+  resolveDirectChatAccess,
+  saveDirectChatMessage,
+  markDirectChatRead,
+  getUnreadCountForDirectChat
+} = require('../services/directChatService');
+
 const CHAT_RATE_LIMIT_MS = 1000;
 const CHAT_UNAVAILABLE_MESSAGE = 'This event has ended and its chat is no longer available';
 const CHAT_LOCKED_REASON_MESSAGE = 'Chat is in announcement mode. Only the host can send messages.';
@@ -22,6 +29,10 @@ function normalizeEventId(eventIdRaw) {
 
 function getEventChatRoomName(eventId) {
   return `event-chat-${eventId}`;
+}
+
+function getDirectChatRoomName(chatId) {
+  return `direct-chat-${chatId}`;
 }
 
 function findJoinedChatRoomByEventId(socket, eventIdRaw) {
@@ -84,6 +95,7 @@ const setupSocket = (server) => {
 
   io.on('connection', (socket) => {
     socket.data.eventChatRooms = new Map();
+    socket.data.directChatRooms = new Map();
     console.log('Client connected:', socket.id);
 
     socket.on('join_event_room', (eventId) => {
@@ -366,6 +378,133 @@ const setupSocket = (server) => {
           username: access.username
         });
       } catch (_) {}
+    });
+
+    socket.on('join-direct-chat', async (payload = {}) => {
+      try {
+        const venueBookingId = payload.venueBookingId;
+        const claims = verifySocketToken(payload.token);
+        const shouldMarkRead = payload.markRead !== false;
+
+        if (!venueBookingId || !claims?.userId) {
+          socket.emit('direct-chat-unauthorized');
+          return;
+        }
+
+        const access = await resolveDirectChatAccess(venueBookingId, claims.userId);
+        if (!access.canAccess) {
+          socket.emit('direct-chat-unauthorized');
+          return;
+        }
+
+        const roomName = getDirectChatRoomName(access.chatId);
+        
+        socket.join(roomName);
+        socket.data.directChatRooms.set(roomName, {
+          chatId: access.chatId,
+          userId: String(claims.userId)
+        });
+
+        socket.emit('direct-chat-authorized', {
+          chatId: access.chatId,
+          venueBookingId: access.venueBookingId
+        });
+
+        if (shouldMarkRead) {
+          await markDirectChatRead(access.chatId, claims.userId);
+          socket.emit('direct-unread-cleared', {
+            chatId: access.chatId,
+            unreadCount: 0
+          });
+        }
+      } catch (error) {
+        console.error('join-direct-chat error:', error);
+        socket.emit('direct-chat-error', { message: 'Unable to join direct chat right now' });
+      }
+    });
+
+    socket.on('send-direct-chat-message', async (payload = {}) => {
+      try {
+        const venueBookingId = payload.venueBookingId;
+        const claims = verifySocketToken(payload.token);
+
+        if (!venueBookingId || !claims?.userId) {
+          socket.emit('direct-chat-unauthorized');
+          return;
+        }
+
+        const access = await resolveDirectChatAccess(venueBookingId, claims.userId);
+        if (!access.canAccess) {
+          socket.emit('direct-chat-unauthorized');
+          return;
+        }
+
+        const roomName = getDirectChatRoomName(access.chatId);
+        if (!socket.data.directChatRooms.has(roomName)) {
+          socket.join(roomName);
+          socket.data.directChatRooms.set(roomName, {
+            chatId: access.chatId,
+            userId: String(claims.userId)
+          });
+        }
+
+        const message = sanitizeChatMessage(payload.message);
+        if (!message) return;
+
+        const savedMessage = await saveDirectChatMessage(access.chatId, claims.userId, message);
+        if (!savedMessage) return;
+
+        io.to(roomName).emit('new-direct-chat-message', {
+          id: savedMessage.id,
+          chat_id: savedMessage.chat_id,
+          venueBookingId: access.venueBookingId,
+          sender_id: String(savedMessage.sender_id),
+          username: savedMessage.username,
+          full_name: savedMessage.full_name,
+          message: savedMessage.message,
+          created_at: savedMessage.created_at
+        });
+
+        socket.to(roomName).emit('update-direct-unread', {
+          chatId: access.chatId,
+          venueBookingId: access.venueBookingId,
+          incrementBy: 1,
+          lastMessage: savedMessage.message,
+          lastMessageTime: savedMessage.created_at
+        });
+      } catch (error) {
+        console.error('send-direct-chat-message error:', error);
+        socket.emit('direct-chat-error', { message: 'Unable to send direct chat message right now' });
+      }
+    });
+
+    socket.on('mark-direct-as-read', async (payload = {}) => {
+      try {
+        const venueBookingId = payload.venueBookingId;
+        const claims = verifySocketToken(payload.token);
+        if (!venueBookingId || !claims?.userId) {
+          socket.emit('direct-chat-unauthorized');
+          return;
+        }
+
+        const access = await resolveDirectChatAccess(venueBookingId, claims.userId);
+        if (!access.canAccess) {
+          socket.emit('direct-chat-unauthorized');
+          return;
+        }
+
+        await markDirectChatRead(access.chatId, claims.userId);
+        const unreadCount = await getUnreadCountForDirectChat(access.chatId, claims.userId);
+
+        socket.emit('direct-unread-cleared', {
+          chatId: access.chatId,
+          venueBookingId: access.venueBookingId,
+          unreadCount
+        });
+      } catch (error) {
+        console.error('mark-direct-as-read error:', error);
+        socket.emit('direct-chat-error', { message: 'Unable to mark messages as read right now' });
+      }
     });
 
     socket.on('disconnecting', () => {

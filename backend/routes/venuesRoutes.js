@@ -14,6 +14,8 @@ router.post('/book', authenticateToken, venueController.bookVenue);
 router.post('/:id/wishlist', authenticateToken, venueController.toggleWishlist);
 router.get('/:id/reviews', venueController.getVenueReviews);
 router.post('/:id/reviews', authenticateToken, venueController.submitVenueReview);
+// Public availability check — used by event creation flow to detect double-booking
+router.get('/:id/check-availability', venueController.checkAvailability);
 router.get('/:id', authenticateOptional, venueController.getVenueDetails);
 
 module.exports = router;

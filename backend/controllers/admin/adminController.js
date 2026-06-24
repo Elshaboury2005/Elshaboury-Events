@@ -11,6 +11,8 @@ const {
 } = require('../../utils/refundWalletUtils');
 const { processRefundFromVault } = require('../../services/eventVaultService');
 const Venue = require('../../models/Venue');
+const { Notification } = require('../../models/Notification');
+const { createVenueBookingChat } = require('../../services/directChatService');
 const VenueBooking = require('../../models/VenueBooking');
 const { cancelVenueBooking } = require('../../services/venueBookingService');
 const { clearPlatformAccessCache } = require('../../services/platformAccessService');
@@ -632,7 +634,7 @@ exports.getEvents = async (req, res) => {
     const { status } = req.query;
     const queryParams = [];
     let whereClause = '';
-    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+    if (status && ['pending', 'approved', 'rejected', 'pending_admin_approval'].includes(status)) {
       whereClause = 'WHERE e.event_status = ?';
       queryParams.push(status);
     }
@@ -710,6 +712,31 @@ exports.getEventDetails = async (req, res) => {
       report = await getPostEventSummaryData(id);
     }
 
+    // Fetch venue booking fee breakdown if this event has a venue booking
+    let venueBookingFees = null;
+    const [[vbFeeRow]] = await pool.execute(
+      `SELECT vb.id, vb.status, vb.payment_status,
+              vb.pending_venue_fee, vb.pending_platform_fee,
+              v.name AS venue_name, v.price_per_day
+       FROM venue_bookings vb
+       INNER JOIN venues v ON v.id = vb.venue_id
+       WHERE vb.event_id = ?
+       LIMIT 1`,
+      [id]
+    ).catch(() => [[]]);
+    if (vbFeeRow) {
+      venueBookingFees = {
+        venueBookingId: vbFeeRow.id,
+        venueBookingStatus: vbFeeRow.status,
+        paymentStatus: vbFeeRow.payment_status,
+        venueName: vbFeeRow.venue_name,
+        pricePerDay: Number(vbFeeRow.price_per_day || 0),
+        pendingVenueFee: Number(vbFeeRow.pending_venue_fee || 0),
+        pendingPlatformFee: Number(vbFeeRow.pending_platform_fee || 0),
+        totalPaid: Number((vbFeeRow.pending_venue_fee || 0)) + Number((vbFeeRow.pending_platform_fee || 0))
+      };
+    }
+
     res.json({
       success: true,
       event,
@@ -719,7 +746,8 @@ exports.getEventDetails = async (req, res) => {
         totalReservedSeats: Number(bookingStats?.total_reserved_seats || 0),
         totalRevenue: Number(revenueStats?.total_revenue || 0)
       },
-      report
+      report,
+      venueBookingFees
     });
   } catch (error) {
     console.error('Admin get event details error:', error);
@@ -790,6 +818,60 @@ exports.updateEventApproval = async (req, res) => {
     }
 
     if (status === 'approved') {
+      // ── Platform fee collection at admin approval ─────────────────────────
+      // Platform fee is collected at admin approval — not at venue owner acceptance.
+      // We credit the platform_wallet for every venue booking on this event that
+      // carries a pending_platform_fee > 0 and has not already been credited
+      // (guard: we only credit bookings whose payment_status is not 'transferred',
+      //  since a 'transferred' booking would have already gone through a prior approval
+      //  cycle — this prevents double-counting on re-approval edge cases).
+      try {
+        const { creditPlatformFee } = require('../../services/platformWalletService');
+        const [platformFeeBookings] = await pool.execute(
+          `SELECT id, pending_platform_fee
+           FROM venue_bookings
+           WHERE event_id = ?
+             AND COALESCE(pending_platform_fee, 0) > 0
+             AND payment_status <> 'transferred'`,
+          [id]
+        );
+
+        if (platformFeeBookings.length > 0) {
+          let feeConn;
+          try {
+            feeConn = await pool.getConnection();
+            await feeConn.beginTransaction();
+
+            for (const feeBooking of platformFeeBookings) {
+              const feeAmount = Number(feeBooking.pending_platform_fee || 0);
+              if (feeAmount > 0) {
+                await creditPlatformFee(feeConn, {
+                  eventId: id,
+                  venueBookingId: feeBooking.id,
+                  amount: feeAmount,
+                  description: `Platform listing fee for event "${event.title}" (collected at admin approval)`
+                });
+              }
+            }
+
+            await feeConn.commit();
+            feeConn.release();
+            feeConn = null;
+            console.log(`[updateEventApproval] Platform fee credited for event ${id} (${platformFeeBookings.length} booking(s)).`);
+          } catch (feeErr) {
+            if (feeConn) {
+              try { await feeConn.rollback(); } catch (_) {}
+              feeConn.release();
+            }
+            // Log but do not block the approval — fee can be reconciled manually
+            console.error(`[updateEventApproval] Failed to credit platform fee for event ${id}:`, feeErr);
+          }
+        }
+      } catch (feeQueryErr) {
+        console.error(`[updateEventApproval] Failed to query platform fee bookings for event ${id}:`, feeQueryErr);
+      }
+      // ─────────────────────────────────────────────────────────────────────
+      // Legacy flow: awaiting_event_approval → pending_venue_response
       const [bookings] = await pool.execute(
         `SELECT vb.id, vb.venue_id, v.owner_id, v.name AS venue_name
          FROM venue_bookings vb
@@ -815,11 +897,91 @@ exports.updateEventApproval = async (req, res) => {
           );
         }
       }
+
+      // New dual-approval flow: notify venue owners of awaiting_dual_approval bookings
+      // that admin has now approved — they can now accept or decline.
+      const [dualApprovalBookings] = await pool.execute(
+        `SELECT vb.id, vb.venue_id, v.owner_id, v.name AS venue_name, vb.pending_venue_fee
+         FROM venue_bookings vb
+         INNER JOIN venues v ON v.id = vb.venue_id
+         WHERE vb.event_id = ? AND vb.status = 'awaiting_dual_approval'`,
+        [id]
+      );
+      for (const booking of dualApprovalBookings) {
+        if (booking.owner_id) {
+          await pool.execute(
+            'INSERT INTO notifications (id, user_id, title, message, type, is_read) VALUES (?, ?, ?, ?, ?, FALSE)',
+            [
+              uuidv4(),
+              booking.owner_id,
+              'Venue Booking Awaiting Your Approval',
+              `The event has been admin-approved. Please accept or decline the booking for your venue "${booking.venue_name}" on ${event.event_date}. You will receive ${Number(booking.pending_venue_fee || 0).toFixed(2)} EGP once you accept.`,
+              'info'
+            ]
+          );
+        }
+      }
+
+      // Check if there are any already 'accepted' venue bookings for this event
+      const [acceptedBookings] = await pool.execute(
+        `SELECT vb.id, vb.host_id, v.owner_id
+         FROM venue_bookings vb
+         INNER JOIN venues v ON v.id = vb.venue_id
+         WHERE vb.event_id = ? AND vb.status = 'accepted'`,
+        [id]
+      );
+      for (const booking of acceptedBookings) {
+        if (booking.owner_id && booking.host_id) {
+          await createVenueBookingChat(booking.id, booking.host_id, booking.owner_id);
+          
+          // Notify Host
+          await pool.execute(
+            'INSERT INTO notifications (id, user_id, title, message, type, is_read) VALUES (?, ?, ?, ?, ?, FALSE)',
+            [uuidv4(), booking.host_id, 'Direct Chat Available', 'Your venue booking is confirmed — you can now chat with the venue owner', 'info']
+          );
+          
+          // Notify Venue Owner
+          await pool.execute(
+            'INSERT INTO notifications (id, user_id, title, message, type, is_read) VALUES (?, ?, ?, ?, ?, FALSE)',
+            [uuidv4(), booking.owner_id, 'Direct Chat Available', 'Booking confirmed — you can now chat with the event host', 'info']
+          );
+        }
+      }
+
+      // Check and transfer venue payments if both approvals are complete
+      try {
+        const [eventBookings] = await pool.execute(
+          'SELECT id FROM venue_bookings WHERE event_id = ?',
+          [id]
+        );
+        const { checkAndTransferVenuePayment } = require('../../services/venueOwnerEscrowService');
+        for (const b of eventBookings) {
+          try {
+            await checkAndTransferVenuePayment(b.id);
+          } catch (err) {
+            console.error(`Failed checkAndTransferVenuePayment for booking ${b.id}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error('Failed querying bookings for admin event approval transfer:', err);
+      }
     } else if (status === 'rejected') {
+      const { handleAdminEventRejectionRefund } = require('../../services/venueOwnerEscrowService');
+      const refundResult = await handleAdminEventRejectionRefund(id, req.admin.id);
+
+      // Cancel any remaining non-prepaid bookings for this event
       await pool.execute(
         "UPDATE venue_bookings SET status = 'cancelled' WHERE event_id = ? AND status IN ('awaiting_event_approval', 'pending_venue_response')",
         [id]
       );
+
+      await logAdminAction(req.admin.id, 'UPDATE_EVENT_APPROVAL', 'event', id, { status }, getClientIp(req));
+      return res.json({
+        success: true,
+        message: `Event ${status}`,
+        refunded: refundResult.refunded,
+        refundAmount: refundResult.totalRefund || 0
+      });
     }
 
     await logAdminAction(req.admin.id, 'UPDATE_EVENT_APPROVAL', 'event', id, { status }, getClientIp(req));
@@ -2043,3 +2205,87 @@ exports.requestVenueChanges = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to request venue changes' });
   }
 };
+
+// ── Platform Wallet ────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/platform-wallet
+ * Returns the current platform wallet balance, totals, and recent transactions.
+ */
+exports.getPlatformWallet = async (req, res) => {
+  try {
+    const { getPlatformWalletOverview } = require('../../services/platformWalletService');
+    const overview = await getPlatformWalletOverview();
+    res.json({ success: true, ...overview });
+  } catch (error) {
+    console.error('Admin getPlatformWallet error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load platform wallet' });
+  }
+};
+
+/**
+ * GET /api/admin/platform-wallet/transactions
+ * Returns paginated platform wallet transactions.
+ * Query: page (default 1), limit (default 20), type ('all'|'credit'|'debit')
+ */
+exports.getPlatformWalletTransactions = async (req, res) => {
+  try {
+    const { getPlatformWalletTransactions } = require('../../services/platformWalletService');
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const type = ['credit', 'debit'].includes(req.query.type) ? req.query.type : 'all';
+    const result = await getPlatformWalletTransactions({ page, limit, type });
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Admin getPlatformWalletTransactions error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load platform wallet transactions' });
+  }
+};
+
+/**
+ * POST /api/admin/platform-wallet/withdraw
+ * Withdraws funds from the platform wallet.
+ * Body: { amount: number, description?: string }
+ */
+exports.withdrawPlatformWallet = async (req, res) => {
+  try {
+    const { withdrawFromPlatformWallet } = require('../../services/platformWalletService');
+    const amount = Number(req.body.amount || 0);
+    const description = String(req.body.description || '').trim() || `Admin withdrawal`;
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Withdrawal amount must be a positive number' });
+    }
+
+    const result = await withdrawFromPlatformWallet({
+      amount,
+      description,
+      adminId: req.admin?.admin_id || req.admin?.id || 'admin'
+    });
+
+    await logAdminAction(
+      req.admin.id,
+      'PLATFORM_WALLET_WITHDRAW',
+      'platform_wallet',
+      '1',
+      { amount, description },
+      getClientIp(req)
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully withdrew ${amount.toFixed(2)} EGP from the platform wallet`,
+      newBalance: result.newBalance,
+      transactionId: result.transactionId
+    });
+  } catch (error) {
+    console.error('Admin withdrawPlatformWallet error:', error);
+    // Surface balance-check messages directly to the client
+    const msg = String(error.message || '');
+    if (msg.toLowerCase().includes('insufficient')) {
+      return res.status(400).json({ success: false, message: msg });
+    }
+    res.status(500).json({ success: false, message: 'Failed to process withdrawal' });
+  }
+};
+

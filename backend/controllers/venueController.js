@@ -119,6 +119,17 @@ function normalizeVenueForResponse(venue, options = {}) {
     confirmedBookings: Number(venue.confirmed_bookings || 0),
     totalRevenue: Number(venue.total_revenue || 0),
     createdAt: venue.created_at,
+    rules: venue.rules || '',
+    parkingDetails: venue.parking_details || '',
+    cateringPolicy: venue.catering_policy || 'allowed',
+    decorationPolicy: venue.decoration_policy || 'allowed',
+    musicPolicy: venue.music_policy || 'allowed',
+    setupTimeHours: Number(venue.setup_time_hours || 1),
+    cleanupTimeHours: Number(venue.cleanup_time_hours || 1),
+    minBookingHours: Number(venue.min_booking_hours || 4),
+    maxConsecutiveDays: Number(venue.max_consecutive_days || 1),
+    floorPlanImage: venue.floor_plan_image || '',
+    virtualTourUrl: venue.virtual_tour_url || '',
     availability: {
       date: selectedDate,
       isBooked: isBookedOnDate,
@@ -132,8 +143,9 @@ function normalizeVenueForResponse(venue, options = {}) {
     })),
     blockedDates: blockedDates.map((row) => ({
       id: row.id,
-      startDate: normalizeDate(row.start_date),
-      endDate: normalizeDate(row.end_date),
+      blockType: row.block_type,
+      date: row.date ? normalizeDate(row.date) : null,
+      weekday: row.weekday,
       reason: row.reason || ''
     })),
     reviews: reviews.map(normalizeReview)
@@ -331,9 +343,11 @@ exports.getVenueDetails = async (req, res) => {
     if (selectedDate) {
       const normalizedSelected = normalizeDate(selectedDate);
       venue.is_booked_on_date = bookedDates.some((row) => normalizeDate(row.event_date) === normalizedSelected && row.status === 'confirmed');
-      venue.is_blocked_on_date = blockedDates.some((row) => (
-        normalizeDate(row.start_date) <= normalizedSelected && normalizeDate(row.end_date) >= normalizedSelected
-      ));
+      venue.is_blocked_on_date = blockedDates.some((row) => {
+        const d = new Date(normalizedSelected);
+        return (row.block_type === 'specific_date' && normalizeDate(row.date) === normalizedSelected) ||
+               (row.block_type === 'recurring_weekday' && row.weekday === d.getDay());
+      });
       venue.is_available_on_date = !venue.is_booked_on_date && !venue.is_blocked_on_date;
     }
     venue.is_in_wishlist = wishlistedIds.has(id);
@@ -562,8 +576,11 @@ exports.bookVenue = async (req, res) => {
       `SELECT id
        FROM venue_availability_blocks
        WHERE venue_id = ?
-         AND start_date <= ?
-         AND end_date >= ?
+         AND is_active = TRUE
+         AND (
+           (block_type = 'specific_date' AND date = ?) OR
+           (block_type = 'recurring_weekday' AND weekday = (DAYOFWEEK(?) - 1))
+         )
        LIMIT 1`,
       [venueId, eventDate, eventDate]
     );
@@ -619,3 +636,56 @@ exports.getMyBookings = async (req, res) => {
 };
 
 exports.confirmVenueBookingAfterPayment = confirmVenueBookingAfterPayment;
+
+// ── Public venue availability check (used by hosts during event creation) ──
+
+exports.checkAvailability = async (req, res) => {
+  try {
+    const venueId = parseInt(req.params.id, 10);
+    const { date } = req.query;
+
+    if (!Number.isFinite(venueId) || venueId <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid venue ID' });
+    }
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ success: false, message: 'date query parameter is required (YYYY-MM-DD)' });
+    }
+
+    // Check confirmed/accepted bookings on this date
+    const conflicts = await VenueBooking.findByVenueAndDate(
+      venueId,
+      date,
+      ['accepted', 'confirmed', 'accepted_by_owner']
+    );
+
+    // Check manual availability blocks covering this date.
+    // The venue_availability_blocks table uses block_type + date (specific_date) or weekday (recurring).
+    // DAYOFWEEK() returns 1=Sun…7=Sat; we store weekday as 0=Sun…6=Sat, so subtract 1.
+    const [blockRows] = await pool.execute(
+      `SELECT id, reason FROM venue_availability_blocks
+       WHERE venue_id = ? AND is_active = TRUE AND (
+         (block_type = 'specific_date' AND date = ?) OR
+         (block_type = 'recurring_weekday' AND weekday = DAYOFWEEK(?) - 1)
+       )`,
+      [venueId, date, date]
+    );
+
+    const isBookedByEvent = conflicts.length > 0;
+    const isBlockedManually = blockRows.length > 0;
+    const isAvailable = !isBookedByEvent && !isBlockedManually;
+
+    res.json({
+      success: true,
+      venueId,
+      date,
+      isAvailable,
+      isBookedByEvent,
+      isBlockedManually,
+      conflictingBookingCount: conflicts.length,
+      conflictingBlock: isBlockedManually ? { reason: blockRows[0].reason || null } : null
+    });
+  } catch (error) {
+    console.error('checkAvailability error:', error);
+    res.status(500).json({ success: false, message: 'Failed to check venue availability' });
+  }
+};

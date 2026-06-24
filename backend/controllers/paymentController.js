@@ -5,7 +5,7 @@ const pool = require('../config/database');
 const VenueBooking = require('../models/VenueBooking');
 const { roundMoney, creditWallet, debitWallet, getWalletOverview, lockUserWallet } = require('../services/walletService');
 const { computePerTicketPromoTotals } = require('../utils/promoPricing');
-const { confirmVenueBookingAfterPayment } = require('../services/venueBookingService');
+const { confirmVenueBookingAfterPayment, calculateListingFee } = require('../services/venueBookingService');
 
 function normalizePaymentMethod(value) {
   const method = String(value || 'card').trim().toLowerCase();
@@ -134,7 +134,7 @@ exports.create = async (req, res) => {
 
       if (eventId) {
         const [eventRows] = await connection.execute(
-          `SELECT id, title, organizer_id, venue_booking_id
+          `SELECT id, title, organizer_id, venue_booking_id, max_seats
            FROM events
            WHERE id = ?
            LIMIT 1
@@ -149,71 +149,16 @@ exports.create = async (req, res) => {
         }
 
         const event = eventRows[0];
-
-        if (normalizedMethod === 'wallet' || normalizedMethod === 'split') {
-          const walletRow = await lockUserWallet(userId, connection);
-          if (!walletRow) {
-            await connection.rollback();
-            connection.release();
-            return res.status(404).json({ success: false, message: 'User not found' });
-          }
-
-          const balance = roundMoney(walletRow.wallet_balance || 0) || 0;
-          if (normalizedMethod === 'wallet') {
-            walletAmountUsedResolved = amountToStore;
-          } else {
-            if (requestedWalletAmount <= 0 || requestedWalletAmount >= amountToStore) {
-              await connection.rollback();
-              connection.release();
-              return res.status(400).json({
-                success: false,
-                message: 'Split payment requires a valid wallet amount smaller than the total'
-              });
-            }
-            walletAmountUsedResolved = requestedWalletAmount;
-          }
-
-          if (walletAmountUsedResolved > balance) {
-            await connection.rollback();
-            connection.release();
-            return res.status(400).json({
-              success: false,
-              message: `Insufficient wallet balance. Available: ${balance} EGP`
-            });
-          }
-
-          if (walletAmountUsedResolved > 0) {
-            await debitWallet({
-              userId,
-              amount: walletAmountUsedResolved,
-              source: 'payment',
-              description: `Wallet used for event publishing fee "${event.title}"`,
-              relatedEventId: eventId,
-              conn: connection
-            });
-          }
-        }
-
-        await connection.execute(
-          `INSERT INTO payments (id, user_id, event_id, amount, payment_method, status, transaction_id)
-           VALUES (?, ?, ?, ?, ?, 'completed', ?)`,
-          [paymentId, userId, eventId || null, amountToStore, normalizedMethod, transactionId]
-        );
-
-        if (event.organizer_id === userId) {
-          await connection.execute(
-            "UPDATE events SET payment_status = 'paid' WHERE id = ?",
-            [eventId]
-          );
-        }
-
         const bookingIdToConfirm = Number(venueBookingId || event.venue_booking_id || 0) || null;
         let paymentVenueBooking = null;
+
         if (bookingIdToConfirm) {
+          // 1. Fetch booking and venue info
           const [bookingRows] = await connection.execute(
-            `SELECT id, status, host_id
-             FROM venue_bookings
-             WHERE id = ?
+            `SELECT vb.id, vb.host_id, v.price_per_day
+             FROM venue_bookings vb
+             INNER JOIN venues v ON v.id = vb.venue_id
+             WHERE vb.id = ?
              LIMIT 1
              FOR UPDATE`,
             [bookingIdToConfirm]
@@ -226,21 +171,157 @@ exports.create = async (req, res) => {
             throw new Error('Venue booking does not belong to this host');
           }
 
-          if (venueBooking.status === 'awaiting_event_approval' || venueBooking.status === 'pending_venue_response') {
-            await connection.execute(
-              `UPDATE venue_bookings
-               SET event_id = ?, payment_status = 'paid'
-              WHERE id = ?`,
-              [eventId, bookingIdToConfirm]
-            );
-            paymentVenueBooking = await VenueBooking.findById(bookingIdToConfirm, connection);
+          const venueFee = roundMoney(venueBooking.price_per_day || 0) || 0;
+          const platformFee = calculateListingFee(event.max_seats || 0).fee;
+          const totalCombined = roundMoney(venueFee + platformFee);
+
+          // Calculate wallet amount to use
+          const walletRow = await lockUserWallet(userId, connection);
+          if (!walletRow) {
+            await connection.rollback();
+            connection.release();
+            return res.status(404).json({ success: false, message: 'User not found' });
+          }
+
+          const balance = roundMoney(walletRow.wallet_balance || 0) || 0;
+          if (normalizedMethod === 'wallet') {
+            walletAmountUsedResolved = totalCombined;
+          } else if (normalizedMethod === 'split') {
+            if (requestedWalletAmount <= 0 || requestedWalletAmount >= totalCombined) {
+              await connection.rollback();
+              connection.release();
+              return res.status(400).json({
+                success: false,
+                message: 'Split payment requires a valid wallet amount smaller than the total'
+              });
+            }
+            walletAmountUsedResolved = requestedWalletAmount;
           } else {
-            paymentVenueBooking = await confirmVenueBookingAfterPayment({
-              connection,
-              venueBookingId: bookingIdToConfirm,
-              eventId,
-              hostId: userId
+            walletAmountUsedResolved = 0;
+          }
+
+          if (walletAmountUsedResolved > balance) {
+            await connection.rollback();
+            connection.release();
+            return res.status(400).json({
+              success: false,
+              message: `Insufficient wallet balance. Available: ${balance} EGP`
             });
+          }
+
+          // Handle card portion by topping up host's wallet first
+          const cardAmount = roundMoney(totalCombined - walletAmountUsedResolved);
+          if (cardAmount > 0) {
+            await creditWallet({
+              userId,
+              amount: cardAmount,
+              source: 'top-up',
+              description: `Card payment top-up for event registration. TXN: ${transactionId}`,
+              conn: connection
+            });
+          }
+
+          // Debit the entire combined amount in one single transaction
+          await debitWallet({
+            userId,
+            amount: totalCombined,
+            source: 'event-creation',
+            description: `Event creation payment: Platform Fee (${platformFee} EGP) + Venue Fee (${venueFee} EGP)`,
+            relatedEventId: eventId,
+            relatedBookingId: null,
+            conn: connection
+          });
+
+          // Insert a row in payments table
+          await connection.execute(
+            `INSERT INTO payments (id, user_id, event_id, amount, payment_method, status, transaction_id)
+             VALUES (?, ?, ?, ?, ?, 'completed', ?)`,
+            [paymentId, userId, eventId, totalCombined, normalizedMethod, transactionId]
+          );
+
+          // Update venue booking details
+          await connection.execute(
+            `UPDATE venue_bookings
+             SET event_id = ?,
+                 pending_venue_fee = ?,
+                 pending_platform_fee = ?,
+                 status = 'awaiting_dual_approval',
+                 payment_status = 'paid',
+                 responded_at = NULL
+             WHERE id = ?`,
+            [eventId, venueFee, platformFee, bookingIdToConfirm]
+          );
+
+          // Update event status
+          await connection.execute(
+            `UPDATE events
+             SET event_status = 'pending_admin_approval',
+                 payment_status = 'paid'
+             WHERE id = ?`,
+            [eventId]
+          );
+
+          // Override amountToStore so it reflects in the API response
+          amountToStore = totalCombined;
+
+          paymentVenueBooking = await VenueBooking.findById(bookingIdToConfirm, connection);
+        } else {
+          // Keep original non-venue booking payment flow
+          if (normalizedMethod === 'wallet' || normalizedMethod === 'split') {
+            const walletRow = await lockUserWallet(userId, connection);
+            if (!walletRow) {
+              await connection.rollback();
+              connection.release();
+              return res.status(404).json({ success: false, message: 'User not found' });
+            }
+
+            const balance = roundMoney(walletRow.wallet_balance || 0) || 0;
+            if (normalizedMethod === 'wallet') {
+              walletAmountUsedResolved = amountToStore;
+            } else {
+              if (requestedWalletAmount <= 0 || requestedWalletAmount >= amountToStore) {
+                await connection.rollback();
+                connection.release();
+                return res.status(400).json({
+                  success: false,
+                  message: 'Split payment requires a valid wallet amount smaller than the total'
+                });
+              }
+              walletAmountUsedResolved = requestedWalletAmount;
+            }
+
+            if (walletAmountUsedResolved > balance) {
+              await connection.rollback();
+              connection.release();
+              return res.status(400).json({
+                success: false,
+                message: `Insufficient wallet balance. Available: ${balance} EGP`
+              });
+            }
+
+            if (walletAmountUsedResolved > 0) {
+              await debitWallet({
+                userId,
+                amount: walletAmountUsedResolved,
+                source: 'payment',
+                description: `Wallet used for event publishing fee "${event.title}"`,
+                relatedEventId: eventId,
+                conn: connection
+              });
+            }
+          }
+
+          await connection.execute(
+            `INSERT INTO payments (id, user_id, event_id, amount, payment_method, status, transaction_id)
+             VALUES (?, ?, ?, ?, ?, 'completed', ?)`,
+            [paymentId, userId, eventId || null, amountToStore, normalizedMethod, transactionId]
+          );
+
+          if (event.organizer_id === userId) {
+            await connection.execute(
+              "UPDATE events SET payment_status = 'paid' WHERE id = ?",
+              [eventId]
+            );
           }
         }
 

@@ -6,24 +6,24 @@ function toSafeInteger(value, fallback = 0) {
 
 function deriveSeatCountsFromTotal(totalSeats) {
   const total = toSafeInteger(totalSeats, 0);
-  const standard = Math.floor(total * 0.5);
-  const special = Math.floor(total * (2 / 6));
-  const vip = Math.max(0, total - standard - special);
+  // Remove all automatic percentage calculations completely as per requirement.
+  // Values must come directly from what the venue owner manually entered.
+  // If not provided explicitly, they remain 0.
   return {
     total,
-    standard,
-    special,
-    vip
+    standard: total, // Fallback to all standard if only total is given, to avoid breaking legacy events
+    special: 0,
+    vip: 0
   };
 }
 
 function resolveSeatConfig(source) {
   if (source == null) {
-    return deriveSeatCountsFromTotal(0);
+    return { total: 0, standard: 0, special: 0, vip: 0 };
   }
 
   if (typeof source === 'number') {
-    return deriveSeatCountsFromTotal(source);
+    return { total: toSafeInteger(source, 0), standard: toSafeInteger(source, 0), special: 0, vip: 0 };
   }
 
   const maxSeats = toSafeInteger(source.max_seats ?? source.maxSeats, 0);
@@ -37,17 +37,21 @@ function resolveSeatConfig(source) {
     explicitVip != null;
 
   if (!hasExplicitCounts) {
-    return deriveSeatCountsFromTotal(maxSeats);
+    // If no explicit counts exist, default to all standard seats instead of using percentages
+    return {
+      total: maxSeats,
+      standard: maxSeats,
+      special: 0,
+      vip: 0
+    };
   }
 
   const standard = toSafeInteger(explicitStandard, 0);
   const special = toSafeInteger(explicitSpecial, 0);
   const vip = toSafeInteger(explicitVip, 0);
+  
+  // Total must be the exact sum of manual entries
   const total = standard + special + vip;
-
-  if (total <= 0) {
-    return deriveSeatCountsFromTotal(maxSeats);
-  }
 
   return {
     total,

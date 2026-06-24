@@ -16,6 +16,7 @@ const walletRoutes = require('./routes/walletRoutes');
 const venuesRoutes = require('./routes/venuesRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const chatRoutes = require('./routes/chat');
+const directChatRoutes = require('./routes/directChatRoutes');
 const adminRoutes = require('./routes/admin/adminRoutes');
 const venueOwnerRoutes = require('./routes/venueOwnerRoutes');
 const marketingController = require('./controllers/marketingController');
@@ -110,6 +111,7 @@ app.use('/api/venues', venuesRoutes);
 app.use('/api/venue-owner', venueOwnerRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/direct-chat', directChatRoutes);
 app.use('/api/Admin', adminRoutes);
 app.post('/api/generate-marketing-plan', authenticateToken, marketingController.generateMarketingPlan);
 

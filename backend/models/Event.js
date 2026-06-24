@@ -24,7 +24,17 @@ const Event = {
     const params = [];
 
     if (approvedOnly) {
-      where.push("(e.event_status = 'approved' OR e.event_status IS NULL)");
+      // An event is only publicly visible when BOTH the admin has approved it AND a venue booking is confirmed (accepted by venue owner)
+      // If the event is host_owned, we don't require a venue booking.
+      where.push(`
+        (e.event_status = 'approved' AND (
+          e.venue_type = 'host_owned' OR
+          EXISTS (
+            SELECT 1 FROM venue_bookings vb
+            WHERE vb.event_id = e.id AND vb.status IN ('accepted', 'confirmed')
+          )
+        ))
+      `);
     }
 
     if (lifecycleView === 'past') {

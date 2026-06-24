@@ -148,8 +148,11 @@ function buildSearchQuery(filters = {}) {
             SELECT 1
             FROM venue_availability_blocks vab
             WHERE vab.venue_id = v.id
-              AND vab.start_date <= ?
-              AND vab.end_date >= ?
+              AND vab.is_active = TRUE
+              AND (
+                (vab.block_type = 'specific_date' AND vab.date = ?) OR
+                (vab.block_type = 'recurring_weekday' AND vab.weekday = (DAYOFWEEK(?) - 1))
+              )
           ) THEN TRUE
           ELSE FALSE
         END AS is_blocked_on_date,
@@ -166,8 +169,11 @@ function buildSearchQuery(filters = {}) {
             SELECT 1
             FROM venue_availability_blocks vab
             WHERE vab.venue_id = v.id
-              AND vab.start_date <= ?
-              AND vab.end_date >= ?
+              AND vab.is_active = TRUE
+              AND (
+                (vab.block_type = 'specific_date' AND vab.date = ?) OR
+                (vab.block_type = 'recurring_weekday' AND vab.weekday = (DAYOFWEEK(?) - 1))
+              )
           ) THEN FALSE
           ELSE TRUE
         END AS is_available_on_date,
@@ -390,7 +396,18 @@ const Venue = {
       contactPhone: 'contact_phone',
       contactEmail: 'contact_email',
       cancellationPolicy: 'cancellation_policy',
-      adminNotes: 'admin_notes'
+      adminNotes: 'admin_notes',
+      rules: 'rules',
+      parkingDetails: 'parking_details',
+      cateringPolicy: 'catering_policy',
+      decorationPolicy: 'decoration_policy',
+      musicPolicy: 'music_policy',
+      setupTimeHours: 'setup_time_hours',
+      cleanupTimeHours: 'cleanup_time_hours',
+      minBookingHours: 'min_booking_hours',
+      maxConsecutiveDays: 'max_consecutive_days',
+      floorPlanImage: 'floor_plan_image',
+      virtualTourUrl: 'virtual_tour_url'
     };
 
     Object.entries(updates || {}).forEach(([key, value]) => {
@@ -423,37 +440,12 @@ const Venue = {
 
   async getAvailabilityBlocks(id) {
     const [rows] = await pool.execute(
-      `SELECT id, start_date, end_date, reason, created_at
+      `SELECT id, block_type, date, weekday, is_active, reason, created_at
        FROM venue_availability_blocks
-       WHERE venue_id = ?
-       ORDER BY start_date ASC, end_date ASC`,
+       WHERE venue_id = ? AND is_active = TRUE`,
       [id]
     );
     return rows;
-  },
-
-  async createAvailabilityBlock({ venueId, startDate, endDate, reason = null, createdBy = null }) {
-    const [result] = await pool.execute(
-      `INSERT INTO venue_availability_blocks (
-        venue_id, start_date, end_date, reason, created_by
-      ) VALUES (?, ?, ?, ?, ?)`,
-      [venueId, startDate, endDate, reason || null, createdBy || null]
-    );
-    const [rows] = await pool.execute(
-      `SELECT id, venue_id, start_date, end_date, reason, created_by, created_at
-       FROM venue_availability_blocks
-       WHERE id = ? LIMIT 1`,
-      [result.insertId]
-    );
-    return rows[0] || null;
-  },
-
-  async deleteAvailabilityBlock(id) {
-    const [result] = await pool.execute(
-      'DELETE FROM venue_availability_blocks WHERE id = ?',
-      [id]
-    );
-    return result.affectedRows > 0;
   },
 
   async findByOwnerId(ownerId) {

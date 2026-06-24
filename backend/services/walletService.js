@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('../config/database');
 const WalletTransaction = require('../models/WalletTransaction');
 
-const VALID_SOURCES = new Set(['refund', 'top-up', 'payment', 'event-payout', 'withdrawal', 'venue-booking']);
+const VALID_SOURCES = new Set(['refund', 'top-up', 'payment', 'event-payout', 'withdrawal', 'venue-booking', 'event-creation']);
 
 function roundMoney(value) {
   const amount = Number(value);

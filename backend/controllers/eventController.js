@@ -929,28 +929,34 @@ exports.create = async (req, res) => {
       const conflicts = await VenueBooking.findByVenueAndDate(
         normalizedVenueId,
         eventDateOnly,
-        ['accepted', 'confirmed'],
+        ['accepted', 'confirmed', 'accepted_by_owner'],
         connection
       );
       if (conflicts.length > 0) {
         await connection.rollback();
         connection.release();
-        return res.status(409).json({ success: false, message: 'Selected venue is already booked on this date' });
+        return res.status(409).json({
+          success: false,
+          message: `This venue is already booked on ${eventDateOnly}. Please choose a different date or venue.`
+        });
       }
 
       const [blockedRows] = await connection.execute(
         `SELECT id
          FROM venue_availability_blocks
          WHERE venue_id = ?
-           AND start_date <= ?
-           AND end_date >= ?
+           AND is_active = TRUE
+           AND (
+             (block_type = 'specific_date' AND date = ?) OR
+             (block_type = 'recurring_weekday' AND weekday = (DAYOFWEEK(?) - 1))
+           )
          LIMIT 1`,
         [normalizedVenueId, eventDateOnly, eventDateOnly]
       );
       if (blockedRows.length > 0) {
         await connection.rollback();
         connection.release();
-        return res.status(409).json({ success: false, message: 'Selected venue is blocked on this date' });
+        return res.status(409).json({ success: false, message: 'This venue is not available on the selected date. Please choose a different date.' });
       }
 
       if (venue.owner_id) {
@@ -1104,6 +1110,7 @@ exports.getCancellationSummary = async (req, res) => {
 
     const [rows] = await pool.execute(
       `SELECT b.id, b.user_id, b.seat_number, b.seat_numbers, COALESCE(b.amount_paid, 0) AS amount_paid,
+              COALESCE(b.wallet_amount_used, 0) AS wallet_amount_used,
               COALESCE(b.payment_method, 'card') AS payment_method,
               u.full_name, u.email
        FROM bookings b
@@ -1113,17 +1120,58 @@ exports.getCancellationSummary = async (req, res) => {
       [eventId]
     );
 
-    const attendees = rows.map((row) => ({
-      bookingId: row.id,
-      userId: row.user_id,
-      fullName: row.full_name,
-      email: row.email,
-      seats: getBookingSeatCount(row),
-      amountPaid: roundMoney(row.amount_paid || 0) || 0,
-      paymentMethod: row.payment_method || 'card'
-    }));
+    const attendees = rows.map((row) => {
+      let refundAmount = roundMoney(row.amount_paid || 0) || 0;
+      if (refundAmount <= 0) {
+        const walletUsed = roundMoney(row.wallet_amount_used || 0) || 0;
+        if (walletUsed > 0) {
+          refundAmount = walletUsed;
+        }
+      }
+      return {
+        bookingId: row.id,
+        userId: row.user_id,
+        fullName: row.full_name,
+        email: row.email,
+        seats: getBookingSeatCount(row),
+        amountPaid: refundAmount,
+        paymentMethod: row.payment_method || 'card'
+      };
+    });
 
     const totalRefundAmount = attendees.reduce((sum, attendee) => sum + attendee.amountPaid, 0);
+
+    // Find associated venue booking
+    const [venueBookings] = await pool.execute(
+      `SELECT id, status, payment_status,
+              COALESCE(pending_venue_fee, 0) AS pending_venue_fee,
+              COALESCE(pending_platform_fee, 0) AS pending_platform_fee
+       FROM venue_bookings
+       WHERE event_id = ? AND status <> 'cancelled'`,
+      [eventId]
+    );
+
+    let venueRefundAmount = 0;
+    let platformFee = 0;
+    if (venueBookings.length > 0) {
+      const vb = venueBookings[0];
+      platformFee = Number(vb.pending_platform_fee || 0);
+      if (vb.payment_status === 'transferred') {
+        const [heldTxRows] = await pool.execute(
+          `SELECT amount FROM wallet_transactions
+           WHERE related_venue_booking_id = ?
+             AND status = 'held'
+             AND type = 'credit'
+             AND source = 'venue-booking'
+           LIMIT 1`,
+          [vb.id]
+        );
+        venueRefundAmount = Number(heldTxRows[0]?.amount || 0);
+      } else {
+        // Only venue fee is refunded to host, platform fee is never refunded.
+        venueRefundAmount = Number(vb.pending_venue_fee || 0);
+      }
+    }
 
     res.json({
       success: true,
@@ -1132,6 +1180,8 @@ exports.getCancellationSummary = async (req, res) => {
         eventTitle: event.title,
         totalBookingsAffected: attendees.length,
         totalRefundAmount: roundMoney(totalRefundAmount) || 0,
+        venueRefundAmount: roundMoney(venueRefundAmount) || 0,
+        platformFee: roundMoney(platformFee) || 0,
         attendees
       }
     });
@@ -1142,212 +1192,21 @@ exports.getCancellationSummary = async (req, res) => {
 };
 
 exports.cancelEventWithRefunds = async (req, res) => {
-  let connection;
   try {
     const organizerId = req.user.userId;
     const { id: eventId } = req.params;
 
-    await ensureWalletInfrastructure(pool);
+    const { handleHostEventCancellation } = require('../services/venueOwnerEscrowService');
 
-    connection = await pool.getConnection();
-    await connection.beginTransaction();
+    const result = await handleHostEventCancellation(eventId, organizerId);
 
-    const [eventRows] = await connection.execute(
-      `SELECT id, title, organizer_id, max_seats, event_date, venue_booking_id,
-              COALESCE(price_standard, 0) AS price_standard,
-              COALESCE(price_special, 0) AS price_special,
-              COALESCE(price_vip, 0) AS price_vip
-       FROM events
-       WHERE id = ?
-       FOR UPDATE`,
-      [eventId]
-    );
-    if (eventRows.length === 0) {
-      await connection.rollback();
-      connection.release();
-      return res.status(404).json({ success: false, message: 'Event not found' });
-    }
-
-    const event = eventRows[0];
-    if (event.organizer_id !== organizerId) {
-      await connection.rollback();
-      connection.release();
-      return res.status(403).json({ success: false, message: 'Only organizer can cancel this event' });
-    }
-
-    const [bookings] = await connection.execute(
-      `SELECT b.id, b.user_id, b.event_id, b.seat_number, b.seat_numbers, b.ticket_type,
-              COALESCE(b.amount_paid, 0) AS amount_paid,
-              COALESCE(b.wallet_amount_used, 0) AS wallet_amount_used,
-              COALESCE(b.payment_method, 'card') AS payment_method,
-              u.full_name
-       FROM bookings b
-       INNER JOIN users u ON u.id = b.user_id
-       WHERE b.event_id = ? AND b.status = 'confirmed'
-       FOR UPDATE`,
-      [eventId]
-    );
-
-    let totalRefundAmount = 0;
-    const attendeeSummaries = [];
-
-    for (const booking of bookings) {
-      let refundAmount = roundMoney(booking.amount_paid || 0) || 0;
-      if (refundAmount <= 0) {
-        const walletUsed = roundMoney(booking.wallet_amount_used || 0) || 0;
-        if (walletUsed > 0) {
-          refundAmount = walletUsed;
-        }
-      }
-      if (refundAmount <= 0) {
-        refundAmount = estimateBookingAmountFromEventPricing(booking, event);
-      }
-      if (refundAmount <= 0) {
-        const [paymentRows] = await connection.execute(
-          `SELECT amount
-           FROM payments
-           WHERE user_id = ? AND event_id = ? AND status = 'completed'
-           ORDER BY created_at DESC
-           LIMIT 1`,
-          [booking.user_id, eventId]
-        );
-        if (paymentRows.length > 0) {
-          refundAmount = roundMoney(paymentRows[0].amount || 0) || 0;
-        }
-      }
-
-      await connection.execute(
-        'UPDATE bookings SET status = ? WHERE id = ?',
-        ['cancelled', booking.id]
-      );
-      await connection.execute('DELETE FROM booking_ticket_checkins WHERE booking_id = ?', [booking.id]);
-      await connection.execute('DELETE FROM event_checkins WHERE booking_id = ?', [booking.id]);
-
-      let walletBalance = null;
-      let vaultBalance = null;
-      if (refundAmount > 0) {
-        const vaultResult = await processRefundFromVault({
-          connection,
-          eventId,
-          bookingId: booking.id,
-          amount: refundAmount,
-          description: `Refund for cancelled event "${event.title}" (${booking.full_name || 'attendee'})`
-        });
-        vaultBalance = roundMoney(vaultResult?.vault?.balance || 0) || 0;
-
-        const creditResult = await creditWalletRefundInTransaction({
-          connection,
-          userId: booking.user_id,
-          amount: refundAmount,
-          description: `Refund for cancelled event "${event.title}"`,
-          relatedEventId: eventId,
-          relatedBookingId: booking.id,
-        });
-        walletBalance = creditResult.walletBalance;
-        totalRefundAmount = roundMoney(totalRefundAmount + refundAmount) || 0;
-
-        await insertNotificationInTransaction({
-          connection,
-          userId: organizerId,
-          title: 'Vault Refund Processed',
-          message: `A refund of ${formatMoney(refundAmount)} EGP was processed from your event vault for ${booking.full_name || 'an attendee'}.`,
-          type: 'warning'
-        });
-      }
-
-      if (walletBalance == null) {
-        const [walletRows] = await connection.execute(
-          'SELECT COALESCE(wallet_balance, 0) AS wallet_balance FROM users WHERE id = ? LIMIT 1',
-          [booking.user_id]
-        );
-        walletBalance = roundMoney(walletRows[0]?.wallet_balance || 0) || 0;
-      }
-
-      const attendeeMessage = refundAmount > 0
-        ? `Event "${event.title}" was cancelled. ${formatMoney(refundAmount)} EGP has been credited to your wallet.`
-        : `Event "${event.title}" was cancelled. No wallet credit was issued because amount paid was 0 EGP.`;
-
-      await insertNotificationInTransaction({
-        connection,
-        userId: booking.user_id,
-        title: 'Event Cancelled',
-        message: attendeeMessage,
-        type: refundAmount > 0 ? 'warning' : 'info'
-      });
-
-      attendeeSummaries.push({
-        bookingId: booking.id,
-        userId: booking.user_id,
-        fullName: booking.full_name || 'Attendee',
-        refundAmount,
-        paymentMethod: booking.payment_method,
-        walletBalance,
-        vaultBalance
-      });
-    }
-
-    await connection.execute(
-      `UPDATE events
-       SET lifecycle_status = 'expired',
-           expired_at = COALESCE(expired_at, NOW()),
-           available_seats = max_seats
-      WHERE id = ?`,
-      [eventId]
-    );
-
-    const venueCancellation = await cancelAndRefundVenueBooking({
-      venueBookingId: event.venue_booking_id,
-      hostId: organizerId,
-      forceFullRefund: true,
-      connection
-    });
-    const venueRefundAmount = roundMoney(venueCancellation.refundAmount || 0) || 0;
-    const venueSummaryLine = venueCancellation.booking
-      ? (venueRefundAmount > 0
-        ? ` Venue refund issued: ${formatMoney(venueRefundAmount)} EGP.`
-        : ` Venue booking cancelled. ${venueCancellation.reason || 'No venue refund issued.'}`)
-      : '';
-
-    await insertNotificationInTransaction({
-      connection,
-      userId: organizerId,
-      title: 'Event Cancelled Successfully',
-      message: `"${event.title}" was cancelled. ${attendeeSummaries.length} booking(s) affected, total attendee refunds: ${formatMoney(totalRefundAmount)} EGP.${venueSummaryLine}`,
-      type: 'success'
-    });
-
-    await connection.commit();
-    connection.release();
-    connection = null;
-
-    res.json({
-      success: true,
-      message: 'Event cancelled and refunds issued successfully',
-      summary: {
-        eventId: event.id,
-        eventTitle: event.title,
-        totalBookingsAffected: attendeeSummaries.length,
-        totalRefundAmount: roundMoney(totalRefundAmount) || 0,
-        venueRefundAmount,
-        venueBooking: venueCancellation.booking ? {
-          id: venueCancellation.booking.id,
-          status: venueCancellation.booking.status,
-          paymentStatus: venueCancellation.booking.payment_status,
-          refundAmount: venueRefundAmount,
-          reason: venueCancellation.reason
-        } : null,
-        attendees: attendeeSummaries
-      }
-    });
+    res.json(result);
   } catch (error) {
-    if (connection) {
-      try { await connection.rollback(); } catch (_) {}
-      connection.release();
-    }
     console.error('Cancel event with refunds error:', error);
-    res.status(500).json({ success: false, message: 'Error cancelling event and issuing refunds' });
+    res.status(500).json({ success: false, message: error.message || 'Error cancelling event and issuing refunds' });
   }
 };
+
 
 exports.getReviews = async (req, res) => {
   try {
@@ -1884,5 +1743,349 @@ exports.getRevenueTrend = async (req, res) => {
   } catch (error) {
     console.error('Revenue trend error:', error);
     res.status(500).json({ success: false, message: 'Error loading revenue trend' });
+  }
+};
+
+exports.selectVenue = async (req, res) => {
+  let connection;
+  try {
+    const hostId = req.user.userId;
+    const eventId = req.params.id;
+    const { venueId, eventDate } = req.body;
+
+    if (!venueId || !eventDate || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+      return res.status(400).json({ success: false, message: 'venueId and eventDate (YYYY-MM-DD) are required' });
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+    if (event.organizer_id !== hostId) {
+      return res.status(403).json({ success: false, message: 'Only the event organizer can change the venue' });
+    }
+    if (event.event_status !== 'pending_venue') {
+      return res.status(400).json({ success: false, message: 'Venue can only be changed for events in pending_venue status' });
+    }
+
+    const [venueRows] = await pool.execute(
+      'SELECT id, name, owner_id, price_per_day, total_capacity, status FROM venues WHERE id = ? LIMIT 1',
+      [venueId]
+    );
+    const venue = venueRows[0] || null;
+    if (!venue) {
+      return res.status(404).json({ success: false, message: 'Selected venue not found' });
+    }
+    if (venue.status !== 'approved') {
+      return res.status(400).json({ success: false, message: 'The selected venue is not approved' });
+    }
+
+    if (event.max_seats > venue.total_capacity) {
+      return res.status(400).json({
+        success: false,
+        message: `The selected venue capacity (${venue.total_capacity}) is smaller than your event capacity (${event.max_seats})`
+      });
+    }
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const conflicts = await VenueBooking.findByVenueAndDate(
+      venueId,
+      eventDate,
+      ['accepted', 'confirmed', 'accepted_by_owner'],
+      connection
+    );
+    if (conflicts.length > 0) {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({ success: false, message: 'The selected venue is already booked for this date' });
+    }
+
+    const [blockRows] = await connection.execute(
+      `SELECT id FROM venue_availability_blocks
+       WHERE venue_id = ?
+         AND is_active = TRUE
+         AND (
+           (block_type = 'specific_date' AND date = ?) OR
+           (block_type = 'recurring_weekday' AND weekday = (DAYOFWEEK(?) - 1))
+         )`,
+      [venueId, eventDate, eventDate]
+    );
+    if (blockRows.length > 0) {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({ success: false, message: 'The selected venue is blocked for this date' });
+    }
+
+    const [prevBookingRows] = await connection.execute(
+      `SELECT id, pending_venue_fee, pending_platform_fee, payment_status, status
+       FROM venue_bookings
+       WHERE event_id = ? AND status <> 'cancelled'
+       ORDER BY id DESC LIMIT 1`,
+      [eventId]
+    );
+    const prevBooking = prevBookingRows[0] || null;
+    if (!prevBooking) {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({ success: false, message: 'No active or declined venue booking found for this event' });
+    }
+
+    const oldVenueFee = Number(prevBooking.pending_venue_fee || 0);
+    const oldPlatformFee = Number(prevBooking.pending_platform_fee || 0);
+    const newVenueFee = Number(venue.price_per_day || 0);
+
+    const diff = roundMoney(newVenueFee - oldVenueFee);
+
+    const { creditWallet, debitWallet, lockUserWallet } = require('../services/walletService');
+    
+    const walletRow = await lockUserWallet(hostId, connection);
+    if (!walletRow) {
+      await connection.rollback();
+      connection.release();
+      return res.status(404).json({ success: false, message: 'Host user not found' });
+    }
+    const walletBalance = Number(walletRow.wallet_balance || 0);
+
+    if (diff > 0) {
+      if (walletBalance < diff) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient wallet balance to cover the venue price difference of ${diff.toFixed(2)} EGP. Current balance: ${walletBalance.toFixed(2)} EGP. Please top up your wallet first.`
+        });
+      }
+
+      await debitWallet({
+        userId: hostId,
+        amount: diff,
+        source: 'venue-booking',
+        description: `Debit for venue change price difference (event: ${event.title}): old fee ${oldVenueFee.toFixed(2)} EGP, new fee ${newVenueFee.toFixed(2)} EGP`,
+        relatedEventId: eventId,
+        conn: connection
+      });
+    } else if (diff < 0) {
+      const refundAmount = Math.abs(diff);
+      await creditWallet({
+        userId: hostId,
+        amount: refundAmount,
+        source: 'refund',
+        description: `Refund for venue change price difference (event: ${event.title}): old fee ${oldVenueFee.toFixed(2)} EGP, new fee ${newVenueFee.toFixed(2)} EGP`,
+        conn: connection
+      });
+    }
+
+    await connection.execute(
+      `UPDATE venue_bookings
+       SET status = 'cancelled', payment_status = 'refunded', pending_venue_fee = 0, pending_platform_fee = 0
+       WHERE id = ?`,
+      [prevBooking.id]
+    );
+
+    const newBookingId = await VenueBooking.create({
+      venueId,
+      eventId,
+      hostId,
+      eventDate,
+      totalPrice: roundMoney(newVenueFee + oldPlatformFee),
+      status: 'pending_venue_response',
+      paymentStatus: 'paid',
+      pendingVenueFee: newVenueFee,
+      pendingPlatformFee: oldPlatformFee
+    }, connection);
+
+    let eventDateTime = `${eventDate} 00:00:00`;
+    if (event.event_date) {
+      try {
+        const timePart = new Date(event.event_date).toTimeString().slice(0, 8);
+        eventDateTime = `${eventDate} ${timePart}`;
+      } catch (_) {}
+    }
+
+    await connection.execute(
+      `UPDATE events
+       SET event_status = 'approved',
+           venue_id = ?,
+           venue_booking_id = ?,
+           event_date = ?
+       WHERE id = ?`,
+      [venueId, newBookingId, eventDateTime, eventId]
+    );
+
+    await connection.commit();
+    connection.release();
+    connection = null;
+
+    if (venue.owner_id) {
+      await Notification.create(
+        venue.owner_id,
+        'New Venue Booking Request',
+        `New booking request for your venue "${venue.name}" on ${eventDate}.`,
+        'info',
+        'venueBookingRequests'
+      );
+    }
+
+    const updatedEvent = await Event.findById(eventId);
+    const updatedBooking = await VenueBooking.findById(newBookingId);
+
+    return res.json({
+      success: true,
+      message: 'New venue selected successfully. Waiting for venue owner confirmation.',
+      event: updatedEvent,
+      venueBooking: updatedBooking,
+      priceDifference: diff
+    });
+
+  } catch (error) {
+    if (connection) {
+      try { await connection.rollback(); } catch (_) {}
+      connection.release();
+    }
+    console.error('selectVenue error:', error);
+    return res.status(500).json({ success: false, message: 'Error selecting new venue' });
+  }
+};
+
+exports.getVenueDetails = async (req, res) => {
+  try {
+    const hostId = req.user.userId;
+    const eventId = req.params.id;
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+    if (event.organizer_id !== hostId) {
+      return res.status(403).json({ success: false, message: 'Only the event organizer can view venue details' });
+    }
+
+    const [bookingRows] = await pool.execute(
+      `SELECT vb.*, v.name AS venue_name
+       FROM venue_bookings vb
+       INNER JOIN venues v ON v.id = vb.venue_id
+       WHERE vb.event_id = ? AND vb.status <> 'cancelled'
+       ORDER BY vb.id DESC LIMIT 1`,
+      [eventId]
+    );
+
+    const booking = bookingRows[0] || null;
+    if (!booking) {
+      return res.json({
+        success: true,
+        booking: null,
+        venue: null,
+        needsNewVenue: false
+      });
+    }
+
+    const [venueRows] = await pool.execute(
+      `SELECT v.*, u.full_name AS owner_name, u.email AS owner_email, u.phone_number AS owner_phone
+       FROM venues v
+       LEFT JOIN users u ON v.owner_id = u.id
+       WHERE v.id = ? LIMIT 1`,
+      [booking.venue_id]
+    );
+    const venue = venueRows[0] || null;
+
+    if (!venue) {
+      return res.status(404).json({ success: false, message: 'Associated venue not found' });
+    }
+
+    if (typeof venue.images === 'string') {
+      try {
+        venue.images = JSON.parse(venue.images);
+      } catch (_) {
+        venue.images = venue.images.split(',').map(img => img.trim()).filter(Boolean);
+      }
+    }
+    if (typeof venue.amenities === 'string') {
+      try {
+        venue.amenities = JSON.parse(venue.amenities);
+      } catch (_) {
+        venue.amenities = venue.amenities.split(',').map(am => am.trim()).filter(Boolean);
+      }
+    }
+
+    const [bookedDatesRows] = await pool.execute(
+      `SELECT event_date FROM venue_bookings
+       WHERE venue_id = ?
+         AND status IN ('accepted', 'confirmed', 'accepted_by_owner', 'pending_venue_response', 'awaiting_dual_approval')
+         AND event_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 3 MONTH)`,
+      [booking.venue_id]
+    );
+    const bookedDates = bookedDatesRows.map(row => {
+      try {
+        return row.event_date.toISOString().slice(0, 10);
+      } catch (_) {
+        return String(row.event_date).slice(0, 10);
+      }
+    });
+
+    const [blockedRows] = await pool.execute(
+      `SELECT id, block_type, date, weekday, reason FROM venue_availability_blocks
+       WHERE venue_id = ? AND is_active = TRUE`,
+      [booking.venue_id]
+    );
+
+    const needsNewVenue = ['declined', 'declined_auto_expired'].includes(booking.status) || event.event_status === 'pending_venue';
+
+    return res.json({
+      success: true,
+      booking: {
+        id: booking.id,
+        status: booking.status,
+        paymentStatus: booking.payment_status,
+        pendingVenueFee: Number(booking.pending_venue_fee || 0),
+        pendingPlatformFee: Number(booking.pending_platform_fee || 0),
+        eventDate: booking.event_date ? (booking.event_date.toISOString ? booking.event_date.toISOString().slice(0, 10) : String(booking.event_date).slice(0, 10)) : null,
+        bookedAt: booking.booked_at ? (booking.booked_at.toISOString ? booking.booked_at.toISOString() : String(booking.booked_at)) : null
+      },
+      venue: {
+        id: venue.id,
+        name: venue.name,
+        description: venue.description,
+        address: venue.address,
+        governorate: venue.governorate,
+        totalCapacity: venue.total_capacity,
+        pricePerDay: Number(venue.price_per_day || 0),
+        images: venue.images || [],
+        amenities: venue.amenities || [],
+        rules: venue.rules,
+        parkingDetails: venue.parking_details,
+        cateringPolicy: venue.catering_policy,
+        decorationPolicy: venue.decoration_policy,
+        musicPolicy: venue.music_policy,
+        setupTimeHours: venue.setup_time_hours,
+        cleanupTimeHours: venue.cleanup_time_hours,
+        floorPlanImage: venue.floor_plan_image,
+        virtualTourUrl: venue.virtual_tour_url,
+        owner: {
+          name: venue.owner_name,
+          email: venue.owner_email,
+          phone: venue.owner_phone
+        }
+      },
+      calendar: {
+        bookedDates,
+        blockedRanges: blockedRows.map(row => {
+          const dateStr = row.date ? (row.date.toISOString ? row.date.toISOString().slice(0, 10) : String(row.date).slice(0, 10)) : null;
+          return {
+            id: row.id,
+            blockType: row.block_type,
+            date: dateStr,
+            weekday: row.weekday,
+            reason: row.reason || ''
+          };
+        })
+      },
+      needsNewVenue
+    });
+
+  } catch (error) {
+    console.error('getVenueDetails error:', error);
+    return res.status(500).json({ success: false, message: 'Error fetching venue details' });
   }
 };

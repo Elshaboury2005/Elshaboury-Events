@@ -49,6 +49,11 @@ router.get('/reports/revenue/export', authenticateAdmin, adminController.exportR
 router.get('/wallet-withdrawals', authenticateAdmin, adminController.getWalletWithdrawals);
 router.patch('/wallet-withdrawals/:id/status', authenticateAdmin, adminController.updateWalletWithdrawalStatus);
 
+// Platform wallet (admin fee collection & withdrawal)
+router.get('/platform-wallet', authenticateAdmin, adminController.getPlatformWallet);
+router.get('/platform-wallet/transactions', authenticateAdmin, adminController.getPlatformWalletTransactions);
+router.post('/platform-wallet/withdraw', authenticateAdmin, adminController.withdrawPlatformWallet);
+
 router.post('/notifications/send', authenticateAdmin, adminController.sendNotification);
 
 router.get('/support', authenticateAdmin, adminController.getSupportTickets);

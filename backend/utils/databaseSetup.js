@@ -951,6 +951,61 @@ async function setupDatabase() {
       )
     `);
 
+    await ensureTable('direct_chats', `
+      CREATE TABLE direct_chats (
+        id VARCHAR(36) PRIMARY KEY,
+        venue_booking_id INT NOT NULL,
+        host_user_id VARCHAR(36) NOT NULL,
+        venue_owner_user_id VARCHAR(36) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_booking_chat (venue_booking_id),
+        FOREIGN KEY (venue_booking_id) REFERENCES venue_bookings(id) ON DELETE CASCADE,
+        FOREIGN KEY (host_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (venue_owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_host_user (host_user_id),
+        INDEX idx_owner_user (venue_owner_user_id)
+      )
+    `);
+
+    await ensureTable('direct_chat_messages', `
+      CREATE TABLE direct_chat_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        chat_id VARCHAR(36) NOT NULL,
+        sender_id VARCHAR(36) NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (chat_id) REFERENCES direct_chats(id) ON DELETE CASCADE,
+        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_direct_chat_created (chat_id, created_at)
+      )
+    `);
+
+    await ensureTable('direct_chat_read_state', `
+      CREATE TABLE direct_chat_read_state (
+        chat_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        last_read_at TIMESTAMP NULL,
+        PRIMARY KEY (chat_id, user_id),
+        FOREIGN KEY (chat_id) REFERENCES direct_chats(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    await ensureTable('admin_wallet_transactions', `
+      CREATE TABLE admin_wallet_transactions (
+        id VARCHAR(36) PRIMARY KEY,
+        amount DECIMAL(10, 2) NOT NULL,
+        source VARCHAR(50) NOT NULL,
+        event_id VARCHAR(36) NULL,
+        venue_booking_id INT NULL,
+        description VARCHAR(500) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL,
+        FOREIGN KEY (venue_booking_id) REFERENCES venue_bookings(id) ON DELETE SET NULL
+      )
+    `);
+
+
     await ensureTable('event_waitlist', `
       CREATE TABLE event_waitlist (
         id VARCHAR(36) PRIMARY KEY,
@@ -1145,17 +1200,34 @@ async function setupDatabase() {
       )
     `);
 
+    await pool.execute('DROP TABLE IF EXISTS venue_availability_blocks'); // Drop to recreate with new schema
     await ensureTable('venue_availability_blocks', `
       CREATE TABLE venue_availability_blocks (
         id INT AUTO_INCREMENT PRIMARY KEY,
         venue_id INT NOT NULL,
-        start_date DATE NOT NULL,
-        end_date DATE NOT NULL,
+        block_type ENUM('specific_date', 'recurring_weekday') NOT NULL,
+        date DATE NULL,
+        weekday TINYINT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
         reason VARCHAR(255) NULL,
         created_by VARCHAR(36) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_venue_blocks_lookup (venue_id, start_date, end_date),
+        INDEX idx_venue_blocks_lookup (venue_id, is_active),
         FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
+      )
+    `);
+
+    // event_team: LOC / event crew members attached to an event
+    await ensureTable('event_team', `
+      CREATE TABLE event_team (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        event_id VARCHAR(36) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        role VARCHAR(255) NOT NULL,
+        contact_info VARCHAR(255) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_event_team_event (event_id),
+        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
       )
     `);
 
@@ -1481,8 +1553,57 @@ async function setupDatabase() {
       'venue_bookings',
       'status',
       'awaiting_event_approval',
-      "ALTER TABLE venue_bookings MODIFY COLUMN status ENUM('pending','confirmed','cancelled','awaiting_event_approval','pending_venue_response','accepted','declined','declined_auto_expired') NOT NULL DEFAULT 'pending'"
+      "ALTER TABLE venue_bookings MODIFY COLUMN status ENUM('pending','confirmed','cancelled','awaiting_event_approval','pending_venue_response','accepted','declined','declined_auto_expired','awaiting_dual_approval','accepted_by_owner') NOT NULL DEFAULT 'pending'"
     );
+    await ensureEnumValue(
+      'venue_bookings',
+      'status',
+      'awaiting_dual_approval',
+      "ALTER TABLE venue_bookings MODIFY COLUMN status ENUM('pending','confirmed','cancelled','awaiting_event_approval','pending_venue_response','accepted','declined','declined_auto_expired','awaiting_dual_approval','accepted_by_owner') NOT NULL DEFAULT 'pending'"
+    );
+    await ensureEnumValue(
+      'venue_bookings',
+      'status',
+      'accepted_by_owner',
+      "ALTER TABLE venue_bookings MODIFY COLUMN status ENUM('pending','confirmed','cancelled','awaiting_event_approval','pending_venue_response','accepted','declined','declined_auto_expired','awaiting_dual_approval','accepted_by_owner') NOT NULL DEFAULT 'pending'"
+    );
+
+    // venue_bookings: extend payment_status enum with transferred state
+    await ensureEnumValue(
+      'venue_bookings',
+      'payment_status',
+      'transferred',
+      "ALTER TABLE venue_bookings MODIFY COLUMN payment_status ENUM('unpaid', 'paid', 'refunded', 'transferred') DEFAULT 'unpaid'"
+    );
+
+    // venue_bookings: add pending fees columns
+    await ensureColumn(
+      'venue_bookings',
+      'pending_venue_fee',
+      'ALTER TABLE venue_bookings ADD COLUMN pending_venue_fee DECIMAL(10, 2) DEFAULT 0.00'
+    );
+    await ensureColumn(
+      'venue_bookings',
+      'pending_platform_fee',
+      'ALTER TABLE venue_bookings ADD COLUMN pending_platform_fee DECIMAL(10, 2) DEFAULT 0.00'
+    );
+
+    // events: extend status enum with pending_admin_approval state
+    await ensureEnumValue(
+      'events',
+      'event_status',
+      'pending_admin_approval',
+      "ALTER TABLE events MODIFY COLUMN event_status ENUM('pending', 'approved', 'rejected', 'pending_admin_approval', 'pending_venue') DEFAULT 'approved'"
+    );
+
+    // events: extend status enum with pending_venue state
+    await ensureEnumValue(
+      'events',
+      'event_status',
+      'pending_venue',
+      "ALTER TABLE events MODIFY COLUMN event_status ENUM('pending', 'approved', 'rejected', 'pending_admin_approval', 'pending_venue') DEFAULT 'approved'"
+    );
+
     // venue_bookings: track when owner responded
     await ensureColumn(
       'venue_bookings',
@@ -1508,15 +1629,84 @@ async function setupDatabase() {
       'related_venue_booking_id',
       'ALTER TABLE wallet_transactions ADD COLUMN related_venue_booking_id INT NULL'
     );
-    // wallet_transactions: extend source enum to include venue-booking
+    // wallet_transactions: extend source enum to include venue-booking and event-creation
     await ensureEnumValue(
       'wallet_transactions',
       'source',
-      'venue-booking',
-      "ALTER TABLE wallet_transactions MODIFY COLUMN source ENUM('refund','top-up','payment','event-payout','withdrawal','venue-booking') NOT NULL"
+      'event-creation',
+      "ALTER TABLE wallet_transactions MODIFY COLUMN source ENUM('refund','top-up','payment','event-payout','withdrawal','venue-booking','event-creation') NOT NULL"
     );
 
     // ── End Venue Owner Migrations ──────────────────────────────────────
+
+    // venues: Expanded venue profiles migrations
+    await ensureColumn('venues', 'rules', 'ALTER TABLE venues ADD COLUMN rules TEXT NULL');
+    await ensureColumn('venues', 'parking_details', 'ALTER TABLE venues ADD COLUMN parking_details TEXT NULL');
+    await ensureColumn('venues', 'catering_policy', "ALTER TABLE venues ADD COLUMN catering_policy ENUM('allowed', 'not_allowed', 'provided_only') DEFAULT 'allowed'");
+    await ensureColumn('venues', 'decoration_policy', "ALTER TABLE venues ADD COLUMN decoration_policy ENUM('allowed', 'not_allowed', 'approval_required') DEFAULT 'allowed'");
+    await ensureColumn('venues', 'music_policy', "ALTER TABLE venues ADD COLUMN music_policy ENUM('allowed', 'not_allowed', 'until_midnight', 'until_10pm') DEFAULT 'allowed'");
+    await ensureColumn('venues', 'setup_time_hours', 'ALTER TABLE venues ADD COLUMN setup_time_hours TINYINT DEFAULT 1');
+    await ensureColumn('venues', 'cleanup_time_hours', 'ALTER TABLE venues ADD COLUMN cleanup_time_hours TINYINT DEFAULT 1');
+    await ensureColumn('venues', 'min_booking_hours', 'ALTER TABLE venues ADD COLUMN min_booking_hours TINYINT DEFAULT 4');
+    await ensureColumn('venues', 'max_consecutive_days', 'ALTER TABLE venues ADD COLUMN max_consecutive_days TINYINT DEFAULT 1');
+    await ensureColumn('venues', 'floor_plan_image', 'ALTER TABLE venues ADD COLUMN floor_plan_image VARCHAR(500) NULL');
+    await ensureColumn('venues', 'virtual_tour_url', 'ALTER TABLE venues ADD COLUMN virtual_tour_url VARCHAR(500) NULL');
+
+    // ── Platform Wallet ───────────────────────────────────────────────────────
+    // Single-row table that holds the admin platform wallet balance.
+    // id is always 1 (singleton). Credits are added when admin approves an event;
+    // debits are added on admin withdrawals. Platform fee is NOT refunded on rejection
+    // (that is handled separately in venueOwnerEscrowService).
+    await ensureTable('platform_wallet', `
+      CREATE TABLE platform_wallet (
+        id TINYINT UNSIGNED NOT NULL DEFAULT 1,
+        balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        CONSTRAINT chk_platform_wallet_singleton CHECK (id = 1),
+        CONSTRAINT chk_platform_wallet_balance CHECK (balance >= 0)
+      )
+    `);
+
+    // Transaction log for the platform wallet.
+    // type: 'credit' = fee collected on event approval; 'debit' = admin withdrawal.
+    await ensureTable('platform_wallet_transactions', `
+      CREATE TABLE platform_wallet_transactions (
+        id VARCHAR(36) NOT NULL,
+        type ENUM('credit', 'debit') NOT NULL,
+        amount DECIMAL(15, 2) NOT NULL,
+        event_id VARCHAR(36) NULL,
+        venue_booking_id INT NULL,
+        description VARCHAR(500) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        INDEX idx_pwt_type (type),
+        INDEX idx_pwt_event (event_id),
+        INDEX idx_pwt_created (created_at),
+        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL,
+        FOREIGN KEY (venue_booking_id) REFERENCES venue_bookings(id) ON DELETE SET NULL
+      )
+    `);
+
+    // ── Venue Owner Notification Logs ────────────────────────────────────────
+    await ensureTable('venue_owner_notification_logs', `
+      CREATE TABLE venue_owner_notification_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        venue_owner_id VARCHAR(36) NOT NULL,
+        venue_id INT NOT NULL,
+        venue_name VARCHAR(255) NOT NULL DEFAULT '',
+        target_type ENUM('single', 'all') NOT NULL,
+        host_ids_json JSON NOT NULL,
+        title VARCHAR(100) NOT NULL,
+        message VARCHAR(500) NOT NULL,
+        type ENUM('info', 'warning', 'success') NOT NULL DEFAULT 'info',
+        sent_count INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_vonl_owner (venue_owner_id),
+        INDEX idx_vonl_venue (venue_id),
+        INDEX idx_vonl_created (created_at)
+      )
+    `);
 
     console.log('Database setup complete!');
     return true;
