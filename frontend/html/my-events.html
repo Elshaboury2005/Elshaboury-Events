@@ -157,6 +157,9 @@
       }
 
       const status = String(rawStatus || '').trim().toLowerCase();
+      if (status === 'pending_venue') {
+        return { label: 'Action Required — Select Venue', className: 'status-pending' };
+      }
       if (status.includes('pending')) {
         return { label: 'Pending', className: 'status-pending' };
       }
@@ -290,7 +293,10 @@
                   <span>&#x1F4CD; ${location}</span>
                   <span>&#x1F4C5; ${formattedDate}</span>
                 </div>
-                <span class="event-tag ${status.className}">${escapeHtml(status.label)}</span>
+                ${event.event_status === 'pending_venue'
+                  ? `<a class="event-tag ${status.className}" href="manage-event.html?id=${event.id}#venue-section" style="text-decoration: none;">${escapeHtml(status.label)}</a>`
+                  : `<span class="event-tag ${status.className}">${escapeHtml(status.label)}</span>`
+                }
               </div>
               ${seatsMarkup}
               ${descriptionHtml}

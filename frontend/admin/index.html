@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -19,7 +19,7 @@
 
       const page = document.getElementById('pageContent');
       page.innerHTML = `
-        <div class="stats-grid cols-6" id="statsGrid"></div>
+        <div class="stats-grid cols-7" id="statsGrid"></div>
 
         <div class="card">
           <div class="section-head">
@@ -61,6 +61,7 @@
             <a class="btn btn-gradient" href="/admin/notifications.html?mode=bulk">&#128231; Send Bulk Notification</a>
             <a class="btn btn-gradient" href="/admin/reports.html">&#128202; View Revenue Report</a>
             <a class="btn btn-gradient" href="/admin/wallet-withdrawals.html">&#128179; Wallet Withdrawals</a>
+            <a class="btn btn-gradient" href="/admin/platform-wallet.html">&#128184; Platform Wallet</a>
           </div>
         </div>
       `;
@@ -100,7 +101,8 @@
           { id: 'bookings', icon: '\u{1F39F}\uFE0F', label: 'Total Bookings', value: Number(stats.totalBookings || 0), type: 'number' },
           { id: 'revenue', icon: '\u{1F4B0}', label: 'Total Revenue', value: Number(stats.totalRevenue || 0), type: 'currency', className: 'revenue' },
           { id: 'pendingEvents', icon: '\u23F3', label: 'Pending Events', value: Number(stats.pendingEvents || 0), type: 'number' },
-          { id: 'openSupport', icon: '\u{1F4AC}', label: 'Open Support Tickets', value: Number(stats.openSupportTickets || 0), type: 'number' }
+          { id: 'openSupport', icon: '\u{1F4AC}', label: 'Open Support Tickets', value: Number(stats.openSupportTickets || 0), type: 'number' },
+          { id: 'platformWallet', icon: '\u{1F4B8}', label: 'Platform Wallet', value: Number(stats.platformWalletBalance || 0), type: 'currency', className: 'revenue' }
         ];
 
         statsGrid.innerHTML = items.map((item) => `
@@ -260,22 +262,25 @@
         renderActivities();
       });
 
-      const [statsRes, pendingRes, supportRes, activityRes] = await Promise.all([
+      const [statsRes, pendingRes, supportRes, activityRes, walletRes] = await Promise.all([
         AdminApp.request('/Admin/dashboard/stats'),
         AdminApp.request('/Admin/events?status=pending'),
         AdminApp.request('/Admin/support'),
-        AdminApp.request('/Admin/dashboard/activity')
+        AdminApp.request('/Admin/dashboard/activity'),
+        AdminApp.request('/Admin/platform-wallet')
       ]);
 
       const statsData = await statsRes.json().catch(() => ({}));
       const pendingData = await pendingRes.json().catch(() => ({}));
       const supportData = await supportRes.json().catch(() => ({}));
       const activityData = await activityRes.json().catch(() => ({}));
+      const walletData = await walletRes.json().catch(() => ({}));
 
       const baseStats = statsData.stats || {};
       const pendingEvents = (pendingData.events || []).length;
       const openSupportTickets = (supportData.tickets || []).filter((ticket) => String(ticket.status || '').toLowerCase() !== 'closed').length;
-      renderStats({ ...baseStats, pendingEvents, openSupportTickets });
+      const platformWalletBalance = Number(walletData.balance || 0);
+      renderStats({ ...baseStats, pendingEvents, openSupportTickets, platformWalletBalance });
 
       activities = activityData.activities || [];
       renderActivities();

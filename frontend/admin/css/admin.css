@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
 
 :root {
   --bg-1: #081922;
@@ -269,6 +269,10 @@ a {
 
 .stats-grid.cols-6 {
   grid-template-columns: repeat(6, minmax(140px, 1fr));
+}
+
+.stats-grid.cols-5 {
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
 }
 
 .stats-grid.cols-4 {
@@ -671,6 +675,24 @@ tbody tr:hover {
   background: rgba(155, 93, 229, 0.2);
   border-color: rgba(155, 93, 229, 0.6);
   color: #dac0ff;
+}
+
+.status-pending_admin_approval {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.6);
+  color: #c4b5fd;
+}
+
+.status-awaiting_dual_approval {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.6);
+  color: #fde68a;
+}
+
+.status-accepted_by_owner {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.6);
+  color: #6ee7b7;
 }
 
 .stats-grid.cols-7 {

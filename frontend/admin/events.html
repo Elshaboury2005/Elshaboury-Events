@@ -34,14 +34,15 @@
               <select id="eventStatusFilter">
                 <option value="all">All Active</option>
                 <option value="approved">Approved</option>
-                <option value="pending">Pending</option>
+                <option value="pending">Pending (Not Paid)</option>
+                <option value="pending_admin_approval">Awaiting Admin Approval (Paid)</option>
                 <option value="rejected">Rejected</option>
               </select>
             </label>
           </div>
         </div>
 
-        <div class="stats-grid cols-4" id="eventStats"></div>
+        <div class="stats-grid cols-5" id="eventStats"></div>
 
         <div class="card">
           <div class="table-wrap">
@@ -151,6 +152,7 @@
         const normalized = String(event?.event_status || 'pending').trim().toLowerCase();
         if (normalized === 'approved') return 'approved';
         if (normalized === 'rejected') return 'rejected';
+        if (normalized === 'pending_admin_approval') return 'pending_admin_approval';
         return 'pending';
       }
 
@@ -167,13 +169,16 @@
         const reviewable = events.filter((event) => !isEnded(event));
         const total = events.length;
         const pending = reviewable.filter((event) => getDisplayStatus(event) === 'pending').length;
+        // pending_admin_approval = events with venue booking (paid), awaiting admin approval
+        const pendingAdminApproval = reviewable.filter((event) => getDisplayStatus(event) === 'pending_admin_approval').length;
         const approved = reviewable.filter((event) => getDisplayStatus(event) === 'approved').length;
         const ended = events.filter((event) => isEnded(event)).length;
 
         eventStats.innerHTML = `
           <div class="stat-card"><div class="stat-head"><span class="stat-label">Total Events</span><span class="stat-icon">&#127914;</span></div><div class="stat-value">${AdminApp.formatNumber(total)}</div></div>
           <div class="stat-card"><div class="stat-head"><span class="stat-label">Open Review List</span><span class="stat-icon">&#128221;</span></div><div class="stat-value">${AdminApp.formatNumber(reviewable.length)}</div></div>
-          <div class="stat-card"><div class="stat-head"><span class="stat-label">Pending Approval</span><span class="stat-icon">&#9203;</span></div><div class="stat-value">${AdminApp.formatNumber(pending)}</div></div>
+          <div class="stat-card"><div class="stat-head"><span class="stat-label">Pending (Unpaid)</span><span class="stat-icon">&#9203;</span></div><div class="stat-value">${AdminApp.formatNumber(pending)}</div></div>
+          <div class="stat-card" style="border-color: rgba(99,102,241,0.5);"><div class="stat-head"><span class="stat-label">Paid – Awaiting Approval</span><span class="stat-icon">&#128176;</span></div><div class="stat-value" style="color:#818cf8;">${AdminApp.formatNumber(pendingAdminApproval)}</div></div>
           <div class="stat-card"><div class="stat-head"><span class="stat-label">Ended Archive</span><span class="stat-icon">&#127937;</span></div><div class="stat-value">${AdminApp.formatNumber(ended)}</div></div>
         `;
       }
@@ -298,6 +303,16 @@
         if (!response.ok || !data.success) {
           window.alert(data.message || 'Failed to update event approval.');
           return;
+        }
+
+        if (status === 'rejected') {
+          if (data.refundAmount && Number(data.refundAmount) > 0) {
+            window.alert(`Event rejected. Full refund of ${Number(data.refundAmount).toFixed(2)} EGP has been issued to the host.`);
+          } else {
+            window.alert('Event rejected successfully.');
+          }
+        } else {
+          window.alert('Event approved successfully.');
         }
 
         await loadEvents();
@@ -473,6 +488,7 @@
         const reservedSeats = Number(stats.totalReservedSeats || 0);
         const capacity = Number(event.max_seats || 0);
         const fillRate = capacity > 0 ? (reservedSeats / capacity) * 100 : 0;
+        const venueBookingFees = data.venueBookingFees || null;
 
         eventDetailsTitle.textContent = ended ? 'Ended Event Report' : 'Event Details';
         eventDetailsBody.innerHTML = `
@@ -518,6 +534,20 @@
               <div class="info-item"><div class="info-label">VIP</div><div class="info-value">${AdminApp.formatCurrency(event.price_vip || 0)}</div></div>
             </div>
           </div>
+
+          ${venueBookingFees ? `
+          <div class="card" style="border-left: 3px solid #6366f1;">
+            <h4 class="card-title" style="color:#6366f1;">&#127970; Venue Booking — Fee Breakdown</h4>
+            <div class="info-grid" style="margin-bottom:0;">
+              <div class="info-item"><div class="info-label">Venue</div><div class="info-value">${AdminApp.escapeHtml(venueBookingFees.venueName || '-')}</div></div>
+              <div class="info-item"><div class="info-label">Booking Status</div><div class="info-value"><span class="status-badge status-${AdminApp.escapeHtml(venueBookingFees.venueBookingStatus || '')}">${AdminApp.escapeHtml(venueBookingFees.venueBookingStatus || '-')}</span></div></div>
+              <div class="info-item"><div class="info-label">Venue fee:</div><div class="info-value" style="font-weight:700; color:#10b981;">${AdminApp.formatCurrency(venueBookingFees.pendingVenueFee)}</div></div>
+              <div class="info-item"><div class="info-label">Platform fee:</div><div class="info-value" style="font-weight:700; color:#6366f1;">${AdminApp.formatCurrency(venueBookingFees.pendingPlatformFee)}</div></div>
+              <div class="info-item"><div class="info-label">Total Collected:</div><div class="info-value" style="font-weight:700;">${AdminApp.formatCurrency(venueBookingFees.totalPaid)}</div></div>
+              <div class="info-item"><div class="info-label">Transfer Status</div><div class="info-value">${venueBookingFees.paymentStatus === 'transferred' ? '<span style="color:#10b981; font-weight:700;">&#10003; Transferred</span>' : '<span style="color:#f59e0b; font-weight:700;">&#9203; Pending Transfer</span>'}</div></div>
+            </div>
+          </div>
+          ` : ''}
 
           <div class="card">
             <h4 class="card-title">${ended ? 'Archived Snapshot' : 'Performance Summary'}</h4>

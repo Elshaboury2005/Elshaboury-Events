@@ -460,6 +460,41 @@ CREATE TABLE IF NOT EXISTS event_marketing_setups (
     FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Direct Chats
+CREATE TABLE IF NOT EXISTS direct_chats (
+    id VARCHAR(36) PRIMARY KEY,
+    venue_booking_id INT NOT NULL,
+    host_user_id VARCHAR(36) NOT NULL,
+    venue_owner_user_id VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_booking_chat (venue_booking_id),
+    FOREIGN KEY (venue_booking_id) REFERENCES venue_bookings(id) ON DELETE CASCADE,
+    FOREIGN KEY (host_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_host_user (host_user_id),
+    INDEX idx_owner_user (venue_owner_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS direct_chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    chat_id VARCHAR(36) NOT NULL,
+    sender_id VARCHAR(36) NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chat_id) REFERENCES direct_chats(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_direct_chat_created (chat_id, created_at)
+);
+
+CREATE TABLE IF NOT EXISTS direct_chat_read_state (
+    chat_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    last_read_at TIMESTAMP NULL,
+    PRIMARY KEY (chat_id, user_id),
+    FOREIGN KEY (chat_id) REFERENCES direct_chats(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Verify tables were created
 SHOW TABLES;
 

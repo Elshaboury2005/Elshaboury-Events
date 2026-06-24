@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platform Wallet — Admin</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Platform Wallet');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <!-- Balance overview cards -->
+        <div class="stats-grid cols-3" id="walletStats"></div>
+
+        <!-- Withdraw card -->
+        <div class="card" id="withdrawCard">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">&#128184; Withdraw Funds</h3>
+              <p class="section-meta">Transfer funds from the platform wallet. The balance must cover the requested amount.</p>
+            </div>
+          </div>
+          <div class="form-grid" style="max-width:520px;">
+            <label class="label-stack">Amount (EGP)
+              <input id="withdrawAmount" type="number" min="1" step="0.01" class="input" placeholder="e.g. 500.00" />
+            </label>
+            <label class="label-stack">Description (optional)
+              <input id="withdrawDesc" type="text" maxlength="200" class="input" placeholder="Reason for withdrawal" />
+            </label>
+            <div>
+              <button id="withdrawBtn" class="btn btn-gradient">Withdraw</button>
+              <span id="withdrawStatus" style="margin-left:12px;font-size:0.9rem;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transaction history -->
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Transaction History</h3>
+              <p class="section-meta">All credits (event approval fees) and debits (admin withdrawals)</p>
+            </div>
+            <div class="filters-inline" style="margin-top:0;">
+              <label class="label-stack" style="min-width:140px;">Type
+                <select id="txTypeFilter">
+                  <option value="all">All</option>
+                  <option value="credit">Credits</option>
+                  <option value="debit">Debits</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Event</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody id="txBody"></tbody>
+            </table>
+          </div>
+          <div class="load-more-wrap">
+            <button id="loadMoreBtn" class="btn btn-muted hidden">Load More</button>
+          </div>
+        </div>
+      `;
+
+      const walletStats    = document.getElementById('walletStats');
+      const txBody         = document.getElementById('txBody');
+      const txTypeFilter   = document.getElementById('txTypeFilter');
+      const withdrawAmount = document.getElementById('withdrawAmount');
+      const withdrawDesc   = document.getElementById('withdrawDesc');
+      const withdrawBtn    = document.getElementById('withdrawBtn');
+      const withdrawStatus = document.getElementById('withdrawStatus');
+      const loadMoreBtn    = document.getElementById('loadMoreBtn');
+
+      let currentBalance = 0;
+      let txPage = 1;
+      const TX_LIMIT = 25;
+      let txTotal = 0;
+      let txRows = [];
+      let currentType = 'all';
+
+      // ── Render stats cards ────────────────────────────────────────────────
+      function renderStats(overview) {
+        currentBalance = Number(overview.balance || 0);
+
+        walletStats.innerHTML = `
+          <div class="stat-card revenue">
+            <div class="stat-head">
+              <span class="stat-label">Current Balance</span>
+              <span class="stat-icon">&#128184;</span>
+            </div>
+            <div id="stat-balance" class="stat-value">${AdminApp.formatCurrency(currentBalance)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-head">
+              <span class="stat-label">Total Credits Collected</span>
+              <span class="stat-icon">&#128200;</span>
+            </div>
+            <div class="stat-value" id="stat-credits">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-head">
+              <span class="stat-label">Total Withdrawals</span>
+              <span class="stat-icon">&#128601;</span>
+            </div>
+            <div class="stat-value" id="stat-debits">0</div>
+          </div>
+        `;
+
+        AdminApp.animateCount(document.getElementById('stat-credits'), Number(overview.totalCredits || 0), { formatter: AdminApp.formatCurrency });
+        AdminApp.animateCount(document.getElementById('stat-debits'), Number(overview.totalDebits || 0), { formatter: AdminApp.formatCurrency });
+      }
+
+      // ── Render transactions ───────────────────────────────────────────────
+      function renderTxRows(rows, append = false) {
+        if (!append) txBody.innerHTML = '';
+
+        if (!rows.length && !append) {
+          txBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No transactions found.</div></td></tr>';
+          loadMoreBtn.classList.add('hidden');
+          return;
+        }
+
+        rows.forEach((row) => {
+          const isCredit = row.type === 'credit';
+          const amountHtml = isCredit
+            ? `<span style="color:var(--success, #22c55e);font-weight:600;">+${AdminApp.formatCurrency(row.amount)}</span>`
+            : `<span style="color:var(--danger, #ef4444);font-weight:600;">-${AdminApp.formatCurrency(row.amount)}</span>`;
+
+          const typeBadge = isCredit
+            ? '<span class="status-badge status-success">credit</span>'
+            : '<span class="status-badge status-error">debit</span>';
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${AdminApp.formatDateTime(row.createdAt)}</td>
+            <td>${typeBadge}</td>
+            <td>${amountHtml}</td>
+            <td>${row.eventTitle ? AdminApp.escapeHtml(row.eventTitle) : '<span class="section-meta">—</span>'}</td>
+            <td>${AdminApp.escapeHtml(row.description || '—')}</td>
+          `;
+          txBody.appendChild(tr);
+        });
+
+        const shown = txPage * TX_LIMIT;
+        if (txTotal > shown) {
+          loadMoreBtn.classList.remove('hidden');
+        } else {
+          loadMoreBtn.classList.add('hidden');
+        }
+      }
+
+      // ── Load transactions (paginated) ─────────────────────────────────────
+      async function loadTxPage(page, type, append = false) {
+        const res = await AdminApp.request(
+          `/Admin/platform-wallet/transactions?page=${page}&limit=${TX_LIMIT}&type=${type}`
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          txBody.innerHTML = '<tr><td colspan="5"><div class="empty-state error-state">Failed to load transactions.</div></td></tr>';
+          return;
+        }
+        txTotal = Number(data.total || 0);
+        const rows = data.transactions || [];
+        if (append) {
+          txRows = txRows.concat(rows);
+        } else {
+          txRows = rows;
+        }
+        renderTxRows(rows, append);
+      }
+
+      // ── Load overview ────────────────────────────────────────────────────
+      async function loadOverview() {
+        const res = await AdminApp.request('/Admin/platform-wallet');
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          renderStats(data);
+        }
+      }
+
+      // ── Withdraw ─────────────────────────────────────────────────────────
+      withdrawBtn.addEventListener('click', async () => {
+        const amount = Number(withdrawAmount.value || 0);
+        const desc   = String(withdrawDesc.value || '').trim();
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+          withdrawStatus.textContent = 'Please enter a valid positive amount.';
+          withdrawStatus.style.color = 'var(--danger, #ef4444)';
+          return;
+        }
+
+        if (amount > currentBalance) {
+          withdrawStatus.textContent = `Insufficient balance. Available: ${AdminApp.formatCurrency(currentBalance)}`;
+          withdrawStatus.style.color = 'var(--danger, #ef4444)';
+          return;
+        }
+
+        if (!window.confirm(`Withdraw ${AdminApp.formatCurrency(amount)} from the platform wallet?`)) return;
+
+        withdrawBtn.disabled = true;
+        withdrawStatus.textContent = 'Processing…';
+        withdrawStatus.style.color = '';
+
+        try {
+          const res = await AdminApp.request('/Admin/platform-wallet/withdraw', {
+            method: 'POST',
+            body: JSON.stringify({ amount, description: desc || undefined })
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || !data.success) {
+            withdrawStatus.textContent = data.message || 'Withdrawal failed.';
+            withdrawStatus.style.color = 'var(--danger, #ef4444)';
+            return;
+          }
+
+          withdrawStatus.textContent = `✔ Withdrawn successfully. New balance: ${AdminApp.formatCurrency(data.newBalance)}`;
+          withdrawStatus.style.color = 'var(--success, #22c55e)';
+          withdrawAmount.value = '';
+          withdrawDesc.value = '';
+
+          // Refresh
+          await loadOverview();
+          txPage = 1;
+          await loadTxPage(1, currentType, false);
+        } catch (err) {
+          withdrawStatus.textContent = 'Network error. Please try again.';
+          withdrawStatus.style.color = 'var(--danger, #ef4444)';
+        } finally {
+          withdrawBtn.disabled = false;
+        }
+      });
+
+      // ── Filter change ─────────────────────────────────────────────────────
+      txTypeFilter.addEventListener('change', async () => {
+        currentType = txTypeFilter.value;
+        txPage = 1;
+        txRows = [];
+        await loadTxPage(1, currentType, false);
+      });
+
+      // ── Load more ─────────────────────────────────────────────────────────
+      loadMoreBtn.addEventListener('click', async () => {
+        txPage += 1;
+        await loadTxPage(txPage, currentType, true);
+      });
+
+      // ── Initial load ─────────────────────────────────────────────────────
+      await Promise.all([
+        loadOverview(),
+        loadTxPage(1, 'all', false)
+      ]);
+    })();
+  </script>
+</body>
+</html>

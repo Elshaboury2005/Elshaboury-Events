@@ -7,6 +7,7 @@
     { href: '/admin/bookings.html', icon: '&#127903;&#65039;', label: 'Bookings' },
     { href: '/admin/reports.html', icon: '&#128176;', label: 'Revenue Reports' },
     { href: '/admin/wallet-withdrawals.html', icon: '&#128179;', label: 'Wallet Withdrawals' },
+    { href: '/admin/platform-wallet.html', icon: '&#128184;', label: 'Platform Wallet' },
     { href: '/admin/notifications.html', icon: '&#128276;', label: 'Notifications' },
     { href: '/admin/support.html', icon: '&#128172;', label: 'Support' },
     { href: '/admin/settings.html', icon: '&#9881;&#65039;', label: 'Settings' }

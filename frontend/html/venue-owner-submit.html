@@ -308,16 +308,31 @@
                         <input type="number" step="any" class="form-control" id="longitude" placeholder="e.g. 31.2357">
                     </div>
 
-                    <!-- Capacity -->
+                    <!-- Capacity & Seat Breakdown -->
+                    <!-- All four fields are required. Standard + Special + VIP must equal Total Capacity exactly. -->
                     <div class="form-group">
                         <label for="totalCapacity">Total Guest Capacity *</label>
-                        <input type="number" class="form-control" id="totalCapacity" min="1" placeholder="e.g. 500" required>
+                        <input type="number" class="form-control" id="totalCapacity" min="1" step="1" placeholder="e.g. 300" required oninput="validateSeatCounts()">
                     </div>
-
-                    <!-- Pricing -->
                     <div class="form-group">
                         <label for="pricePerDay">Price Per Day (EGP) *</label>
                         <input type="number" class="form-control" id="pricePerDay" min="1" placeholder="e.g. 10000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="standardSeats">Standard Seats *</label>
+                        <input type="number" class="form-control" id="standardSeats" min="1" step="1" placeholder="e.g. 150" required oninput="validateSeatCounts()">
+                    </div>
+                    <div class="form-group">
+                        <label for="specialSeats">Special Seats *</label>
+                        <input type="number" class="form-control" id="specialSeats" min="1" step="1" placeholder="e.g. 100" required oninput="validateSeatCounts()">
+                    </div>
+                    <div class="form-group form-group-full" style="margin-bottom: 0;">
+                        <label for="vipSeats">VIP Seats *</label>
+                        <input type="number" class="form-control" id="vipSeats" min="1" step="1" placeholder="e.g. 50" required oninput="validateSeatCounts()">
+                    </div>
+                    <!-- Live seat validation indicator -->
+                    <div class="form-group-full" id="seatValidationRow" style="margin-top: -10px;">
+                        <p id="seatValidationMsg" style="font-size: 0.85rem; font-weight: 600; margin: 0; color: var(--muted-color);">Enter seat counts above.</p>
                     </div>
 
                     <!-- Contact details -->
@@ -348,6 +363,79 @@
                         <input type="url" class="form-control" id="imageUrl" placeholder="e.g. https://images.unsplash.com/... (or leave empty for default)">
                     </div>
 
+                    <!-- New Policy Fields -->
+                    <div class="form-group form-group-full" style="border-top: 1px solid var(--card-border); padding-top: 20px; margin-top: 10px;">
+                        <h4 style="margin: 0 0 15px 0; color: var(--primary);">Venue Policies & Details</h4>
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <label for="rules">Venue Rules</label>
+                        <textarea class="form-control" id="rules" rows="3" placeholder="e.g. No smoking indoors. ID required."></textarea>
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <label for="parkingDetails">Parking Details</label>
+                        <textarea class="form-control" id="parkingDetails" rows="2" placeholder="e.g. Valet available, 50 spots max."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cateringPolicy">Catering Policy</label>
+                        <select class="form-control" id="cateringPolicy">
+                            <option value="allowed" selected>External Catering Allowed</option>
+                            <option value="not_allowed">No External Catering</option>
+                            <option value="provided_only">Venue Provided Only</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="decorationPolicy">Decoration Policy</label>
+                        <select class="form-control" id="decorationPolicy">
+                            <option value="allowed" selected>Allowed</option>
+                            <option value="not_allowed">Not Allowed</option>
+                            <option value="approval_required">Approval Required</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="musicPolicy">Music Policy</label>
+                        <select class="form-control" id="musicPolicy">
+                            <option value="allowed" selected>Allowed</option>
+                            <option value="not_allowed">Not Allowed</option>
+                            <option value="until_midnight">Until Midnight</option>
+                            <option value="until_10pm">Until 10 PM</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="minBookingHours">Min Booking Hours</label>
+                        <input type="number" class="form-control" id="minBookingHours" min="1" step="1" value="4">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setupTimeHours">Setup Time (Hours)</label>
+                        <input type="number" class="form-control" id="setupTimeHours" min="0" step="1" value="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cleanupTimeHours">Cleanup Time (Hours)</label>
+                        <input type="number" class="form-control" id="cleanupTimeHours" min="0" step="1" value="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maxConsecutiveDays">Max Consecutive Days</label>
+                        <input type="number" class="form-control" id="maxConsecutiveDays" min="1" step="1" value="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="floorPlanImage">Floor Plan Image URL</label>
+                        <input type="url" class="form-control" id="floorPlanImage" placeholder="https://...">
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <label for="virtualTourUrl">Virtual Tour URL</label>
+                        <input type="url" class="form-control" id="virtualTourUrl" placeholder="https://...">
+                    </div>
+
                     <!-- Amenities multi-select checkboxes -->
                     <div class="checkbox-group">
                         <label class="group-title">Amenities & Facilities Available</label>
@@ -365,7 +453,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit">Submit Venue for Review</button>
+                <button type="submit" class="btn-submit" id="submitBtn">Submit Venue for Review</button>
             </form>
 
             <div id="messageBox" class="message-box"></div>
@@ -420,25 +508,36 @@
                 amenities.push(cb.value);
             });
 
-            // Build request object
+            // Build request object — seat values come ONLY from the form fields, never auto-calculated
+            const standardSeats = parseInt(document.getElementById('standardSeats').value, 10);
+            const specialSeats  = parseInt(document.getElementById('specialSeats').value, 10);
+            const vipSeats      = parseInt(document.getElementById('vipSeats').value, 10);
+
+            // Client-side guard (server also enforces this)
+            if (standardSeats + specialSeats + vipSeats !== totalCapacity) {
+                messageBox.classList.add('error');
+                messageBox.textContent = 'Seat counts do not match total capacity. Please fix the seat breakdown before submitting.';
+                return;
+            }
+
             const payload = {
-                name,
-                category,
-                governorate,
-                address,
-                latitude,
-                longitude,
-                totalCapacity,
-                standardSeats: Math.floor(totalCapacity * 0.6), // default split
-                specialSeats: Math.floor(totalCapacity * 0.3),
-                vipSeats: totalCapacity - Math.floor(totalCapacity * 0.6) - Math.floor(totalCapacity * 0.3),
+                name, category, governorate, address,
+                latitude, longitude,
+                totalCapacity, standardSeats, specialSeats, vipSeats,
                 pricePerDay,
-                contactPhone,
-                contactEmail,
-                cancellationPolicy,
-                description,
-                amenities,
-                images
+                contactPhone, contactEmail, cancellationPolicy,
+                description, images, amenities,
+                rules: document.getElementById('rules').value.trim() || null,
+                parkingDetails: document.getElementById('parkingDetails').value.trim() || null,
+                cateringPolicy: document.getElementById('cateringPolicy').value,
+                decorationPolicy: document.getElementById('decorationPolicy').value,
+                musicPolicy: document.getElementById('musicPolicy').value,
+                minBookingHours: parseInt(document.getElementById('minBookingHours').value, 10),
+                setupTimeHours: parseInt(document.getElementById('setupTimeHours').value, 10),
+                cleanupTimeHours: parseInt(document.getElementById('cleanupTimeHours').value, 10),
+                maxConsecutiveDays: parseInt(document.getElementById('maxConsecutiveDays').value, 10),
+                floorPlanImage: document.getElementById('floorPlanImage').value.trim() || null,
+                virtualTourUrl: document.getElementById('virtualTourUrl').value.trim() || null
             };
 
             try {
@@ -468,6 +567,34 @@
                 messageBox.textContent = 'An error occurred. Please check network connection.';
             }
         });
+
+        // Live seat count validation — runs on every keystroke in the seat fields
+        function validateSeatCounts() {
+            const cap = parseInt(document.getElementById('totalCapacity').value, 10) || 0;
+            const std = parseInt(document.getElementById('standardSeats').value, 10) || 0;
+            const spc = parseInt(document.getElementById('specialSeats').value, 10) || 0;
+            const vip = parseInt(document.getElementById('vipSeats').value, 10) || 0;
+            const msg = document.getElementById('seatValidationMsg');
+            const btn = document.getElementById('submitBtn');
+
+            if (!cap && !std && !spc && !vip) {
+                msg.style.color = 'var(--muted-color)';
+                msg.textContent = 'Enter seat counts above.';
+                btn.disabled = false;
+                return;
+            }
+
+            const sum = std + spc + vip;
+            if (cap > 0 && sum === cap) {
+                msg.style.color = 'var(--success)';
+                msg.textContent = `✓ Standard + Special + VIP = ${sum} / ${cap} total — counts match!`;
+                btn.disabled = false;
+            } else {
+                msg.style.color = 'var(--danger)';
+                msg.textContent = `✗ Standard + Special + VIP = ${sum} / ${cap} total — seat counts do not match total capacity`;
+                btn.disabled = true;
+            }
+        }
     </script>
     <script src="../js/ai-assistant.js"></script>
 </body>

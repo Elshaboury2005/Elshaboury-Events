@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const STEP_DETAILS = ['Event Format', 'Basic Info', 'Time & Location', 'Ticketing', 'Agenda & Host'];
   const TOTAL_STEPS = STEP_DETAILS.length;
   const API_BASE = window.AuthConfig?.apiBaseUrl || '/api';
@@ -270,6 +270,97 @@
     if (!eventDateInput.value || !eventTimeInput.value) return null;
     const date = new Date(`${eventDateInput.value}T${eventTimeInput.value}`);
     return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  // ── Venue Availability Check (double-booking prevention) ──────────────────
+  const venueAvailState = { checked: false, isAvailable: true, checking: false };
+
+  function getOrCreateAvailabilityBanner() {
+    let banner = document.getElementById('venueAvailabilityWarning');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'venueAvailabilityWarning';
+      Object.assign(banner.style, {
+        display: 'none',
+        marginTop: '12px',
+        padding: '12px 16px',
+        borderRadius: '8px',
+        fontSize: '0.9rem',
+        fontWeight: '600',
+        borderLeft: '4px solid',
+        backdropFilter: 'blur(8px)'
+      });
+      const dateGroup = eventDateInput.closest('.input-group') || eventDateInput.parentElement;
+      if (dateGroup && dateGroup.parentElement) {
+        dateGroup.parentElement.insertBefore(banner, dateGroup.nextSibling);
+      }
+    }
+    return banner;
+  }
+
+  function showAvailabilityBanner(status, message) {
+    const banner = getOrCreateAvailabilityBanner();
+    if (status === 'checking') {
+      Object.assign(banner.style, { display: 'block', background: 'rgba(14,165,233,0.1)', borderColor: '#0ea5e9', color: '#7dd3fc' });
+      banner.textContent = '⏳ Checking venue availability...';
+    } else if (status === 'available') {
+      Object.assign(banner.style, { display: 'block', background: 'rgba(16,185,129,0.1)', borderColor: '#10b981', color: '#6ee7b7' });
+      banner.textContent = '✅ ' + message;
+    } else if (status === 'unavailable') {
+      Object.assign(banner.style, { display: 'block', background: 'rgba(239,68,68,0.12)', borderColor: '#ef4444', color: '#fca5a5' });
+      banner.textContent = '🚫 ' + message;
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  function hideAvailabilityBanner() {
+    const banner = document.getElementById('venueAvailabilityWarning');
+    if (banner) banner.style.display = 'none';
+  }
+
+  async function checkVenueAvailability() {
+    const btn = document.getElementById('nextStepBtn');
+    if (state.venueType !== 'platform_booked' || !state.selectedVenue || !eventDateInput.value) {
+      hideAvailabilityBanner();
+      venueAvailState.checked = false;
+      venueAvailState.isAvailable = true;
+      if (btn) btn.disabled = false;
+      return;
+    }
+    const venueId = state.selectedVenue.id;
+    const date = eventDateInput.value;
+    venueAvailState.checking = true;
+    venueAvailState.checked = false;
+    showAvailabilityBanner('checking');
+    if (btn) btn.disabled = true;
+    try {
+      const resp = await fetch(`${API_BASE}/venues/${venueId}/check-availability?date=${encodeURIComponent(date)}`);
+      if (!resp.ok) throw new Error('Network error');
+      const data = await resp.json();
+      venueAvailState.checking = false;
+      venueAvailState.checked = true;
+      if (data.isAvailable) {
+        venueAvailState.isAvailable = true;
+        showAvailabilityBanner('available', `${state.selectedVenue.name} is available on ${date}`);
+        if (btn) btn.disabled = false;
+      } else {
+        venueAvailState.isAvailable = false;
+        let reason = 'This venue is already booked on the selected date. Please choose a different date or select another venue.';
+        if (data.isBlockedManually) {
+          reason = `This venue is blocked on ${date}${data.conflictingBlock && data.conflictingBlock.reason ? ' (' + data.conflictingBlock.reason + ')' : ''}. Please choose a different date or select another venue.`;
+        }
+        showAvailabilityBanner('unavailable', reason);
+        if (btn) btn.disabled = true;
+      }
+    } catch (err) {
+      console.error(err);
+      venueAvailState.checking = false;
+      venueAvailState.checked = false;
+      venueAvailState.isAvailable = true;
+      hideAvailabilityBanner();
+      if (btn) btn.disabled = false;
+    }
   }
 
   function escapeHtml(value) {
@@ -1303,6 +1394,37 @@
       const amenity = getAmenityMeta(item);
       return `<div class="amenity-card"><span>${amenity.icon}</span><strong>${escapeHtml(amenity.label)}</strong></div>`;
     }).join('');
+
+    // Policies section
+    const policiesEl = document.getElementById('venueModalPolicies');
+    const policiesSection = document.getElementById('venueModalPoliciesSection');
+    if (policiesEl) {
+      const policyLabels = {
+        catering: { allowed: 'External Catering Allowed', not_allowed: 'No External Catering', provided_only: 'Venue Catering Only' },
+        decoration: { allowed: 'Decoration Allowed', not_allowed: 'No Decoration', approval_required: 'Decoration by Approval' },
+        music: { allowed: 'Music Allowed', not_allowed: 'No Music', until_midnight: 'Music Until Midnight', until_10pm: 'Music Until 10 PM' }
+      };
+      const hasPolicies = venue.cateringPolicy || venue.decorationPolicy || venue.musicPolicy || venue.rules || venue.parkingDetails;
+      if (hasPolicies) {
+        policiesSection.style.display = '';
+        policiesEl.innerHTML = [
+          venue.cateringPolicy ? `<div><span style="font-size:1.1rem;">🍽️</span> ${policyLabels.catering[venue.cateringPolicy] || venue.cateringPolicy}</div>` : '',
+          venue.decorationPolicy ? `<div><span style="font-size:1.1rem;">🎀</span> ${policyLabels.decoration[venue.decorationPolicy] || venue.decorationPolicy}</div>` : '',
+          venue.musicPolicy ? `<div><span style="font-size:1.1rem;">🎵</span> ${policyLabels.music[venue.musicPolicy] || venue.musicPolicy}</div>` : '',
+          venue.setupTimeHours ? `<div><span style="font-size:1.1rem;">🔧</span> ${venue.setupTimeHours}h Setup Time</div>` : '',
+          venue.minBookingHours ? `<div><span style="font-size:1.1rem;">⏱️</span> Min ${venue.minBookingHours}h Booking</div>` : '',
+        ].filter(Boolean).join('');
+        if (venue.rules) {
+          policiesEl.innerHTML += `<div style="grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; margin-top: 5px;"><strong>Rules:</strong> ${escapeHtml(venue.rules)}</div>`;
+        }
+        if (venue.parkingDetails) {
+          policiesEl.innerHTML += `<div style="grid-column: 1 / -1;"><strong>Parking:</strong> ${escapeHtml(venue.parkingDetails)}</div>`;
+        }
+      } else {
+        policiesSection.style.display = 'none';
+      }
+    }
+
     renderVenueModalGallery(venue);
     renderMiniCalendar(venue);
     renderVenueReviews(venue);
@@ -1324,11 +1446,19 @@
 
   function chooseVenue(venue) {
     state.selectedVenue = { ...venue };
+    // Reset availability state so new venue+date combination is freshly checked
+    venueAvailState.checked = false;
+    venueAvailState.isAvailable = true;
     renderSelectedVenueStrip();
     applyVenueMode();
     renderVenueGrid();
     renderFeaturedVenues();
     closeModal(venueQuickViewModal);
+    // Trigger availability check if a date is already selected
+    if (eventDateInput.value) {
+      clearTimeout(eventDateInput._availabilityTimer);
+      eventDateInput._availabilityTimer = setTimeout(() => checkVenueAvailability(), 300);
+    }
   }
 
   async function toggleWishlist(venueId) {
@@ -1460,6 +1590,18 @@
       if (!selectedDateTime || selectedDateTime <= new Date()) {
         window.alert('Choose an event date and time in the future.');
         eventTimeInput.reportValidity();
+        return false;
+      }
+    }
+
+    // Double-booking guard: block proceeding if venue is already taken on selected date
+    if (step === 2 && state.venueType === 'platform_booked' && state.selectedVenue && eventDateInput.value) {
+      if (venueAvailState.checking) {
+        window.alert('Still checking venue availability — please wait a moment and try again.');
+        return false;
+      }
+      if (venueAvailState.checked && !venueAvailState.isAvailable) {
+        window.alert('This venue is not available on the selected date. Please choose a different date or a different venue.');
         return false;
       }
     }
@@ -1769,6 +1911,9 @@
     } else {
       eventTimeInput.removeAttribute('min');
     }
+    // Trigger availability check whenever date changes
+    clearTimeout(eventDateInput._availabilityTimer);
+    eventDateInput._availabilityTimer = setTimeout(() => checkVenueAvailability(), 400);
   });
   venueSearchGovernorate.addEventListener('change', () => {
     if (!eventGovernorateSelect.value) eventGovernorateSelect.value = normalizeGovernorateName(venueSearchGovernorate.value);
