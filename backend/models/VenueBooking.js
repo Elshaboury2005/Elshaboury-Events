@@ -143,7 +143,7 @@ const VenueBooking = {
        INNER JOIN venues v ON v.id = vb.venue_id AND v.owner_id = ?
        LEFT JOIN events e ON e.id = vb.event_id
        LEFT JOIN users u ON u.id = vb.host_id
-       WHERE vb.status IN ('accepted','confirmed')
+       WHERE vb.status IN ('accepted','confirmed','accepted_by_owner')
          AND vb.event_date >= CURDATE()
        ORDER BY vb.event_date ASC`,
       [ownerId]
@@ -180,7 +180,7 @@ const VenueBooking = {
         AND wt.status = 'held'
         AND wt.type = 'credit'
         AND wt.source = 'venue-booking'
-       WHERE vb.status IN ('accepted','confirmed')
+       WHERE vb.status IN ('accepted','confirmed','accepted_by_owner')
          AND vb.event_date < DATE_SUB(NOW(), INTERVAL ? HOUR)`,
       [graceHours]
     );
@@ -199,7 +199,7 @@ const VenueBooking = {
        LEFT JOIN events e ON e.id = vb.event_id
        LEFT JOIN users u ON u.id = vb.host_id
        WHERE vb.status IN ('cancelled','declined','declined_auto_expired','completed')
-          OR (vb.status IN ('accepted','confirmed') AND vb.event_date < CURDATE())
+          OR (vb.status IN ('accepted','confirmed','accepted_by_owner') AND vb.event_date < CURDATE())
        ORDER BY vb.event_date DESC, vb.booked_at DESC, vb.id DESC`,
       [ownerId]
     );

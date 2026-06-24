@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS venue_bookings (
     host_id VARCHAR(36) NOT NULL,
     event_date DATE NOT NULL,
     total_price DECIMAL(10,2) NOT NULL,
-    status ENUM('pending', 'confirmed', 'cancelled', 'awaiting_event_approval', 'pending_venue_response', 'accepted', 'declined', 'declined_auto_expired') DEFAULT 'pending',
+    status ENUM('pending', 'confirmed', 'cancelled', 'awaiting_event_approval', 'pending_venue_response', 'accepted', 'declined', 'declined_auto_expired', 'awaiting_dual_approval', 'accepted_by_owner') DEFAULT 'pending',
     payment_status ENUM('unpaid', 'paid', 'refunded') DEFAULT 'unpaid',
     responded_at DATETIME NULL,
     owner_notes TEXT NULL,

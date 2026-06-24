@@ -10,6 +10,7 @@ const Venue = require('../models/Venue');
 const { createVenueBookingChat } = require('../services/directChatService');
 const VenueBooking = require('../models/VenueBooking');
 const Notification = require('../models/Notification');
+const { queueEmail } = require('../utils/emailService');
 const {
   holdFundsForVenueOwner,
   refundHeldFundsToHost,
@@ -1005,10 +1006,10 @@ exports.getVenueBookingsTable = async (req, res) => {
          e.id AS event_id,
          e.title AS event_title,
          e.event_type,
-         e.category AS event_category,
+         e.event_type AS event_category,
          e.max_seats AS expected_guest_count,
          e.description AS event_description,
-         e.agenda AS event_agenda,
+         e.event_agenda AS event_agenda,
          e.event_date AS event_start_datetime,
          u.id AS host_id,
          u.full_name AS host_full_name,
@@ -1077,7 +1078,7 @@ exports.getBookingDetails = async (req, res) => {
 
     // Fetch additional event/host details not in VenueBooking.findById
     const [eventRows] = await pool.execute(
-      `SELECT e.id, e.title, e.event_type, e.category, e.max_seats, e.description, e.agenda, e.event_date
+      `SELECT e.id, e.title, e.event_type, e.event_type AS category, e.max_seats, e.description, e.event_agenda AS agenda, e.event_date
        FROM events e WHERE e.id = ? LIMIT 1`,
       [booking.event_id]
     );
@@ -1565,8 +1566,8 @@ exports.getEventTeam = async (req, res) => {
     // Fetch event details
     const [eventRows] = await pool.execute(
       `SELECT
-         e.id, e.title, e.event_type, e.category, e.description,
-         e.event_date, e.event_time, e.end_time, e.max_seats, e.event_agenda
+         e.id, e.title, e.event_type, e.event_type AS category, e.description,
+         e.event_date, NULL AS event_time, NULL AS end_time, e.max_seats, e.event_agenda
        FROM events e
        WHERE e.id = ? LIMIT 1`,
       [booking.event_id]
@@ -1656,9 +1657,11 @@ exports.getEligibleHosts = async (req, res) => {
          u.email,
          vb.status AS bookingStatus,
          vb.event_date AS eventDate,
-         vb.id AS bookingId
+         vb.id AS bookingId,
+         e.title AS eventTitle
        FROM venue_bookings vb
        JOIN users u ON u.id = vb.host_id
+       LEFT JOIN events e ON e.id = vb.event_id
        WHERE vb.venue_id = ?
          AND vb.status NOT IN ('cancelled', 'declined')
        ORDER BY vb.event_date DESC`,
@@ -1674,7 +1677,8 @@ exports.getEligibleHosts = async (req, res) => {
           fullName: row.fullName || row.email,
           email: row.email,
           bookingStatus: row.bookingStatus,
-          eventDate: row.eventDate
+          eventDate: row.eventDate,
+          eventTitle: row.eventTitle || ''
         });
       }
     }
@@ -1726,46 +1730,67 @@ exports.sendVenueOwnerNotification = async (req, res) => {
     const venueName = venueRows[0].name;
     const fullTitle = `[${venueName}] — ${title}`;
 
-    let recipientIds = [];
+    let recipients = [];
 
     if (targetType === 'single') {
       // Verify host has a non-cancelled booking at this venue
       const [checkRows] = await pool.execute(
-        `SELECT id FROM venue_bookings
-         WHERE venue_id = ? AND host_id = ?
-           AND status NOT IN ('cancelled', 'declined')
+        `SELECT DISTINCT u.id, u.email, u.full_name
+         FROM venue_bookings vb
+         JOIN users u ON u.id = vb.host_id
+         WHERE vb.venue_id = ? AND vb.host_id = ?
+           AND vb.status NOT IN ('cancelled', 'declined', 'declined_auto_expired')
          LIMIT 1`,
         [venueId, hostId]
       );
       if (checkRows.length === 0) {
-        return res.status(403).json({ success: false, message: 'You can only message hosts who have booked your venue' });
+        return res.status(403).json({ success: false, message: 'You can only notify hosts who have booked your venue' });
       }
-      recipientIds = [hostId];
+      recipients = checkRows;
     } else {
       // All distinct hosts with active bookings
       const [hostRows] = await pool.execute(
-        `SELECT DISTINCT host_id FROM venue_bookings
-         WHERE venue_id = ?
-           AND status IN ('accepted', 'confirmed', 'pending_venue_response', 'accepted_by_owner')`,
+        `SELECT DISTINCT u.id, u.email, u.full_name
+         FROM venue_bookings vb
+         JOIN users u ON u.id = vb.host_id
+         WHERE vb.venue_id = ?
+           AND vb.status IN ('accepted', 'confirmed', 'pending_venue_response', 'accepted_by_owner')`,
         [venueId]
       );
-      recipientIds = hostRows.map((r) => r.host_id);
+      recipients = hostRows;
     }
 
-    if (recipientIds.length === 0) {
+    if (recipients.length === 0) {
       return res.json({ success: true, sentCount: 0, message: 'No eligible recipients found' });
     }
 
-    // Send notifications using existing Notification.create
+    // Send in-app notifications and queue matching emails using existing platform services.
     let sentCount = 0;
-    for (const uid of recipientIds) {
+    let emailQueuedCount = 0;
+    for (const recipient of recipients) {
       try {
-        await Notification.create(uid, fullTitle, message, type);
+        await Notification.create(recipient.id, fullTitle, message, type);
         sentCount++;
       } catch (notifErr) {
-        console.error(`Failed to send notification to ${uid}:`, notifErr.message);
+        console.error(`Failed to send notification to ${recipient.id}:`, notifErr.message);
+      }
+
+      if (recipient.email) {
+        try {
+          await queueEmail({
+            userId: recipient.id,
+            to: recipient.email,
+            subject: fullTitle,
+            body: `Hello ${recipient.full_name || 'Host'},\n\n${message}\n\nVenue: ${venueName}`
+          });
+          emailQueuedCount++;
+        } catch (emailErr) {
+          console.error(`Failed to queue notification email to ${recipient.email}:`, emailErr.message);
+        }
       }
     }
+
+    const recipientIds = recipients.map((recipient) => recipient.id);
 
     // Insert log row
     await pool.execute(
@@ -1775,7 +1800,7 @@ exports.sendVenueOwnerNotification = async (req, res) => {
       [ownerId, venueId, venueName, targetType, JSON.stringify(recipientIds), title, message, type, sentCount]
     );
 
-    return res.json({ success: true, sentCount });
+    return res.json({ success: true, sentCount, emailQueuedCount });
   } catch (error) {
     console.error('sendVenueOwnerNotification error:', error);
     return res.status(500).json({ success: false, message: 'Failed to send notification' });

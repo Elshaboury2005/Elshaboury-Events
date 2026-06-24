@@ -922,12 +922,12 @@ exports.updateEventApproval = async (req, res) => {
         }
       }
 
-      // Check if there are any already 'accepted' venue bookings for this event
+      // Check if there are any already owner-accepted venue bookings for this event
       const [acceptedBookings] = await pool.execute(
         `SELECT vb.id, vb.host_id, v.owner_id
          FROM venue_bookings vb
          INNER JOIN venues v ON v.id = vb.venue_id
-         WHERE vb.event_id = ? AND vb.status = 'accepted'`,
+         WHERE vb.event_id = ? AND vb.status IN ('accepted', 'confirmed', 'accepted_by_owner')`,
         [id]
       );
       for (const booking of acceptedBookings) {
@@ -2288,4 +2288,3 @@ exports.withdrawPlatformWallet = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to process withdrawal' });
   }
 };
-

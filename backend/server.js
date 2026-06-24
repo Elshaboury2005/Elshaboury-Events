@@ -101,6 +101,7 @@ app.use('/api/Favorites', favoriteRoutes);
 app.use('/api/Bookings', bookingRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/Notifications', notificationRoutes.router);
+app.use('/api/notifications', notificationRoutes.router);
 app.use('/api/Payments', paymentRoutes);
 app.use('/api/Profile', profileRoutes);
 app.use('/api/profile', profileRoutes);
@@ -143,4 +144,3 @@ server.listen(PORT, () => {
     console.error('Admin setup warning:', err.message);
   });
 });
-

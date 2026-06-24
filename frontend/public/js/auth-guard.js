@@ -268,7 +268,9 @@
             return;
         }
 
-        ensureFloatingEventChatWidgetLoaded();
+        if (role !== 'venue_owner') {
+            ensureFloatingEventChatWidgetLoaded();
+        }
     }
 
     function handleInvalidToken() {

@@ -44,18 +44,22 @@ async function loadDirectChats() {
       container.innerHTML = '';
       chats.forEach(chat => {
         totalUnread += Number(chat.unread_count || 0);
+        const isVenueOwner = chat.user_role === 'venue_owner';
+        const cardTitle = isVenueOwner ? (chat.event_title || 'Event') : (chat.venue_name || 'Venue');
+        const partyLabel = isVenueOwner ? `Host: ${chat.other_party_name || 'Host'}` : `Venue Owner: ${chat.other_party_name || 'Venue Owner'}`;
+        const roomLabel = isVenueOwner ? (chat.venue_name || '') : (chat.event_title || 'Event');
         const card = document.createElement('div');
         card.className = 'venue-card';
         card.style.cssText = 'padding: 15px; cursor: pointer; transition: border-color 0.2s;';
-        card.onclick = () => openDirectChat(chat.venue_booking_id, chat.other_party_name, chat.event_title);
+        card.onclick = () => openDirectChat(chat.venue_booking_id, chat.other_party_name, chat.event_title, chat.venue_name, chat.user_role);
 
         card.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-            <h4 style="margin: 0;">${escapeHTML(chat.other_party_name || '')}</h4>
+            <h4 style="margin: 0;">${escapeHTML(cardTitle)} ${isVenueOwner ? '<span style="font-size:0.72rem;background:rgba(14,165,233,0.15);color:#38bdf8;border-radius:999px;padding:2px 8px;margin-left:6px;">Host</span>' : ''}</h4>
             <small style="color: var(--muted-color)">${formatChatDate(chat.last_message_time)}</small>
           </div>
-          <div style="font-size: 0.85rem; color: var(--info); margin-bottom: 5px;">${escapeHTML(chat.event_title || 'Event')}</div>
-          <div style="font-size: 0.78rem; color: var(--muted-color); margin-bottom: 5px;">${escapeHTML(chat.venue_name || '')}</div>
+          <div style="font-size: 0.85rem; color: var(--info); margin-bottom: 5px;">${escapeHTML(roomLabel)}</div>
+          <div style="font-size: 0.78rem; color: var(--muted-color); margin-bottom: 5px;">${escapeHTML(partyLabel)}</div>
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="color: var(--muted-color); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;">
               ${escapeHTML(chat.last_message || 'No messages')}
@@ -76,13 +80,22 @@ async function loadDirectChats() {
         badge.style.display = 'none';
       }
     }
+    const floatBadge = document.getElementById('voFloatChatBadge');
+    if (floatBadge) {
+      if (totalUnread > 0) {
+        floatBadge.textContent = totalUnread > 99 ? '99+' : totalUnread;
+        floatBadge.style.display = 'inline-flex';
+      } else {
+        floatBadge.style.display = 'none';
+      }
+    }
   } catch (err) {
     console.error('Error loading direct chats:', err);
     if (container) container.innerHTML = `<div style="color: var(--danger); padding: 20px;">Failed to load messages: ${escapeHTML(err.message)}</div>`;
   }
 }
 
-async function openDirectChat(venueBookingId, otherPartyName, eventTitle) {
+async function openDirectChat(venueBookingId, otherPartyName, eventTitle, venueName = '', userRole = '') {
   currentVenueBookingId = venueBookingId;
 
   const titleEl = document.getElementById('directChatTitle');
@@ -91,7 +104,11 @@ async function openDirectChat(venueBookingId, otherPartyName, eventTitle) {
 
   if (!modal || !messagesContainer) return;
 
-  if (titleEl) titleEl.textContent = `Chat with ${otherPartyName} — ${eventTitle}`;
+  if (titleEl) {
+    titleEl.textContent = userRole === 'venue_owner'
+      ? `${venueName || 'Venue'} — ${eventTitle || 'Event'} Host`
+      : `${venueName || 'Venue'} — Chat with Venue Owner`;
+  }
   modal.style.display = 'flex';
   messagesContainer.innerHTML = '<div style="text-align: center; color: var(--muted-color); margin: auto;">Loading...</div>';
 
