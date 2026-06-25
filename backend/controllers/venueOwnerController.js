@@ -779,6 +779,17 @@ exports.addAvailabilityBlock = async (req, res) => {
       `SELECT id FROM venue_availability_blocks WHERE venue_id = ? AND block_type = ? AND (date = ? OR weekday = ?) AND is_active = TRUE`,
       [venueId, blockType, date || null, weekday != null ? weekday : null]
     );
+
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'This availability block already exists' });
+    }
+
+    const [result] = await pool.execute(
+      `INSERT INTO venue_availability_blocks (venue_id, block_type, date, weekday, reason, is_active)
+       VALUES (?, ?, ?, ?, ?, TRUE)`,
+      [venueId, blockType, date || null, weekday != null ? Number(weekday) : null, reason || null]
+    );
+
     res.status(201).json({ success: true, blockId: result.insertId });
   } catch (error) {
     console.error('addAvailabilityBlock error:', error);

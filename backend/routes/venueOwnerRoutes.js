@@ -48,6 +48,7 @@ router.get('/reviews', venueOwnerController.getMyReviews);
 router.get('/venues/:id/availability-blocks', venueOwnerController.getAvailabilityBlocks);
 router.post('/venues/:id/availability-blocks', venueOwnerController.addAvailabilityBlock);
 router.patch('/venues/:id/availability-blocks/:blockId/toggle', venueOwnerController.toggleAvailabilityBlock);
+router.delete('/venues/:id/availability-blocks/:blockId', venueOwnerController.deleteAvailabilityBlock);
 
 // Seat Status & Booking
 router.get('/venues/:id/events/:eventId/seats', venueOwnerController.getEventSeatsStatus);
