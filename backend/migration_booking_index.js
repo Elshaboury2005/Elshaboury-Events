@@ -7,7 +7,7 @@
 require('dotenv').config({ path: './project.env' });
 const pool = require('./config/database');
 
-async function run() {
+async function runMigration() {
   const connection = await pool.getConnection();
   try {
     console.log('Checking for existing index idx_vb_venue_date_status...');
@@ -30,12 +30,11 @@ async function run() {
     );
     console.log('Index created successfully.');
   } catch (err) {
-    console.error('Migration failed:', err);
-    process.exit(1);
+    console.error('Migration failed:', err.message);
+    throw err;
   } finally {
     connection.release();
-    process.exit(0);
   }
 }
 
-run();
+module.exports = { run: runMigration };

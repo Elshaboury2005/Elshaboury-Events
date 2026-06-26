@@ -21,11 +21,10 @@ async function runMigration() {
         console.log('✅ Modified venue_bookings.status enum to support awaiting_dual_approval');
 
         console.log('🎉 Enum migration completed successfully!');
-        process.exit(0);
     } catch (error) {
-        console.error('❌ Error running enum migration:', error);
-        process.exit(1);
+        console.error('❌ Error running enum migration:', error.message);
+        throw error;
     }
 }
 
-runMigration();
+module.exports = { run: runMigration };

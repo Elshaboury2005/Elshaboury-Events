@@ -122,25 +122,56 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Serving static files from: ${path.join(__dirname, '../frontend')}`);
-  console.log('API available at: /api');
-
-  setupDatabase()
-    .then((ready) => {
-      if (ready) {
-        startEventLifecycleJobs();
-        startChatCleanupJob();
-        startVenueBookingExpiryJob();
-        startVenueBookingFundReleaseJob();
+const runMigrations = async () => {
+  const migrations = [
+    'migration_missing_tables',
+    'migration_users_phone',
+    'migration_event_team',
+    'migration_booking_index',
+    'migration_payment_accepted_by_owner',
+    'migration_payment_enums',
+    'migration_payment_flow',
+    'migration_payment_source',
+    'migration_payment_transferred',
+    'migration_pending_venue',
+  ];
+  for (const name of migrations) {
+    try {
+      const mod = require(`./${name}`);
+      if (typeof mod.run === 'function') {
+        await mod.run();
+        console.log(`✅ Migration ${name} done`);
       }
-    })
-    .catch((err) => {
-      console.error('Database setup warning:', err.message);
-    });
+    } catch (err) {
+      console.warn(`⚠️ Migration ${name} skipped:`, err.message);
+    }
+  }
+};
 
-  setupAdminDatabase().catch((err) => {
-    console.error('Admin setup warning:', err.message);
+runMigrations().then(() => {
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Serving static files from: ${path.join(__dirname, '../frontend')}`);
+    console.log('API available at: /api');
+
+    setupDatabase()
+      .then((ready) => {
+        if (ready) {
+          startEventLifecycleJobs();
+          startChatCleanupJob();
+          startVenueBookingExpiryJob();
+          startVenueBookingFundReleaseJob();
+        }
+      })
+      .catch((err) => {
+        console.error('Database setup warning:', err.message);
+      });
+
+    setupAdminDatabase().catch((err) => {
+      console.error('Admin setup warning:', err.message);
+    });
   });
+}).catch(err => {
+  console.error('Fatal migration error, server not started:', err);
+  process.exit(1);
 });

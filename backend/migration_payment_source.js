@@ -13,11 +13,10 @@ async function runMigration() {
         console.log('✅ Modified wallet_transactions.source enum to support event-creation');
 
         console.log('🎉 Wallet source migration completed successfully!');
-        process.exit(0);
     } catch (error) {
-        console.error('❌ Error running wallet source migration:', error);
-        process.exit(1);
+        console.error('❌ Error running wallet source migration:', error.message);
+        throw error;
     }
 }
 
-runMigration();
+module.exports = { run: runMigration };

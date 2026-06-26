@@ -8,11 +8,10 @@ async function runMigration() {
         console.log('Added users.phone_number column if needed');
 
         console.log('Migration completed successfully!');
-        process.exit(0);
     } catch (error) {
-        console.error('Error running migration:', error);
-        process.exit(1);
+        console.error('Error running migration:', error.message);
+        throw error;
     }
 }
 
-runMigration();
+module.exports = { run: runMigration };

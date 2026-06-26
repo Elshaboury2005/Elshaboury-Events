@@ -13,11 +13,10 @@ async function runMigration() {
         console.log('✅ Modified venue_bookings.payment_status enum to support transferred');
 
         console.log('🎉 Migration completed successfully!');
-        process.exit(0);
     } catch (error) {
-        console.error('❌ Error running migration:', error);
-        process.exit(1);
+        console.error('❌ Error running migration:', error.message);
+        throw error;
     }
 }
 
-runMigration();
+module.exports = { run: runMigration };
