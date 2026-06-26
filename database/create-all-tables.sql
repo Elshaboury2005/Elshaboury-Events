@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     full_name VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(20) NULL,
     wallet_balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     frozen_balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     role ENUM('user','venue_owner') NOT NULL DEFAULT 'user',
@@ -167,12 +168,14 @@ CREATE TABLE IF NOT EXISTS venue_reviews (
 CREATE TABLE IF NOT EXISTS venue_availability_blocks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     venue_id INT NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
+    block_type ENUM('specific_date', 'recurring_weekday') NOT NULL,
+    date DATE NULL,
+    weekday TINYINT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
     reason VARCHAR(255) NULL,
     created_by VARCHAR(36) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_venue_blocks_lookup (venue_id, start_date, end_date),
+    INDEX idx_venue_blocks_lookup (venue_id, is_active),
     FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
 );
 
@@ -493,6 +496,32 @@ CREATE TABLE IF NOT EXISTS direct_chat_read_state (
     PRIMARY KEY (chat_id, user_id),
     FOREIGN KEY (chat_id) REFERENCES direct_chats(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS venue_owner_notification_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    venue_owner_id VARCHAR(36) NOT NULL,
+    venue_id INT NOT NULL,
+    venue_name VARCHAR(255) NOT NULL,
+    target_type ENUM('single', 'all') NOT NULL,
+    host_ids_json TEXT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    message VARCHAR(500) NOT NULL,
+    type ENUM('info', 'warning', 'success') NOT NULL DEFAULT 'info',
+    sent_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (venue_owner_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS event_team (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id VARCHAR(36) NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    role VARCHAR(100) NOT NULL,
+    contact_info VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
 );
 
 -- Verify tables were created
