@@ -364,6 +364,24 @@ async function handleAdminEventRejectionRefund(eventId, adminUserId) {
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
+    // Fetch event details to check if it's host-owned/online and paid
+    const [[event]] = await connection.execute(
+      `SELECT id, title, organizer_id, payment_status, listing_fee, venue_booking_id 
+       FROM events 
+       WHERE id = ? LIMIT 1`,
+      [eventId]
+    );
+
+    if (!event) {
+      await connection.rollback();
+      connection.release();
+      return { success: false, refunded: false, message: 'Event not found' };
+    }
+
+    let totalRefund = 0;
+    let hostRefunded = false;
+    let refundRecipientId = event.organizer_id;
+
     // Query the venue_bookings table for any booking where event_id matches the rejected event AND payment_status is NOT already 'refunded'.
     const [bookings] = await connection.execute(
       `SELECT id, host_id, status, payment_status, event_date,
@@ -373,10 +391,43 @@ async function handleAdminEventRejectionRefund(eventId, adminUserId) {
       [eventId]
     );
 
-    let totalRefund = 0;
-    let hostRefunded = false;
+    if (event.payment_status === 'paid' && bookings.length === 0) {
+      // Event has no venue bookings (host-owned/online) but is paid
+      const listingFeeAmount = Number(event.listing_fee || 0);
+      if (listingFeeAmount > 0) {
+        await creditWallet({
+          userId: event.organizer_id,
+          amount: listingFeeAmount,
+          source: 'refund',
+          description: 'Refund for platform listing fee due to admin event rejection',
+          relatedEventId: eventId,
+          conn: connection
+        });
+
+        // Debit platform wallet
+        await connection.execute(
+          `UPDATE platform_wallet SET balance = GREATEST(0, balance - ?) WHERE id = 1`,
+          [listingFeeAmount]
+        );
+        
+        await connection.execute(
+          `INSERT INTO platform_wallet_transactions (id, type, amount, event_id, description)
+           VALUES (?, 'debit', ?, ?, 'Platform listing fee refund due to admin event rejection')`,
+          [uuidv4(), listingFeeAmount, eventId]
+        );
+
+        totalRefund += listingFeeAmount;
+        hostRefunded = true;
+      }
+
+      await connection.execute(
+        `UPDATE events SET payment_status = 'refunded' WHERE id = ?`,
+        [eventId]
+      );
+    }
 
     for (const booking of bookings) {
+      refundRecipientId = booking.host_id;
       // get the pending_venue_fee and pending_platform_fee. Add them together.
       const pendingVenueFee = Number(booking.pending_venue_fee || 0);
       const pendingPlatformFee = Number(booking.pending_platform_fee || 0);
@@ -385,24 +436,15 @@ async function handleAdminEventRejectionRefund(eventId, adminUserId) {
       totalRefund += bookingRefund;
 
       if (bookingRefund > 0) {
-        // Add that total amount to the host's wallet balance.
-        await connection.execute(
-          `UPDATE wallets SET balance = balance + ? WHERE user_id = ?`,
-          [bookingRefund, booking.host_id]
-        );
-
-        // Insert a new row into wallet_transactions: wallet_id of the host, type 'refund', amount equals the total added, description exactly 'Full refund for venue booking due to admin event rejection'.
-        const [walletRows] = await connection.execute(
-          `SELECT id FROM wallets WHERE user_id = ? LIMIT 1`,
-          [booking.host_id]
-        );
-        const walletId = walletRows[0].id;
-        
-        await connection.execute(
-          `INSERT INTO wallet_transactions (id, wallet_id, user_id, amount, type, source, status, description, related_event_id, related_venue_booking_id)
-           VALUES (?, ?, ?, ?, 'refund', 'refund', 'completed', 'Full refund for venue booking due to admin event rejection', ?, ?)`,
-          [uuidv4(), walletId, booking.host_id, bookingRefund, eventId, booking.id]
-        );
+        await creditWallet({
+          userId: booking.host_id,
+          amount: bookingRefund,
+          source: 'refund',
+          description: 'Full refund for venue booking due to admin event rejection',
+          relatedEventId: eventId,
+          relatedVenueBookingId: booking.id,
+          conn: connection
+        });
         
         hostRefunded = true;
       }
@@ -424,11 +466,11 @@ async function handleAdminEventRejectionRefund(eventId, adminUserId) {
       );
       for (const held of heldTxs) {
         await connection.execute(
-          `UPDATE wallets SET frozen_balance = GREATEST(0, frozen_balance - ?) WHERE user_id = ?`,
+          `UPDATE users SET frozen_balance = GREATEST(0, COALESCE(frozen_balance, 0) - ?) WHERE id = ?`,
           [held.amount, held.user_id]
         );
         await connection.execute(
-          `UPDATE wallet_transactions SET status = 'cancelled', description = CONCAT(description, ' (Cancelled due to admin rejection)') WHERE transaction_id = ?`,
+          `UPDATE wallet_transactions SET status = 'refunded', description = CONCAT(COALESCE(description, ''), ' (Cancelled due to admin rejection)') WHERE transaction_id = ?`,
           [held.transaction_id]
         );
       }
@@ -440,29 +482,31 @@ async function handleAdminEventRejectionRefund(eventId, adminUserId) {
 
     // Send notifications outside transaction
     const Notification = require('../models/Notification');
-    if (hostRefunded && totalRefund > 0) {
+    if (hostRefunded && totalRefund > 0 && refundRecipientId) {
       await Notification.create(
-        booking.host_id,
+        refundRecipientId,
         'Event Rejected - Refund Issued',
-        `Your event was rejected by the admin. A full refund of ${totalRefund.toFixed(2)} EGP (venue fee + platform fee) has been credited to your wallet.`,
+        `Your event "${event.title || ''}" was rejected by the admin. A full refund of ${totalRefund.toFixed(2)} EGP has been credited to your wallet.`,
         'warning'
       );
     }
 
     // Notify venue owner if they had accepted
-    if (booking.status === 'accepted_by_owner' || booking.status === 'confirmed' || booking.status === 'accepted') {
-      const [venueRows] = await pool.execute(
-        'SELECT owner_id, name FROM venues WHERE id = ? LIMIT 1',
-        [booking.venue_id]
-      );
-      if (venueRows[0] && venueRows[0].owner_id) {
-        const formattedDate = String(booking.event_date || '').slice(0, 10);
-        await Notification.create(
-          venueRows[0].owner_id,
-          'Venue Booking Cancelled',
-          `The event booked for your venue "${venueRows[0].name}" on ${formattedDate} was rejected by the admin. The booking has been cancelled.`,
-          'info'
+    for (const booking of bookings) {
+      if (booking.status === 'accepted_by_owner' || booking.status === 'confirmed' || booking.status === 'accepted') {
+        const [venueRows] = await pool.execute(
+          'SELECT owner_id, name FROM venues WHERE id = ? LIMIT 1',
+          [booking.venue_id]
         );
+        if (venueRows[0] && venueRows[0].owner_id) {
+          const formattedDate = String(booking.event_date || '').slice(0, 10);
+          await Notification.create(
+            venueRows[0].owner_id,
+            'Venue Booking Cancelled',
+            `The event booked for your venue "${venueRows[0].name}" on ${formattedDate} was rejected by the admin. The booking has been cancelled.`,
+            'info'
+          );
+        }
       }
     }
 
@@ -826,4 +870,3 @@ module.exports = {
   VENUE_RESPONSE_WINDOW_HOURS,
   ESCROW_RELEASE_GRACE_HOURS
 };
-

@@ -32,6 +32,7 @@ router.patch('/:id/promo-codes/:promoId/deactivate', authenticateToken, eventCon
 router.patch('/:id/promo-codes/:promoId/activate', authenticateToken, eventController.activatePromoCode);
 router.delete('/:id/promo-codes/:promoId', authenticateToken, eventController.deletePromoCode);
 router.post('/:id/promo/validate', eventController.validatePromoCode);
+router.get('/platform-fee-settings', authenticateToken, eventController.getPlatformFeeSettings);
 router.get('/:id', eventController.getById);
 router.post('/', authenticateToken, eventController.create);
 router.put('/:id', authenticateToken, eventController.update);

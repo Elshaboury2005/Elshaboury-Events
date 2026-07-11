@@ -25,6 +25,7 @@ const {
   withdrawEventVaultToHost
 } = require('../services/eventVaultService');
 const { cancelAndRefundVenueBooking } = require('../services/venueOwnerEscrowService');
+const { applyAiDecisionToEvent } = require('../services/aiDecisionService');
 
 const seatsCountExpression = `
 CASE
@@ -58,6 +59,17 @@ function parseRequestedView(rawValue) {
 function toSafeNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
+}
+
+function formatDateOnly(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return String(value).slice(0, 10);
 }
 
 function computeTimeUntilEvent(eventDateValue, now = new Date()) {
@@ -883,8 +895,6 @@ exports.create = async (req, res) => {
       : 'host_owned';
     const normalizedVenueId = venueId != null ? Number(venueId) : (req.body.venue_id != null ? Number(req.body.venue_id) : null);
     const normalizedVenueBookingId = venueBookingId != null ? Number(venueBookingId) : (req.body.venue_booking_id != null ? Number(req.body.venue_booking_id) : null);
-    const normalizedListingFee = Number(listingFee ?? req.body.listing_fee ?? 0) || 0;
-
     if (!title || !eventDate || !location) {
       return res.status(400).json({ success: false, message: 'Title, date, and location are required' });
     }
@@ -912,10 +922,31 @@ exports.create = async (req, res) => {
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
+    const platformFeeService = require('../services/platformFeeService');
+    const platformFeeSettings = await platformFeeService.getPlatformFeeSettings();
+    let calculatedPlatformFee = platformFeeService.calculatePlatformFee(
+      platformFeeSettings,
+      0,
+      false
+    );
+
     let createdVenueBookingId = Number.isFinite(normalizedVenueBookingId) && normalizedVenueBookingId > 0
       ? normalizedVenueBookingId
       : null;
     let pendingVenueBooking = null;
+
+    if (createdVenueBookingId) {
+      const [vbRows] = await connection.execute(
+        'SELECT total_price FROM venue_bookings WHERE id = ? LIMIT 1',
+        [createdVenueBookingId]
+      );
+      const vbPrice = vbRows[0] ? Number(vbRows[0].total_price || 0) : 0;
+      calculatedPlatformFee = platformFeeService.calculatePlatformFee(
+        platformFeeSettings,
+        vbPrice,
+        true
+      );
+    }
 
     if (!createdVenueBookingId && normalizedVenueType === 'platform_booked' && Number.isFinite(normalizedVenueId) && normalizedVenueId > 0) {
       const venue = await Venue.findById(normalizedVenueId);
@@ -924,6 +955,12 @@ exports.create = async (req, res) => {
         connection.release();
         return res.status(400).json({ success: false, message: 'Selected venue is not available for booking' });
       }
+
+      calculatedPlatformFee = platformFeeService.calculatePlatformFee(
+        platformFeeSettings,
+        Number(venue.price_per_day || 0),
+        true
+      );
 
       const eventDateOnly = String(eventDate).slice(0, 10);
       const conflicts = await VenueBooking.findByVenueAndDate(
@@ -989,7 +1026,7 @@ exports.create = async (req, res) => {
       venueType: normalizedVenueType,
       venueId: Number.isFinite(normalizedVenueId) && normalizedVenueId > 0 ? normalizedVenueId : null,
       venueBookingId: createdVenueBookingId,
-      listingFee: normalizedListingFee
+      listingFee: calculatedPlatformFee
     }, connection);
 
     if (pendingVenueBooking) {
@@ -1020,6 +1057,12 @@ exports.create = async (req, res) => {
       organizerDisplayName: event?.organizer_name || hostName || 'An organizer you follow',
       eventId
     });
+
+    // Fire-and-forget: run AI decision asynchronously after the event is created.
+    // This never blocks the 201 response — any failure is handled inside the service.
+    applyAiDecisionToEvent(eventId).catch((err) =>
+      console.error('[eventController] Unexpected AI decision error:', err.message)
+    );
 
     res.status(201).json({
       success: true,
@@ -2016,13 +2059,7 @@ exports.getVenueDetails = async (req, res) => {
          AND event_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 3 MONTH)`,
       [booking.venue_id]
     );
-    const bookedDates = bookedDatesRows.map(row => {
-      try {
-        return row.event_date.toISOString().slice(0, 10);
-      } catch (_) {
-        return String(row.event_date).slice(0, 10);
-      }
-    });
+    const bookedDates = bookedDatesRows.map(row => formatDateOnly(row.event_date));
 
     const [blockedRows] = await pool.execute(
       `SELECT id, block_type, date, weekday, reason FROM venue_availability_blocks
@@ -2040,7 +2077,7 @@ exports.getVenueDetails = async (req, res) => {
         paymentStatus: booking.payment_status,
         pendingVenueFee: Number(booking.pending_venue_fee || 0),
         pendingPlatformFee: Number(booking.pending_platform_fee || 0),
-        eventDate: booking.event_date ? (booking.event_date.toISOString ? booking.event_date.toISOString().slice(0, 10) : String(booking.event_date).slice(0, 10)) : null,
+        eventDate: formatDateOnly(booking.event_date),
         bookedAt: booking.booked_at ? (booking.booked_at.toISOString ? booking.booked_at.toISOString() : String(booking.booked_at)) : null
       },
       venue: {
@@ -2071,7 +2108,7 @@ exports.getVenueDetails = async (req, res) => {
       calendar: {
         bookedDates,
         blockedRanges: blockedRows.map(row => {
-          const dateStr = row.date ? (row.date.toISOString ? row.date.toISOString().slice(0, 10) : String(row.date).slice(0, 10)) : null;
+          const dateStr = formatDateOnly(row.date);
           return {
             id: row.id,
             blockType: row.block_type,
@@ -2087,5 +2124,16 @@ exports.getVenueDetails = async (req, res) => {
   } catch (error) {
     console.error('getVenueDetails error:', error);
     return res.status(500).json({ success: false, message: 'Error fetching venue details' });
+  }
+};
+
+exports.getPlatformFeeSettings = async (req, res) => {
+  try {
+    const platformFeeService = require('../services/platformFeeService');
+    const settings = await platformFeeService.getPlatformFeeSettings();
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('[eventController] getPlatformFeeSettings error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch platform fee settings' });
   }
 };

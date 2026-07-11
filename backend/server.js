@@ -134,6 +134,7 @@ const runMigrations = async () => {
     'migration_payment_source',
     'migration_payment_transferred',
     'migration_pending_venue',
+    'migration_ai_decision_report',
   ];
   for (const name of migrations) {
     try {

@@ -53,6 +53,17 @@ function isEventEnded(eventDate) {
   return !Number.isNaN(parsed.getTime()) && parsed.getTime() <= Date.now();
 }
 
+function formatDateOnly(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return String(value).slice(0, 10);
+}
+
 function getSeatsCount(booking) {
   const raw = String(booking?.seat_numbers || '').trim();
   if (raw) {
@@ -353,7 +364,7 @@ function normalizeVenueBookingResponse(row) {
     hostId: row.host_id,
     hostName: row.host_name || '-',
     hostEmail: row.host_email || '-',
-    eventDate: row.event_date,
+    eventDate: formatDateOnly(row.event_date),
     totalPrice: Number(row.total_price || 0),
     status: row.status,
     paymentStatus: row.payment_status,
@@ -505,9 +516,7 @@ exports.getRevenueTrend = async (req, res) => {
     res.json({
       success: true,
       trend: rows.map((row) => ({
-        day: row.day instanceof Date
-          ? row.day.toISOString().slice(0, 10)
-          : String(row.day || '').slice(0, 10),
+        day: formatDateOnly(row.day),
         revenue: Number(row.revenue || 0)
       }))
     });
@@ -1004,6 +1013,48 @@ exports.deleteEvent = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/Admin/events/:id/report
+ * Returns the stored AI decision report (ai_decision_report JSON column) for a given event.
+ * Protected by authenticateAdmin middleware.
+ */
+exports.getEventAiReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await pool.execute(
+      `SELECT id, title, event_status, ai_decision_report
+       FROM events
+       WHERE id = ?
+       LIMIT 1`,
+      [id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    const event = rows[0];
+
+    // ai_decision_report is stored as JSON text; mysql2 may return it as object or string
+    let report = event.ai_decision_report;
+    if (typeof report === 'string') {
+      try { report = JSON.parse(report); } catch (_) { report = null; }
+    }
+
+    return res.json({
+      success: true,
+      eventId: event.id,
+      eventTitle: event.title,
+      eventStatus: event.event_status,
+      report: report || null
+    });
+  } catch (error) {
+    console.error('Admin getEventAiReport error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load AI decision report' });
+  }
+};
+
 exports.getVenues = async (req, res) => {
   try {
     const allowedStatuses = new Set(['approved', 'pending_review', 'rejected', 'suspended', 'changes_requested']);
@@ -1153,7 +1204,7 @@ exports.getVenueAnalytics = async (req, res) => {
           : null
       },
       trend: trendRows.map((row) => ({
-        day: row.day instanceof Date ? row.day.toISOString().slice(0, 10) : String(row.day || '').slice(0, 10),
+        day: formatDateOnly(row.day),
         revenue: Number(row.revenue || 0)
       }))
     });
@@ -1178,13 +1229,13 @@ exports.getVenueCalendar = async (req, res) => {
     res.json({
       success: true,
       bookings: bookings.map((row) => ({
-        date: row.event_date instanceof Date ? row.event_date.toISOString().slice(0, 10) : String(row.event_date || '').slice(0, 10),
+        date: formatDateOnly(row.event_date),
         status: row.status
       })),
       blocks: blocks.map((row) => ({
         id: row.id,
-        startDate: row.start_date instanceof Date ? row.start_date.toISOString().slice(0, 10) : String(row.start_date || '').slice(0, 10),
-        endDate: row.end_date instanceof Date ? row.end_date.toISOString().slice(0, 10) : String(row.end_date || '').slice(0, 10),
+        startDate: formatDateOnly(row.start_date),
+        endDate: formatDateOnly(row.end_date),
         reason: row.reason || '',
         createdAt: row.created_at
       }))
@@ -1238,8 +1289,8 @@ exports.createVenueAvailabilityBlock = async (req, res) => {
       success: true,
       block: {
         id: block.id,
-        startDate: block.start_date instanceof Date ? block.start_date.toISOString().slice(0, 10) : String(block.start_date || '').slice(0, 10),
-        endDate: block.end_date instanceof Date ? block.end_date.toISOString().slice(0, 10) : String(block.end_date || '').slice(0, 10),
+        startDate: formatDateOnly(block.start_date),
+        endDate: formatDateOnly(block.end_date),
         reason: block.reason || ''
       }
     });
@@ -1301,7 +1352,7 @@ exports.exportVenueBookingsCsv = async (req, res) => {
       `"${String(row.event_title || '').replace(/"/g, '""')}"`,
       `"${String(row.host_name || '').replace(/"/g, '""')}"`,
       `"${String(row.host_email || '').replace(/"/g, '""')}"`,
-      row.event_date instanceof Date ? row.event_date.toISOString().slice(0, 10) : String(row.event_date || '').slice(0, 10),
+      formatDateOnly(row.event_date),
       Number(row.total_price || 0),
       row.status,
       row.payment_status,

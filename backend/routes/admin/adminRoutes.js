@@ -22,6 +22,7 @@ router.get('/events/:id', authenticateAdmin, adminController.getEventDetails);
 router.patch('/events/:id', authenticateAdmin, adminController.updateEvent);
 router.patch('/events/:id/approval', authenticateAdmin, adminController.updateEventApproval);
 router.delete('/events/:id', authenticateAdmin, adminController.deleteEvent);
+router.get('/events/:id/report', authenticateAdmin, adminController.getEventAiReport);
 
 router.get('/venues', authenticateAdmin, adminController.getVenues);
 router.get('/venues/analytics', authenticateAdmin, adminController.getVenueAnalytics);

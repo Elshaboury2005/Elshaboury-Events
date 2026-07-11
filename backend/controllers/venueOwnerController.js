@@ -82,6 +82,17 @@ function normalizeVenueForOwner(venue) {
   };
 }
 
+function formatDateOnly(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return String(value).slice(0, 10);
+}
+
 function normalizeBookingForOwner(row) {
   return {
     id: row.id,
@@ -90,7 +101,7 @@ function normalizeBookingForOwner(row) {
     hostId: row.host_id,
     hostName: row.host_name || null,
     hostEmail: row.host_email || null,
-    eventDate: row.event_date,
+    eventDate: formatDateOnly(row.event_date),
     totalPrice: Number(row.total_price || 0),
     pendingVenueFee: Number(row.pending_venue_fee || 0),
     pendingPlatformFee: Number(row.pending_platform_fee || 0),
@@ -1038,7 +1049,7 @@ exports.getVenueBookingsTable = async (req, res) => {
       id: row.id,
       status: row.status,
       paymentStatus: row.payment_status,
-      eventDate: row.event_date,
+      eventDate: formatDateOnly(row.event_date),
       venueFeeAmount: Number(row.pending_venue_fee || 0),
       platformFeeAmount: Number(row.pending_platform_fee || 0),
       totalPrice: Number(row.total_price || 0),
@@ -1204,15 +1215,9 @@ exports.getVenueTimeline = async (req, res) => {
       [venueId]
     );
 
-    const formatDate = (d) => {
-      if (!d) return null;
-      if (d instanceof Date) return d.toISOString().slice(0, 10);
-      return String(d).slice(0, 10);
-    };
-
     const timeline = rows.map((row) => ({
       bookingId: row.id,
-      date: formatDate(row.event_date),
+      date: formatDateOnly(row.event_date),
       status: row.status,
       eventTitle: row.event_title || null,
       hostName: row.host_name || null,
@@ -1231,7 +1236,7 @@ exports.getVenueTimeline = async (req, res) => {
     const availabilityBlocks = blockRows.map((b) => ({
       blockId: b.id,
       blockType: b.block_type,
-      date: b.date ? formatDate(b.date) : null,
+      date: formatDateOnly(b.date),
       weekday: b.weekday,
       reason: b.reason || null
     }));

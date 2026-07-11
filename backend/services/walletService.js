@@ -95,6 +95,7 @@ async function creditWallet({
   description = null,
   relatedEventId = null,
   relatedBookingId = null,
+  relatedVenueBookingId = null,
   conn = null
 }) {
   const normalizedAmount = roundMoney(amount);
@@ -119,6 +120,7 @@ async function creditWallet({
     description,
     relatedEventId,
     relatedBookingId,
+    relatedVenueBookingId,
     conn
   });
 

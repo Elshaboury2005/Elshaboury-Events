@@ -134,7 +134,7 @@ exports.create = async (req, res) => {
 
       if (eventId) {
         const [eventRows] = await connection.execute(
-          `SELECT id, title, organizer_id, venue_booking_id, max_seats
+          `SELECT id, title, organizer_id, venue_booking_id, max_seats, listing_fee
            FROM events
            WHERE id = ?
            LIMIT 1
@@ -171,8 +171,15 @@ exports.create = async (req, res) => {
             throw new Error('Venue booking does not belong to this host');
           }
 
+          const platformFeeService = require('../services/platformFeeService');
+          const platformFeeSettings = await platformFeeService.getPlatformFeeSettings();
+
           const venueFee = roundMoney(venueBooking.price_per_day || 0) || 0;
-          const platformFee = calculateListingFee(event.max_seats || 0).fee;
+          const platformFee = platformFeeService.calculatePlatformFee(
+            platformFeeSettings,
+            venueFee,
+            true
+          );
           const totalCombined = roundMoney(venueFee + platformFee);
 
           // Calculate wallet amount to use
@@ -266,6 +273,9 @@ exports.create = async (req, res) => {
 
           paymentVenueBooking = await VenueBooking.findById(bookingIdToConfirm, connection);
         } else {
+          // Override amountToStore with event's dynamic/fixed listing fee from DB
+          amountToStore = Number(event.listing_fee || 0);
+
           // Keep original non-venue booking payment flow
           if (normalizedMethod === 'wallet' || normalizedMethod === 'split') {
             const walletRow = await lockUserWallet(userId, connection);
@@ -322,6 +332,16 @@ exports.create = async (req, res) => {
               "UPDATE events SET payment_status = 'paid' WHERE id = ?",
               [eventId]
             );
+          }
+
+          // Credit platform wallet immediately for non-venue-booking event listing fee
+          const { creditPlatformFee } = require('../services/platformWalletService');
+          if (amountToStore > 0) {
+            await creditPlatformFee(connection, {
+              eventId,
+              amount: amountToStore,
+              description: `Platform fee for event "${event.title}"`
+            });
           }
         }
 

@@ -129,11 +129,34 @@ async function ensureDefaultAdmin() {
   );
 }
 
+async function ensureDefaultSettings() {
+  const defaults = [
+    { key: 'platform_fee_type', value: 'fixed' },
+    { key: 'platform_fee_value', value: '500' },
+    { key: 'platform_fee_fallback_fixed', value: '200' }
+  ];
+
+  for (const item of defaults) {
+    const [rows] = await pool.execute(
+      'SELECT setting_key FROM site_settings WHERE setting_key = ? LIMIT 1',
+      [item.key]
+    );
+    if (rows.length === 0) {
+      await pool.execute(
+        'INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?)',
+        [item.key, item.value]
+      );
+      console.log(`[adminSetup] Seeded default setting: ${item.key} = ${item.value}`);
+    }
+  }
+}
+
 async function setupAdminDatabase() {
   try {
     await createAdminTables();
     await ensureUserAndEventColumns();
     await ensureDefaultAdmin();
+    await ensureDefaultSettings();
     return true;
   } catch (error) {
     console.error('Admin setup error:', error.message);
