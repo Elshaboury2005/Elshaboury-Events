@@ -16,6 +16,9 @@ const walletRoutes = require('./routes/walletRoutes');
 const venuesRoutes = require('./routes/venuesRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const chatRoutes = require('./routes/chat');
+const faqRoutes = require('./routes/faqRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
+const notebookRoutes = require('./routes/notebookRoutes');
 const directChatRoutes = require('./routes/directChatRoutes');
 const adminRoutes = require('./routes/admin/adminRoutes');
 const venueOwnerRoutes = require('./routes/venueOwnerRoutes');
@@ -111,6 +114,9 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/venues', venuesRoutes);
 app.use('/api/venue-owner', venueOwnerRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/faq', faqRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/notebooks', notebookRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/direct-chat', directChatRoutes);
 app.use('/api/Admin', adminRoutes);
@@ -135,6 +141,9 @@ const runMigrations = async () => {
     'migration_payment_transferred',
     'migration_pending_venue',
     'migration_ai_decision_report',
+    'migration_faqs',
+    'migration_subscriptions',
+    'migration_notebooks',
   ];
   for (const name of migrations) {
     try {

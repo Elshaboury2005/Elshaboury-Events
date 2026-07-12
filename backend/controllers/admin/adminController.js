@@ -12,6 +12,8 @@ const {
 const { processRefundFromVault } = require('../../services/eventVaultService');
 const Venue = require('../../models/Venue');
 const { Notification } = require('../../models/Notification');
+const FAQ = require('../../models/FAQ');
+const SubscriptionPlan = require('../../models/SubscriptionPlan');
 const { createVenueBookingChat } = require('../../services/directChatService');
 const VenueBooking = require('../../models/VenueBooking');
 const { cancelVenueBooking } = require('../../services/venueBookingService');
@@ -2337,5 +2339,84 @@ exports.withdrawPlatformWallet = async (req, res) => {
       return res.status(400).json({ success: false, message: msg });
     }
     res.status(500).json({ success: false, message: 'Failed to process withdrawal' });
+  }
+};
+
+exports.getFaqs = async (req, res) => {
+  try {
+    const faqs = await FAQ.findAll();
+    res.json({ success: true, faqs });
+  } catch (error) {
+    console.error('Admin getFaqs error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch FAQs' });
+  }
+};
+
+exports.createFaq = async (req, res) => {
+  try {
+    const { category, question, answer, sort_order } = req.body;
+    if (!category || !question || !answer) {
+      return res.status(400).json({ success: false, message: 'Category, question, and answer are required' });
+    }
+    const newFaq = await FAQ.create({ category, question, answer, sort_order: parseInt(sort_order, 10) || 0 });
+    res.json({ success: true, faq: newFaq, message: 'FAQ created successfully' });
+  } catch (error) {
+    console.error('Admin createFaq error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create FAQ' });
+  }
+};
+
+exports.updateFaq = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { category, question, answer, sort_order } = req.body;
+    if (!category || !question || !answer) {
+      return res.status(400).json({ success: false, message: 'Category, question, and answer are required' });
+    }
+    const updated = await FAQ.update(id, { category, question, answer, sort_order: parseInt(sort_order, 10) || 0 });
+    res.json({ success: true, faq: updated, message: 'FAQ updated successfully' });
+  } catch (error) {
+    console.error('Admin updateFaq error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update FAQ' });
+  }
+};
+
+exports.deleteFaq = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await FAQ.delete(id);
+    res.json({ success: true, message: 'FAQ deleted successfully' });
+  } catch (error) {
+    console.error('Admin deleteFaq error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete FAQ' });
+  }
+};
+
+// ─── Subscription Plans (Admin) ────────────────────────────────────────────
+
+exports.getSubscriptionPlans = async (req, res) => {
+  try {
+    const plans = await SubscriptionPlan.findAll();
+    res.json({ success: true, plans });
+  } catch (error) {
+    console.error('Admin getSubscriptionPlans error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch subscription plans' });
+  }
+};
+
+exports.updateSubscriptionPlan = async (req, res) => {
+  try {
+    const { planKey } = req.params;
+    const { label, price, price_label, features, is_enabled, badge, sort_order } = req.body;
+    if (!label || !Array.isArray(features)) {
+      return res.status(400).json({ success: false, message: 'label and features (array) are required' });
+    }
+    const updated = await SubscriptionPlan.update(planKey, {
+      label, price, price_label, features, is_enabled, badge, sort_order
+    });
+    res.json({ success: true, plan: updated, message: 'Subscription plan updated successfully' });
+  } catch (error) {
+    console.error('Admin updateSubscriptionPlan error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update subscription plan' });
   }
 };

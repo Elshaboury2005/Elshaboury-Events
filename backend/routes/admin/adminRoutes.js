@@ -69,4 +69,15 @@ router.put('/settings', authenticateAdmin, adminController.updateSettings);
 
 router.get('/audit-logs', authenticateAdmin, adminController.getAuditLogs);
 
+// FAQ management routes
+router.get('/faq', authenticateAdmin, adminController.getFaqs);
+router.post('/faq', authenticateAdmin, adminController.createFaq);
+router.put('/faq/:id', authenticateAdmin, adminController.updateFaq);
+router.delete('/faq/:id', authenticateAdmin, adminController.deleteFaq);
+
+// Subscription plan management routes
+router.get('/subscriptions', authenticateAdmin, adminController.getSubscriptionPlans);
+router.put('/subscriptions/:planKey', authenticateAdmin, adminController.updateSubscriptionPlan);
+
 module.exports = router;
+
