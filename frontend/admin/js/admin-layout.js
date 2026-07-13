@@ -10,6 +10,8 @@
     { href: '/admin/platform-wallet.html', icon: '&#128184;', label: 'Platform Wallet' },
     { href: '/admin/notifications.html', icon: '&#128276;', label: 'Notifications' },
     { href: '/admin/support.html', icon: '&#128172;', label: 'Support' },
+    { href: '/admin/faq.html', icon: '&#10067;', label: 'Manage FAQ' },
+    { href: '/admin/subscriptions.html', icon: '&#11088;', label: 'Subscriptions' },
     { href: '/admin/settings.html', icon: '&#9881;&#65039;', label: 'Settings' }
   ];
 

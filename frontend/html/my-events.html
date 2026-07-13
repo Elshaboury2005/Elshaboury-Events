@@ -34,8 +34,10 @@
         <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
         <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
         <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/archived-events.html">Archived</a>
         <a class="nav-btn" href="/html/book-event.html">Book Event</a>
         <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/subscriptions.html">Subscriptions</a>
         <a class="nav-btn" href="/html/signin.html">Sign In</a>
       </nav>
     </header>
@@ -126,6 +128,16 @@
 
     const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
     const pastEventsLabel = document.getElementById('pastEventsLabel');
+
+    /* ── Archive localStorage helpers ─────────────────────── */
+    const ARCHIVE_KEY = 'ee_archived_events';
+    function getArchivedIds() {
+      try { return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveArchivedIds(ids) {
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(ids));
+    }
 
     function getAuthToken() {
       return localStorage.getItem('token');
@@ -268,15 +280,29 @@
           return;
         }
 
+        // Filter out events already archived by this user
+        const archivedIds = getArchivedIds();
+        const visibleEvents = data.events.filter((ev) => !archivedIds.includes(String(ev.id)));
+
+        if (visibleEvents.length === 0) {
+          eventsGrid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+              <p>All your events have been archived.</p>
+              <p style="margin-top: 16px;"><a href="/html/archived-events.html" style="color: var(--accent);">View Archived Events</a></p>
+            </div>
+          `;
+          return;
+        }
+
         const now = Date.now();
-        eventsGrid.innerHTML = data.events.map((event) => {
+        eventsGrid.innerHTML = visibleEvents.map((event) => {
           const eventDate = new Date(event.event_date);
           const isExpired = event.lifecycle_status === 'expired' || eventDate.getTime() <= now || event.event_status === 'ended';
           const status = resolveEventStatus(event.event_status, isExpired);
           const manageHref = isExpired
             ? `post-event-dashboard.html?id=${event.id}`
             : `manage-event.html?id=${event.id}`;
-          const manageLabel = isExpired ? 'Post-Event Dashboard' : 'Manage & Stats';
+          const manageLabel = isExpired ? 'Dashboard' : 'Manage & Stats';
           const location = escapeHtml(event.location || 'TBA');
           const title = escapeHtml(event.title || 'Untitled Event');
           const formattedDate = Number.isNaN(eventDate.getTime())
@@ -285,8 +311,13 @@
           const descriptionHtml = renderDescription(event.description, `event-${event.id}`);
           const seatsMarkup = buildSeatsProgress(event.available_seats, event.max_seats);
 
+          // Archive button only shown for ended/expired events
+          const archiveBtn = isExpired
+            ? `<button class="cta cta-archive btn-archive" type="button" data-event-id="${event.id}" data-event-title="${title}" title="Move to Archive">&#128230; Archive</button>`
+            : '';
+
           return `
-            <div class="event-card organized-card">
+            <div class="event-card organized-card${isExpired ? ' is-expired' : ''}" data-event-id="${event.id}">
               <div class="event-header">
                 <h2>${title}</h2>
                 <div class="event-meta">
@@ -303,6 +334,7 @@
               <div class="event-footer">
                 <a class="cta" href="/html/event-details.html?id=${event.id}">Public View</a>
                 <a class="cta ${isExpired ? 'cta-dashboard' : 'cta-manage'}" href="${manageHref}">${manageLabel}</a>
+                ${archiveBtn}
               </div>
             </div>
           `;
@@ -445,17 +477,50 @@
     }
 
     document.addEventListener('click', (event) => {
+      // Read-more toggle
       const toggleBtn = event.target.closest('.read-more-link');
-      if (!toggleBtn) return;
+      if (toggleBtn) {
+        const targetId = toggleBtn.getAttribute('data-target');
+        const target = targetId ? document.getElementById(targetId) : null;
+        if (!target) return;
+        const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+        toggleBtn.setAttribute('aria-expanded', String(!expanded));
+        toggleBtn.textContent = expanded ? 'Read more' : 'Show less';
+        target.classList.toggle('is-clamped', expanded);
+        return;
+      }
 
-      const targetId = toggleBtn.getAttribute('data-target');
-      const target = targetId ? document.getElementById(targetId) : null;
-      if (!target) return;
+      // Archive button
+      const archiveBtn = event.target.closest('.btn-archive');
+      if (!archiveBtn) return;
+      const eventId = String(archiveBtn.getAttribute('data-event-id') || '');
+      if (!eventId) return;
 
-      const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
-      toggleBtn.setAttribute('aria-expanded', String(!expanded));
-      toggleBtn.textContent = expanded ? 'Read more' : 'Show less';
-      target.classList.toggle('is-clamped', expanded);
+      // Find the card and animate it out
+      const card = archiveBtn.closest('.event-card');
+      if (card) {
+        card.classList.add('archiving');
+        card.addEventListener('animationend', () => {
+          card.remove();
+          // If grid is now empty, show the empty state
+          const grid = document.getElementById('eventsGrid');
+          if (grid && grid.querySelectorAll('.event-card').length === 0) {
+            grid.innerHTML = `
+              <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+                <p>All your events have been archived.</p>
+                <p style="margin-top: 16px;"><a href="/html/archived-events.html" style="color: var(--accent);">View Archived Events</a></p>
+              </div>
+            `;
+          }
+        }, { once: true });
+      }
+
+      // Persist to localStorage
+      const ids = getArchivedIds();
+      if (!ids.includes(eventId)) {
+        ids.push(eventId);
+        saveArchivedIds(ids);
+      }
     });
 
     loadMyEvents();
@@ -463,6 +528,8 @@
   </script>
   <script src="../public/js/auth-nav.js"></script>
   <script src="../js/ai-assistant.js"></script>
+  <script src="../public/js/back-to-top.js"></script>
+
 </body>
 
 </html>

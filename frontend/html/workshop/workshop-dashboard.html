@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workshop Portal | Elshaboury Events</title>
+  <meta name="description" content="Private team workspace for Elshaboury Events. Access your event details, venue information, and manage your team category." />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/workshop/workshop.css" />
+</head>
+
+<body>
+  <div class="ws-wrapper">
+
+    <!-- ── Workshop Nav ──────────────────────────────────────────────────── -->
+    <nav class="ws-nav" aria-label="Workshop navigation">
+      <div class="ws-brand">
+        <div class="ws-brand-mark">WS</div>
+        <div class="ws-brand-text">
+          <strong>Workshop Portal</strong>
+          <span>Elshaboury Events — Team Space</span>
+        </div>
+      </div>
+
+      <div class="ws-nav-right">
+        <span id="wsNavRole" class="ws-role-badge">Loading…</span>
+        <span id="wsNavEmail" style="color:var(--muted);font-size:.82rem;"></span>
+        <button id="wsLogoutBtn" class="btn btn-danger btn-sm" type="button" aria-label="Leave workshop">
+          ⎋ Leave
+        </button>
+      </div>
+    </nav>
+
+    <!-- ── Main content rendered by JS ─────────────────────────────────── -->
+    <div id="wsDashboardMain" aria-live="polite">
+      <div class="ws-loading">
+        <span class="ws-spinner"></span>
+        Loading workshop…
+      </div>
+    </div>
+
+  </div><!-- /.ws-wrapper -->
+
+  <script src="../../js/workshop/workshop-dashboard.js"></script>
+</body>
+
+</html>

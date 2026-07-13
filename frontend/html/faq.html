@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAQ | Elshaboury Events</title>
+  <meta name="description" content="Frequently Asked Questions and Answers to help you use Elshaboury Events." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css" />
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/index.css" />
+  <link rel="stylesheet" href="../css/faq.css" />
+  <link rel="stylesheet" href="../css/navbar.css" />
+</head>
+
+<body>
+  <main>
+    <!-- Navbar Header -->
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/subscriptions.html">Subscriptions</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <div class="faq-shell">
+      <!-- Page Hero Section -->
+      <section class="faq-hero">
+        <div>
+          <h1>Frequently Asked Questions</h1>
+          <p>Find quick answers to all your inquiries about bookings, wallet transactions, and event management.</p>
+        </div>
+        <div class="faq-hero-icon" aria-hidden="true">&#10067;</div>
+      </section>
+
+      <!-- Live Search Input -->
+      <div class="faq-search-wrapper">
+        <input type="text" id="faqSearch" class="faq-search-input" placeholder="Search for questions here..." aria-label="Search FAQs" />
+        <span class="faq-search-icon" aria-hidden="true">&#128269;</span>
+      </div>
+
+      <!-- FAQ Accordions by Category -->
+      <div class="faq-categories" id="faqCategoriesContainer">
+        <div style="text-align: center; padding: 48px; color: var(--muted, #c3d2dc);">
+          <div style="font-size: 2rem; margin-bottom: 12px;">&#10067;</div>
+          Loading FAQs...
+        </div>
+      </div>
+
+      <!-- No Results State -->
+      <div id="faqNoResults" class="faq-no-results">
+        <div class="faq-no-results-icon">&#128065;</div>
+        <h3>No results match your search.</h3>
+        <p>Try searching with different keywords like "booking", "wallet", "ticket", or "organizer".</p>
+      </div>
+
+      <!-- Bottom Still Need Help Card -->
+      <section class="faq-help-card">
+        <h2>Still need help?</h2>
+        <p>If you couldn't find the answers you are looking for here, please contact technical support directly by creating a new ticket.</p>
+        <a href="/html/support.html" class="faq-help-btn">
+          <span>&#128228;</span>
+          <span>Contact Technical Support</span>
+        </a>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Footer Section -->
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form -></a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+  <script src="../public/js/floating-event-chat.js"></script>
+  <script src="../public/js/back-to-top.js"></script>
+  <script src="../js/faq.js"></script>
+</body>
+
+</html>

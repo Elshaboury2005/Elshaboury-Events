@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Archived Events</title>
+  <meta name="description" content="View and manage your archived events on Elshaboury Events." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/archived-events.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn active auth-hidden show-if-logged-in" href="/html/archived-events.html">Archived</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/subscriptions.html">Subscriptions</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <div class="page-title">
+      <h1>&#128230; Archived Events</h1>
+      <p>Events you organised that have ended and been archived</p>
+    </div>
+
+    <!-- Toolbar: count + clear all -->
+    <div class="archive-toolbar" id="archiveToolbar" style="display: none;">
+      <div class="archive-toolbar-info">
+        <span class="archive-count-badge" id="archiveCountBadge">0</span>
+        <span id="archiveCountLabel">archived events</span>
+      </div>
+      <button class="btn-clear-all" id="clearAllBtn" type="button">&#128465; Clear All Archives</button>
+    </div>
+
+    <!-- Main grid -->
+    <div class="events-grid" id="archivedGrid">
+      <div class="empty-state">
+        <span class="empty-icon">&#128230;</span>
+        <h3>Nothing archived yet</h3>
+        <p>When you archive an ended event from My Events, it will appear here.</p>
+        <a class="cta-link" href="/html/my-events.html">&#8592; Back to My Events</a>
+      </div>
+    </div>
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form -></a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* ── Mobile nav toggle ───────────────────────────────── */
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) setMenuState(false);
+      }));
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+
+    /* ── Constants ──────────────────────────────────────── */
+    const API_BASE_URL = window.AuthConfig?.apiBaseUrl || '/api';
+    const ARCHIVE_KEY  = 'ee_archived_events';
+
+    /* ── localStorage helpers ───────────────────────────── */
+    function getArchivedIds() {
+      try { return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveArchivedIds(ids) {
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(ids));
+    }
+
+    /* ── HTML escape ────────────────────────────────────── */
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /* ── Description with read-more ─────────────────────── */
+    function renderDescription(description, idKey) {
+      const text = String(description || 'No description available.').trim();
+      const safeText = escapeHtml(text);
+      if (text.length <= 120) {
+        return `<p class="event-description">${safeText}</p>`;
+      }
+      const safeId = `desc-${String(idKey).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      return `
+        <p class="event-description is-clamped" id="${safeId}">${safeText}</p>
+        <button class="read-more-link" type="button" data-target="${safeId}" aria-expanded="false">Read more</button>
+      `;
+    }
+
+    /* ── Update toolbar ─────────────────────────────────── */
+    function updateToolbar(count) {
+      const toolbar = document.getElementById('archiveToolbar');
+      const badge   = document.getElementById('archiveCountBadge');
+      const label   = document.getElementById('archiveCountLabel');
+      if (!toolbar) return;
+      badge.textContent = count;
+      label.textContent = count === 1 ? 'archived event' : 'archived events';
+      toolbar.style.display = count > 0 ? 'flex' : 'none';
+    }
+
+    /* ── Render empty state ─────────────────────────────── */
+    function renderEmpty(grid) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">&#128230;</span>
+          <h3>Nothing archived yet</h3>
+          <p>When you archive an ended event from My Events, it will appear here.</p>
+          <a class="cta-link" href="/html/my-events.html">&#8592; Back to My Events</a>
+        </div>
+      `;
+      updateToolbar(0);
+    }
+
+    /* ── Build a single event card ──────────────────────── */
+    function buildCard(event) {
+      const eventDate = new Date(event.event_date);
+      const formattedDate = Number.isNaN(eventDate.getTime())
+        ? 'Date TBA'
+        : eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      const title       = escapeHtml(event.title || 'Untitled Event');
+      const location    = escapeHtml(event.location || 'TBA');
+      const descHtml    = renderDescription(event.description, `archived-${event.id}`);
+      const dashboardHref = `/html/post-event-dashboard.html?id=${event.id}`;
+
+      return `
+        <div class="event-card" data-event-id="${event.id}">
+          <div class="event-header">
+            <h2>${title}</h2>
+            <div class="event-meta">
+              <span>&#x1F4CD; ${location}</span>
+              <span>&#x1F4C5; ${formattedDate}</span>
+            </div>
+            <span class="event-tag status-archived">&#128230; Archived</span>
+          </div>
+          ${descHtml}
+          <div class="archived-meta-line">
+            <span>&#128336;</span>
+            <span>Ended &amp; archived</span>
+          </div>
+          <div class="event-footer">
+            <a class="cta cta-dashboard" href="${dashboardHref}">&#128202; Dashboard</a>
+            <button class="cta cta-unarchive btn-unarchive" type="button" data-event-id="${event.id}" title="Restore to My Events">
+              &#8635; Unarchive
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ── Fetch a single event by ID ─────────────────────── */
+    async function fetchEvent(id) {
+      try {
+        const token = localStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(`${API_BASE_URL}/Events/${id}`, { headers });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.event || data || null;
+      } catch {
+        return null;
+      }
+    }
+
+    /* ── Main render function ───────────────────────────── */
+    async function loadArchivedEvents() {
+      const grid = document.getElementById('archivedGrid');
+      const ids  = getArchivedIds();
+
+      if (ids.length === 0) {
+        renderEmpty(grid);
+        return;
+      }
+
+      // Show loading skeleton
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 48px; color: var(--muted);">
+          <div style="font-size: 2rem; margin-bottom: 12px;">&#128230;</div>
+          Loading your archived events&hellip;
+        </div>
+      `;
+
+      // Fetch all archived events in parallel
+      const results = await Promise.all(ids.map((id) => fetchEvent(id)));
+      const validEvents = results
+        .map((event, i) => event ? { ...event, _archiveId: ids[i] } : null)
+        .filter(Boolean);
+
+      // Prune stale IDs (events that 404'd or were deleted)
+      const validIds = validEvents.map((e) => String(e._archiveId));
+      if (validIds.length !== ids.length) {
+        saveArchivedIds(validIds);
+      }
+
+      if (validEvents.length === 0) {
+        renderEmpty(grid);
+        return;
+      }
+
+      grid.innerHTML = validEvents.map((event) => buildCard(event)).join('');
+      updateToolbar(validEvents.length);
+    }
+
+    /* ── Global click handler ───────────────────────────── */
+    document.addEventListener('click', (e) => {
+      // Read-more toggle
+      const readMore = e.target.closest('.read-more-link');
+      if (readMore) {
+        const targetId = readMore.getAttribute('data-target');
+        const target   = targetId ? document.getElementById(targetId) : null;
+        if (!target) return;
+        const expanded = readMore.getAttribute('aria-expanded') === 'true';
+        readMore.setAttribute('aria-expanded', String(!expanded));
+        readMore.textContent = expanded ? 'Read more' : 'Show less';
+        target.classList.toggle('is-clamped', expanded);
+        return;
+      }
+
+      // Unarchive button
+      const unarchiveBtn = e.target.closest('.btn-unarchive');
+      if (!unarchiveBtn) return;
+      const eventId = String(unarchiveBtn.getAttribute('data-event-id') || '');
+      if (!eventId) return;
+
+      const card = unarchiveBtn.closest('.event-card');
+      if (card) {
+        card.classList.add('unarchiving');
+        card.addEventListener('animationend', () => {
+          card.remove();
+          const grid = document.getElementById('archivedGrid');
+          const remaining = grid ? grid.querySelectorAll('.event-card').length : 0;
+          updateToolbar(remaining);
+          if (remaining === 0) renderEmpty(grid);
+        }, { once: true });
+      }
+
+      // Remove from localStorage
+      const ids     = getArchivedIds();
+      const updated = ids.filter((id) => id !== eventId);
+      saveArchivedIds(updated);
+    });
+
+    /* ── Clear All handler ──────────────────────────────── */
+    document.getElementById('clearAllBtn')?.addEventListener('click', () => {
+      if (!confirm('Remove all events from archive? They will reappear in My Events.')) return;
+      saveArchivedIds([]);
+      const grid = document.getElementById('archivedGrid');
+      renderEmpty(grid);
+    });
+
+    /* ── Bootstrap ──────────────────────────────────────── */
+    loadArchivedEvents();
+  </script>
+
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/ai-assistant.js"></script>
+  <script src="../public/js/floating-event-chat.js"></script>
+  <script src="../public/js/back-to-top.js"></script>
+</body>
+
+</html>

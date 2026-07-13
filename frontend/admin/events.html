@@ -468,6 +468,133 @@
         `;
       }
 
+      // ─── AI Decision Report ────────────────────────────────────────────────────
+
+      /**
+       * Render the AI decision report card HTML from the stored report object.
+       * Matches the existing admin CSS class conventions.
+       */
+      function renderAiReport(report) {
+        if (!report) {
+          return `
+            <div class="card" id="aiReportCard" style="border-left: 3px solid #6366f1;">
+              <h4 class="card-title" style="color:#6366f1;">&#129302; AI Decision Report</h4>
+              <div class="empty-state">No AI report available for this event yet.</div>
+            </div>
+          `;
+        }
+
+        if (report.decision === 'error') {
+          return `
+            <div class="card" id="aiReportCard" style="border-left: 3px solid #f59e0b;">
+              <h4 class="card-title" style="color:#f59e0b;">&#129302; AI Decision Report</h4>
+              <div class="empty-state" style="color:#f59e0b;">
+                &#9888; Prediction service error: ${AdminApp.escapeHtml(report.error || 'Unknown error')}
+                ${report.timestamp ? `<div class="section-meta" style="margin-top:4px;">${AdminApp.escapeHtml(report.timestamp)}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }
+
+        const decision    = String(report.decision || '').toLowerCase();
+        const isAccepted  = decision === 'accepted';
+        const badgeColor  = isAccepted ? '#10b981' : '#ef4444';
+        const badgeLabel  = isAccepted ? '&#10003; Accepted' : '&#10007; Rejected';
+        const successProb = Number(report.success_probability || 0);
+        const attendRate  = Number(report.expected_attendance_rate || 0);
+        const visitorCnt  = Number(report.expected_visitor_count || 0);
+        const reasons     = Array.isArray(report.reasons) ? report.reasons : [];
+        const probPct     = Math.round(successProb * 100);
+        const attendPct   = Math.round(attendRate  * 100);
+        const probBarColor  = probPct >= 60 ? '#10b981' : probPct >= 40 ? '#f59e0b' : '#ef4444';
+        const attendBarColor = attendPct >= 60 ? '#10b981' : attendPct >= 40 ? '#f59e0b' : '#ef4444';
+
+        return `
+          <div class="card" id="aiReportCard" style="border-left: 3px solid ${AdminApp.escapeHtml(badgeColor)};">
+            <h4 class="card-title" style="color:#6366f1;">&#129302; AI Decision Report</h4>
+
+            <div class="section-head" style="margin-bottom:16px;">
+              <span
+                style="
+                  display:inline-block;
+                  padding:6px 18px;
+                  border-radius:999px;
+                  font-weight:700;
+                  font-size:1rem;
+                  background:${AdminApp.escapeHtml(badgeColor)}22;
+                  color:${AdminApp.escapeHtml(badgeColor)};
+                  border:1.5px solid ${AdminApp.escapeHtml(badgeColor)};
+                  letter-spacing:0.04em;
+                "
+              >${badgeLabel}</span>
+            </div>
+
+            <div class="info-grid" style="margin-bottom:16px;">
+              <div class="info-item">
+                <div class="info-label">Success Probability</div>
+                <div class="info-value">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="flex:1;background:rgba(255,255,255,0.08);border-radius:999px;height:10px;overflow:hidden;">
+                      <div style="width:${probPct}%;height:100%;background:${AdminApp.escapeHtml(probBarColor)};border-radius:999px;transition:width .4s;"></div>
+                    </div>
+                    <span style="font-weight:700;min-width:40px;text-align:right;">${probPct}%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Expected Attendance Rate</div>
+                <div class="info-value">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="flex:1;background:rgba(255,255,255,0.08);border-radius:999px;height:10px;overflow:hidden;">
+                      <div style="width:${attendPct}%;height:100%;background:${AdminApp.escapeHtml(attendBarColor)};border-radius:999px;transition:width .4s;"></div>
+                    </div>
+                    <span style="font-weight:700;min-width:40px;text-align:right;">${attendPct}%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Expected Visitor Count</div>
+                <div class="info-value" style="font-weight:700;font-size:1.15rem;">${AdminApp.formatNumber(visitorCnt)}</div>
+              </div>
+            </div>
+
+            ${reasons.length ? `
+              <div>
+                <div class="info-label" style="margin-bottom:8px;">Decision Reasons</div>
+                ${reasons.map((r) => `
+                  <div class="audit-item" style="border-left:2px solid ${AdminApp.escapeHtml(badgeColor)};padding-left:12px;margin-bottom:6px;">
+                    <div class="section-meta">${AdminApp.escapeHtml(r)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      /**
+       * Fetch the AI report for an event and append/replace the report card in the modal.
+       */
+      async function fetchAndRenderAiReport(eventId) {
+        try {
+          const response = await AdminApp.request(`/Admin/events/${eventId}/report`);
+          const data = await response.json().catch(() => ({}));
+          const reportHtml = renderAiReport(response.ok && data.success ? data.report : null);
+
+          // Replace existing card if present, otherwise append
+          const existing = eventDetailsBody.querySelector('#aiReportCard');
+          if (existing) {
+            existing.outerHTML = reportHtml;
+          } else {
+            eventDetailsBody.insertAdjacentHTML('afterbegin', reportHtml);
+          }
+        } catch (_) {
+          // Silently skip if the report can't be fetched — don't disrupt the modal
+        }
+      }
+
+      // ─── /AI Decision Report ───────────────────────────────────────────────────
+
       async function viewDetails(eventId) {
         selectedEventId = eventId;
         openDetailsModal('Loading Event Details', '<div class="empty-state">Loading event details...</div>');
@@ -565,6 +692,9 @@
             <p class="card-subtitle" style="margin-bottom:0;">${AdminApp.escapeHtml(event.description || 'No description provided.')}</p>
           </div>
         `;
+
+        // Load AI decision report asynchronously and inject into the modal
+        fetchAndRenderAiReport(eventId);
       }
 
       eventSearch.addEventListener('input', AdminApp.debounce(applyFilters, 120));
@@ -634,5 +764,7 @@
       }
     })();
   </script>
+  <script src="/public/js/back-to-top.js"></script>
+
 </body>
 </html>

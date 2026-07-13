@@ -19,6 +19,7 @@ const chatRoutes = require('./routes/chat');
 const faqRoutes = require('./routes/faqRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const notebookRoutes = require('./routes/notebookRoutes');
+const workshopRoutes = require('./routes/workshopRoutes');
 const directChatRoutes = require('./routes/directChatRoutes');
 const adminRoutes = require('./routes/admin/adminRoutes');
 const venueOwnerRoutes = require('./routes/venueOwnerRoutes');
@@ -117,6 +118,7 @@ app.use('/api/support', supportRoutes);
 app.use('/api/faq', faqRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/notebooks', notebookRoutes);
+app.use('/api/workshop', workshopRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/direct-chat', directChatRoutes);
 app.use('/api/Admin', adminRoutes);
@@ -144,6 +146,7 @@ const runMigrations = async () => {
     'migration_faqs',
     'migration_subscriptions',
     'migration_notebooks',
+    'migration_workshop',
   ];
   for (const name of migrations) {
     try {

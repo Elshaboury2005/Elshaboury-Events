@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | Notebook</title>
+  <meta name="description" content="ML experimentation Notebook. Fill in event data, run AI risk and success predictions, and iterate — completely independent of the Create Event wizard." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/index.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+  <link rel="stylesheet" href="../css/notebook-detail.css?v=6">
+</head>
+
+<body>
+  <main>
+    <!-- ── Nav ────────────────────────────────────────────── -->
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color:var(--muted);font-size:0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/archived-events.html">Archived</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notebooks.html">Notebooks</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/subscriptions.html">Subscriptions</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <!-- ── Top bar ─────────────────────────────────────────── -->
+    <div class="nd-shell">
+      <div class="nd-topbar">
+        <a href="/html/notebooks.html" class="nd-back-btn">&#8592; Back to Notebooks</a>
+        <div class="nd-title-wrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; width:100%;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <h1 id="ndTitle" style="margin:0;">Loading Notebook…</h1>
+            <button id="btnEditIdentity" class="nd-icon-btn" type="button" title="Rename Notebook" style="background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; padding:4px; display:inline-flex; align-items:center; transition:color 0.2s;"><span class="pencil-icon">&#9998;</span></button>
+            <span id="unsavedBadge" class="nd-unsaved-badge" style="display:none; font-size:0.75rem; font-weight:700; color:#fbbf24; background:rgba(251,191,36,0.12); padding:3px 8px; border-radius:6px; border:1px solid rgba(251,191,36,0.22); margin-left:8px;">● Unsaved Draft</span>
+          </div>
+          <p id="ndDesc" style="display:none; width:100%; margin-top:4px; font-size:0.875rem; color:var(--muted);"></p>
+        </div>
+      </div>
+
+      <!-- Steps Indicator -->
+      <div id="ndStepsIndicator" style="display:flex;gap:24px;margin:20px 0;font-size:0.875rem;font-weight:600;color:var(--muted);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 20px;align-items:center;">
+        <div id="stepIndicator0" style="color:var(--accent-1);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+          <span style="display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent-1);color:#fff;font-size:0.75rem;font-weight:800;">1</span>
+          Choose Venue
+        </div>
+        <div style="color:rgba(255,255,255,0.15);font-size:1.2rem;">&rarr;</div>
+        <div id="stepIndicator1" style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.25);cursor:pointer;user-select:none;">
+          <span style="display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.25);font-size:0.75rem;font-weight:800;" id="step1Dot">2</span>
+          Configure ML Parameters
+        </div>
+      </div>
+
+      <!-- ── Notice ────────────────────────────────────────── -->
+      <div class="nd-flag-notice" id="ndFlaggedNotice">
+        <strong>&#9888; Two fields pending formula confirmation</strong>
+        <code>event_quality_score</code> and <code>event_popularity_index</code> exist in the training dataset but
+        their computation formulas haven't been confirmed by Mohamed yet. These fields are <strong>intentionally
+        omitted</strong> from the prediction vector until the formula is defined. The backend will flag them in the
+        response so you know they are missing.
+      </div>
+
+      <!-- ── Main two-column layout ─────────────────────────── -->
+      <div class="nd-layout">
+
+        <!-- LEFT: form sections ───────────────────────────── -->
+        <div id="ndFormArea">
+
+          <!-- Step 0: Venue Selection -->
+          <div id="ndStep0" class="nd-card step-fade" style="margin-bottom:24px; display:none;">
+            <div class="nd-section-title">&#127963; Step 1: Choose a Venue</div>
+            <p style="font-size:0.875rem;color:var(--muted);margin-bottom:20px;line-height:1.55;">
+              Select one of our platform's curated venues to automatically populate standard capacity, cost, city, AC, parking, accessibility features, and rating. Or skip to enter these parameters manually.
+            </p>
+            
+            <!-- Filters -->
+            <div style="display:flex;gap:12px;margin-bottom:22px;flex-wrap:wrap;align-items:center;">
+              <select class="nd-select" id="vFilterGovernorate" style="max-width:200px;">
+                <option value="">All Governorates</option>
+                <option value="Cairo">Cairo</option>
+                <option value="Alexandria">Alexandria</option>
+                <option value="Giza">Giza</option>
+                <option value="Gharbia">Gharbia</option>
+                <option value="Qalyubia">Qalyubia</option>
+                <option value="Dakahlia">Dakahlia</option>
+                <option value="Sharqia">Sharqia</option>
+                <option value="Monufia">Monufia</option>
+                <option value="Beheira">Beheira</option>
+                <option value="Damietta">Damietta</option>
+                <option value="Port Said">Port Said</option>
+                <option value="Suez">Suez</option>
+                <option value="Ismailia">Ismailia</option>
+                <option value="Faiyum">Faiyum</option>
+                <option value="Beni Suef">Beni Suef</option>
+                <option value="Minya">Minya</option>
+                <option value="Asyut">Asyut</option>
+                <option value="Sohag">Sohag</option>
+                <option value="Qena">Qena</option>
+                <option value="Luxor">Luxor</option>
+                <option value="Aswan">Aswan</option>
+                <option value="Red Sea">Red Sea</option>
+                <option value="New Valley">New Valley</option>
+                <option value="Matrouh">Matrouh</option>
+                <option value="North Sinai">North Sinai</option>
+                <option value="South Sinai">South Sinai</option>
+                <option value="Kafr El Sheikh">Kafr El Sheikh</option>
+              </select>
+              <input type="text" class="nd-input" id="vFilterSearch" placeholder="Search by venue name..." style="max-width:280px;flex:1;" />
+            </div>
+
+            <!-- Carousel of Venue Cards -->
+            <div class="v-carousel-container">
+              <button class="v-carousel-arrow v-carousel-arrow-prev" id="vCarouselPrev" type="button" aria-label="Scroll venues left">&larr;</button>
+              <div class="v-carousel" id="vCarousel">
+                <p style="font-size:0.875rem;color:var(--muted);padding:20px 10px;">Loading platform venues...</p>
+              </div>
+              <button class="v-carousel-arrow v-carousel-arrow-next" id="vCarouselNext" type="button" aria-label="Scroll venues right">&rarr;</button>
+            </div>
+
+            <!-- Selection and Navigation Controls -->
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.08);padding-top:20px;">
+              <button class="nd-run-btn" id="btnUseVenue" type="button" style="width:auto;margin:0;" disabled>
+                Use Selected Venue &amp; Continue &rarr;
+              </button>
+              <button class="nd-save-btn" id="btnSkipVenue" type="button" style="width:auto;margin:0;">
+                Skip &amp; Enter Details Manually
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading skeleton while notebook loads -->
+          <div id="ndLoadingState" class="nd-card" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="nd-skeleton" style="width:55%;"></div>
+            <div class="nd-skeleton" style="width:80%;height:12px;"></div>
+            <div class="nd-skeleton" style="width:70%;height:12px;"></div>
+          </div>
+
+          <!-- Actual form (rendered by JS) -->
+          <div id="ndForm" class="step-fade" hidden>
+
+            <!-- Venue summary / Change Venue row -->
+            <div class="nd-card" id="selectedVenueBanner" style="margin-bottom:24px;display:none;background:rgba(255,138,0,0.06);border-color:rgba(255,138,0,0.22);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:1.5rem;">&#127963;</span>
+                <div>
+                  <strong style="color:var(--text);font-size:0.95rem;" id="selectedVenueName">No Venue Selected</strong>
+                  <p style="font-size:0.82rem;color:var(--muted);margin:2px 0 0;" id="selectedVenueDetails">You are entering venue parameters manually.</p>
+                </div>
+              </div>
+              <button class="nd-save-btn" id="btnChangeVenue" type="button" style="width:auto;padding:8px 16px;font-size:0.825rem;margin:0;">
+                &#9998; Change Venue
+              </button>
+            </div>
+
+            <!-- §1 – Event Basics -->
+            <div class="nd-card nd-form-section" style="margin-bottom:24px;">
+              <div class="nd-section-title">&#128203; Event Basics</div>
+              <div class="nd-form-grid">
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_event_category">Event Category <span class="nd-req">*</span></label>
+                  <select class="nd-select" id="f_event_category" name="event_category">
+                    <option value="">— select —</option>
+                    <option value="Business">Business</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Education">Education</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Arts">Arts</option>
+                    <option value="Community">Community</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Health">Health</option>
+                    <option value="Food">Food</option>
+                    <option value="Charity">Charity</option>
+                    <option value="Religious">Religious</option>
+                    <option value="Gaming">Gaming</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <span class="nd-field-error" id="err_f_event_category"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_event_type">Event Type <span class="nd-req">*</span></label>
+                  <select class="nd-select" id="f_event_type" name="event_type">
+                    <option value="">— select —</option>
+                    <option value="Conference">Conference</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Seminar">Seminar</option>
+                    <option value="Gala">Gala</option>
+                    <option value="Festival">Festival</option>
+                    <option value="Concert">Concert</option>
+                    <option value="Exhibition">Exhibition</option>
+                    <option value="Hackathon">Hackathon</option>
+                    <option value="Networking">Networking</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Webinar">Webinar</option>
+                    <option value="Private">Private</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <span class="nd-field-error" id="err_f_event_type"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_target_audience">Target Audience <span class="nd-req">*</span></label>
+                  <select class="nd-select" id="f_target_audience" name="target_audience">
+                    <option value="">— select —</option>
+                    <option value="General Public">General Public</option>
+                    <option value="Students">Students</option>
+                    <option value="Professionals">Professionals</option>
+                    <option value="Families">Families</option>
+                    <option value="Kids">Kids</option>
+                    <option value="Seniors">Seniors</option>
+                    <option value="VIPs">VIPs</option>
+                    <option value="Youth">Youth</option>
+                    <option value="All Ages">All Ages</option>
+                  </select>
+                  <span class="nd-field-error" id="err_f_target_audience"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_language">Language</label>
+                  <select class="nd-select" id="f_language" name="language">
+                    <option value="Arabic" selected>Arabic</option>
+                    <option value="English">English</option>
+                    <option value="Bilingual">Bilingual</option>
+                    <option value="French">French</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <span class="nd-field-error" id="err_f_language"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_minimum_age">Minimum Age</label>
+                  <input class="nd-input" type="number" id="f_minimum_age" name="minimum_age" value="0" min="0" max="100" step="1" />
+                  <span class="nd-field-help">0 = all ages are welcome. Max 100.</span>
+                  <span class="nd-field-error" id="err_f_minimum_age"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_event_duration_hours">Duration (hours) <span class="nd-req">*</span></label>
+                  <input class="nd-input" type="number" id="f_event_duration_hours" name="event_duration_hours" value="3" min="0.5" max="72" step="0.5" />
+                  <span class="nd-field-help">Length of the event.</span>
+                  <span class="nd-field-error" id="err_f_event_duration_hours"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_event_date">Event Date <span class="nd-req">*</span></label>
+                  <input class="nd-input" type="date" id="f_event_date" name="event_date" />
+                  <span class="nd-field-error" id="err_f_event_date"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_start_time">Start Time <span class="nd-req">*</span></label>
+                  <input class="nd-input" type="time" id="f_start_time" name="start_time" value="18:00" />
+                  <span class="nd-field-help">Used to calculate starting hour.</span>
+                  <span class="nd-field-error" id="err_f_start_time"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_registration_deadline">Registration Deadline</label>
+                  <input class="nd-input" type="date" id="f_registration_deadline" name="registration_deadline" />
+                  <span class="nd-field-help">Must be before or on event date.</span>
+                  <span class="nd-field-error" id="err_f_registration_deadline"></span>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- §2 – Venue & Location -->
+            <div class="nd-card nd-form-section" style="margin-bottom:24px;">
+              <div class="nd-section-title">&#127963; Venue &amp; Location</div>
+              <p style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;line-height:1.45;margin-top:-6px;">
+                Auto-filled when choosing a venue in Step 1, or fully customizable manually below.
+              </p>
+              <div class="nd-form-grid">
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_country">Country</label>
+                  <input class="nd-input" type="text" id="f_country" name="country" value="Egypt" placeholder="Egypt" />
+                  <span class="nd-field-error" id="err_f_country"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_city">City <span class="nd-req">*</span></label>
+                  <input class="nd-input" type="text" id="f_city" name="city" placeholder="e.g. Cairo, Alexandria" />
+                  <span class="nd-field-error" id="err_f_city"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_indoor_outdoor">Indoor / Outdoor</label>
+                  <select class="nd-select" id="f_indoor_outdoor" name="indoor_outdoor">
+                    <option value="Indoor" selected>Indoor</option>
+                    <option value="Outdoor">Outdoor</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Online">Online</option>
+                  </select>
+                  <span class="nd-field-error" id="err_f_indoor_outdoor"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_hall_capacity">Hall Capacity (seats) <span class="nd-req">*</span></label>
+                  <input class="nd-input" type="number" id="f_hall_capacity" name="hall_capacity" value="200" min="1" max="100000" step="1" />
+                  <span class="nd-field-help">Maximum visitor count limit.</span>
+                  <span class="nd-field-error" id="err_f_hall_capacity"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_venue_cost">Venue Cost (EGP)</label>
+                  <input class="nd-input" type="number" id="f_venue_cost" name="venue_cost" value="0" min="0" step="100" />
+                  <span class="nd-field-help">Rent cost of space per day.</span>
+                  <span class="nd-field-error" id="err_f_venue_cost"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_distance_from_city_center_km">Distance from City Center (km)</label>
+                  <input class="nd-input" type="number" id="f_distance_from_city_center_km" name="distance_from_city_center_km" value="5" min="0" max="200" step="0.5" />
+                  <span class="nd-field-help">Distance from city core center.</span>
+                  <span class="nd-field-error" id="err_f_distance_from_city_center_km"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_venue_rating">Venue Rating</label>
+                  <input class="nd-input" type="number" id="f_venue_rating" name="venue_rating" value="3.5" min="1" max="5" step="0.1" />
+                  <span class="nd-field-help">Stars rating from 1.0 to 5.0.</span>
+                  <span class="nd-field-error" id="err_f_venue_rating"></span>
+                </div>
+
+              </div>
+
+              <!-- Venue amenities checkboxes -->
+              <div style="margin-top:18px; border-top: 1px solid rgba(255,255,255,0.06); padding-top:14px;">
+                <div class="nd-section-title" style="font-size:0.72rem;margin-bottom:12px;letter-spacing:0.04em;">Venue Amenities</div>
+                <div class="nd-check-grid">
+                  <label class="nd-check-group">
+                    <input class="nd-checkbox" type="checkbox" id="f_parking_available" name="parking_available" />
+                    <span class="nd-check-label">&#128663; Parking</span>
+                  </label>
+                  <label class="nd-check-group">
+                    <input class="nd-checkbox" type="checkbox" id="f_air_conditioning" name="air_conditioning" checked />
+                    <span class="nd-check-label">&#10052; Air Conditioning</span>
+                  </label>
+                  <label class="nd-check-group">
+                    <input class="nd-checkbox" type="checkbox" id="f_accessibility" name="accessibility" />
+                    <span class="nd-check-label">&#9855; Accessibility</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- §3 – Ticketing -->
+            <div class="nd-card nd-form-section" style="margin-bottom:24px;">
+              <div class="nd-section-title">&#127915; Ticketing</div>
+              <div class="nd-form-grid">
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_ticket_price">Regular Ticket Price (EGP) <span class="nd-req">*</span></label>
+                  <input class="nd-input" type="number" id="f_ticket_price" name="ticket_price" value="0" min="0" step="10" />
+                  <span class="nd-field-error" id="err_f_ticket_price"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_vip_ticket_price">VIP Ticket Price (EGP)</label>
+                  <input class="nd-input" type="number" id="f_vip_ticket_price" name="vip_ticket_price" value="0" min="0" step="10" />
+                  <span class="nd-field-help">Set to 0 if there is no VIP tier.</span>
+                  <span class="nd-field-error" id="err_f_vip_ticket_price"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_early_bird_discount_pct">Early Bird Discount (%)</label>
+                  <div class="nd-slider-wrap">
+                    <input class="nd-slider" type="range" id="f_early_bird_discount_pct" name="early_bird_discount_pct" value="0" min="0" max="100" step="5" oninput="document.getElementById('early_bird_val').textContent=this.value+'%'" />
+                    <span class="nd-slider-val" id="early_bird_val">0%</span>
+                  </div>
+                  <span class="nd-field-help">Discount for early registrations.</span>
+                  <span class="nd-field-error" id="err_f_early_bird_discount_pct"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_group_discount_pct">Group Discount (%)</label>
+                  <div class="nd-slider-wrap">
+                    <input class="nd-slider" type="range" id="f_group_discount_pct" name="group_discount_pct" value="0" min="0" max="100" step="5" oninput="document.getElementById('group_disc_val').textContent=this.value+'%'" />
+                    <span class="nd-slider-val" id="group_disc_val">0%</span>
+                  </div>
+                  <span class="nd-field-help">Discount for bulk/group purchases.</span>
+                  <span class="nd-field-error" id="err_f_group_discount_pct"></span>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- §4 – Marketing -->
+            <div class="nd-card nd-form-section" style="margin-bottom:24px;">
+              <div class="nd-section-title">
+                &#128203; Marketing
+                <span class="nd-budget-allocated" id="budgetAllocated">Allocated: 0 / 0 EGP</span>
+              </div>
+              <div class="nd-form-grid">
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_marketing_budget">Total Marketing Budget (EGP)</label>
+                  <input class="nd-input" type="number" id="f_marketing_budget" name="marketing_budget" value="0" min="0" step="500" />
+                  <span class="nd-field-help">Total budget across all channels.</span>
+                  <span class="nd-field-error" id="err_f_marketing_budget"></span>
+                </div>
+                
+                <div class="nd-field">
+                  <label class="nd-label" for="f_facebook_budget">Facebook Spend (EGP)</label>
+                  <input class="nd-input" type="number" id="f_facebook_budget" name="facebook_budget" value="0" min="0" step="100" />
+                  <span class="nd-field-error" id="err_f_facebook_budget"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_instagram_budget">Instagram Spend (EGP)</label>
+                  <input class="nd-input" type="number" id="f_instagram_budget" name="instagram_budget" value="0" min="0" step="100" />
+                  <span class="nd-field-error" id="err_f_instagram_budget"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_tiktok_budget">TikTok Spend (EGP)</label>
+                  <input class="nd-input" type="number" id="f_tiktok_budget" name="tiktok_budget" value="0" min="0" step="100" />
+                  <span class="nd-field-error" id="err_f_tiktok_budget"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_google_budget">Google Ads Spend (EGP)</label>
+                  <input class="nd-input" type="number" id="f_google_budget" name="google_budget" value="0" min="0" step="100" />
+                  <span class="nd-field-error" id="err_f_google_budget"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_influencer_budget">Influencer Spend (EGP)</label>
+                  <input class="nd-input" type="number" id="f_influencer_budget" name="influencer_budget" value="0" min="0" step="100" />
+                  <span class="nd-field-error" id="err_f_influencer_budget"></span>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- §5 – Extras & Perks -->
+            <div class="nd-card nd-form-section" style="margin-bottom:24px;">
+              <div class="nd-section-title">&#127881; Extras &amp; Perks</div>
+              <div class="nd-check-grid" style="margin-bottom:18px;">
+                <label class="nd-check-group">
+                  <input class="nd-checkbox" type="checkbox" id="f_free_food" name="free_food" />
+                  <span class="nd-check-label">&#127829; Free Food</span>
+                </label>
+                <label class="nd-check-group">
+                  <input class="nd-checkbox" type="checkbox" id="f_free_drinks" name="free_drinks" />
+                  <span class="nd-check-label">&#127867; Free Drinks</span>
+                </label>
+                <label class="nd-check-group">
+                  <input class="nd-checkbox" type="checkbox" id="f_networking_session" name="networking_session" />
+                  <span class="nd-check-label">&#129309; Networking Session</span>
+                </label>
+                <label class="nd-check-group">
+                  <input class="nd-checkbox" type="checkbox" id="f_certificates" name="certificates" />
+                  <span class="nd-check-label">&#127891; Certificates</span>
+                </label>
+                <label class="nd-check-group">
+                  <input class="nd-checkbox" type="checkbox" id="f_giveaways" name="giveaways" />
+                  <span class="nd-check-label">&#127873; Giveaways</span>
+                </label>
+                <label class="nd-check-group">
+                  <input class="nd-checkbox" type="checkbox" id="f_live_music" name="live_music" />
+                  <span class="nd-check-label">&#127928; Live Music</span>
+                </label>
+              </div>
+
+              <div class="nd-form-grid">
+                <div class="nd-field">
+                  <label class="nd-label" for="f_number_of_speakers">Number of Speakers</label>
+                  <input class="nd-input" type="number" id="f_number_of_speakers" name="number_of_speakers" value="1" min="0" max="100" step="1" />
+                  <span class="nd-field-error" id="err_f_number_of_speakers"></span>
+                </div>
+                <div class="nd-field">
+                  <label class="nd-label" for="f_celebrity_popularity_score">Celebrity Popularity Score</label>
+                  <input class="nd-input" type="number" id="f_celebrity_popularity_score" name="celebrity_popularity_score" value="0" min="0" max="100" step="1" />
+                  <span class="nd-field-help">Fame score from 0 to 100.</span>
+                  <span class="nd-field-error" id="err_f_celebrity_popularity_score"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- §6 – Market Context -->
+            <div class="nd-card nd-form-section" style="margin-bottom:24px;">
+              <div class="nd-section-title">&#128202; Market Context</div>
+              <div class="nd-form-grid">
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_competing_events_nearby">Competing Events Nearby</label>
+                  <input class="nd-input" type="number" id="f_competing_events_nearby" name="competing_events_nearby" value="0" min="0" max="50" step="1" />
+                  <span class="nd-field-error" id="err_f_competing_events_nearby"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_competition_strength">Competition Strength</label>
+                  <select class="nd-select" id="f_competition_strength" name="competition_strength">
+                    <option value="Weak">Weak</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Strong">Strong</option>
+                  </select>
+                  <span class="nd-field-help">Competitive strength of nearby events.</span>
+                  <span class="nd-field-error" id="err_f_competition_strength"></span>
+                </div>
+
+                <div class="nd-field">
+                  <label class="nd-label" for="f_weather_override">Weather Override</label>
+                  <select class="nd-select" id="f_weather_override" name="weather_override">
+                    <option value="">(Auto-estimate from date)</option>
+                    <option value="Sunny">Sunny</option>
+                    <option value="Hot">Hot</option>
+                    <option value="Cold">Cold</option>
+                    <option value="Rainy">Rainy</option>
+                    <option value="Windy">Windy</option>
+                  </select>
+                  <span class="nd-field-help">Defaults to seasonal average if empty.</span>
+                  <span class="nd-field-error" id="err_f_weather_override"></span>
+                </div>
+
+              </div>
+            </div>
+
+          </div><!-- /#ndForm -->
+        </div><!-- /#ndFormArea -->
+
+        <!-- RIGHT: sidebar ───────────────────────────────── -->
+        <aside class="nd-sidebar">
+
+          <!-- Auto-fetched organizer data panel -->
+          <div class="nd-card" id="ndAutoFillCard">
+            <div class="nd-section-title">&#128100; Auto-Filled Data</div>
+            <p style="font-size:0.8rem;color:var(--muted);line-height:1.5;margin-bottom:12px;">
+              Fetched from your account. Hidden from the form — used automatically in the prediction.
+            </p>
+            <div class="nd-autofill-panel" id="ndAutoFillPanel">
+              <div class="nd-autofill-spinner">
+                <div class="nd-skeleton" style="width:100%;height:14px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Auto-calculated Derived Data panel -->
+          <div class="nd-card" id="ndDerivedCard" style="margin-top:0px;">
+            <div class="nd-section-title">&#9881; Auto-Calculated Data</div>
+            <p style="font-size:0.8rem;color:var(--muted);line-height:1.5;margin-bottom:12px;">
+              Derived on-the-fly from your date, time, and ticketing selections.
+            </p>
+            <div class="nd-autofill-panel" id="ndDerivedPanel" style="background:rgba(255,255,255,0.02); border-color:rgba(255,255,255,0.08);">
+              <p style="font-size:0.8rem;color:var(--muted);margin:0;">Enter event date to view derived parameters.</p>
+            </div>
+          </div>
+
+          <!-- Flagged fields notice -->
+          <div class="nd-flag-pill">
+            <strong>&#9888; Awaiting formula confirmation:</strong><br/>
+            <code>event_quality_score</code> &amp; <code>event_popularity_index</code> are excluded from the
+            prediction vector until Mohamed confirms the calculation formula.
+          </div>
+
+          <!-- Run prediction button -->
+          <button class="nd-run-btn" id="ndRunBtn" type="button" disabled>
+            <span>&#129302;</span> Run Prediction
+          </button>
+
+          <!-- Save draft button -->
+          <button class="nd-save-btn" id="ndSaveBtn" type="button" disabled>
+            &#128190; Save Draft (no prediction)
+          </button>
+
+          <!-- Prediction result area -->
+          <div id="ndResultArea"></div>
+
+        </aside>
+      </div><!-- /.nd-layout -->
+    </div><!-- /.nd-shell -->
+  </main>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form -&gt;</a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+  <!-- ── Venue Details Quick-View Modal ──────────────────────────────── -->
+  <div class="nb-dialog-backdrop" id="venueDetailsModal" role="dialog" aria-modal="true" aria-labelledby="vModalTitle" hidden>
+    <div class="nb-dialog" style="width:min(600px, 100%);">
+      <div class="nb-dialog-header">
+        <h2 id="vModalTitle">Venue Details</h2>
+        <button class="nb-dialog-close" id="btnCloseVModal" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="nb-dialog-body" style="max-height:80vh;overflow-y:auto;gap:14px;">
+        <div id="vModalImages">
+          <!-- Images populated dynamically -->
+        </div>
+        <p id="vModalDesc" style="font-size:0.88rem;color:var(--muted);line-height:1.55;margin:0;"></p>
+        
+        <div class="nd-autofill-panel" style="margin-top:8px;" id="vModalStatsGrid">
+          <!-- Stats dynamically populated -->
+        </div>
+
+        <div style="margin-top:8px;">
+          <h4 style="font-size:0.85rem;text-transform:uppercase;color:var(--accent-1);letter-spacing:0.05em;margin-bottom:8px;">Amenities</h4>
+          <div id="vModalAmenities" style="display:flex;flex-wrap:wrap;gap:8px;">
+            <!-- Amenities chips -->
+          </div>
+        </div>
+        
+        <div class="nd-dialog-actions" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;">
+          <button class="nb-btn-cancel" id="btnCloseVModalCancel" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+  <!-- ── Edit Notebook Name/Description Modal ──────────────────────── -->
+  <div class="nb-dialog-backdrop" id="editIdentityModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" hidden>
+    <div class="nb-dialog">
+      <div class="nb-dialog-header">
+        <h2 id="editModalTitle">&#9998; Rename Notebook</h2>
+        <button class="nb-dialog-close" id="btnCloseEditModal" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="nb-dialog-body">
+        <div class="nb-field-group" style="display:flex; flex-direction:column; gap:6px;">
+          <label for="editNbName" style="font-size:0.825rem; font-weight:600; color:var(--text); text-align:left;">Notebook Name <span class="nb-required" style="color:#f87171;">*</span></label>
+          <input type="text" id="editNbName" name="editNbName" placeholder="e.g. Tech Conference – Summer 2026" maxlength="120" autocomplete="off" class="nd-input" />
+        </div>
+        <div class="nb-field-group" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+          <label for="editNbDesc" style="font-size:0.825rem; font-weight:600; color:var(--text); text-align:left;">Short Description <span class="nb-optional" style="font-weight:400; color:var(--muted);">(optional)</span></label>
+          <textarea id="editNbDesc" name="editNbDesc" placeholder="Any notes for yourself about what you're experimenting with…" rows="3" maxlength="500" class="nd-textarea"></textarea>
+        </div>
+        <div class="nb-dialog-actions" style="margin-top:12px; display:flex; gap:12px; justify-content:flex-end;">
+          <button class="nb-btn-cancel" id="btnCancelEditModal" type="button">Cancel</button>
+          <button class="nd-run-btn" id="btnConfirmEdit" type="button" style="width:auto; margin:0; padding:10px 20px; font-size:0.875rem;">Save Changes</button>
+        </div>
+        <p class="nb-dialog-error" id="editDialogError" style="color:#f87171; font-size:0.8rem; margin:8px 0 0;" hidden></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) setMenuState(false);
+      }));
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/notebook-detail-page.js?v=6"></script>
+  <script src="../public/js/back-to-top.js"></script>
+</body>
+
+</html>

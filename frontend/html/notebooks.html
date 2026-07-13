@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elshaboury Events | My Notebooks</title>
+  <meta name="description" content="Manage your ML experiment Notebooks. Each Notebook is a self-contained space to input event data, run risk and success predictions, and iterate — completely independent of the Create Event flow." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css">
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/index.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+  <link rel="stylesheet" href="../css/notebooks.css?v=3">
+</head>
+
+<body>
+  <main>
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/archived-events.html">Archived</a>
+        <a class="nav-btn active auth-hidden show-if-logged-in" href="/html/notebooks.html">Notebooks</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn" href="/html/subscriptions.html">Subscriptions</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <div class="page-title">
+      <h1>&#128213; <span class="gradient-text">My Notebooks</span></h1>
+      <p>ML experimentation spaces. Fill in event data, run risk &amp; success predictions, and iterate — all without touching the Create Event flow.</p>
+      <div style="margin-top: 24px; display: flex; justify-content: center; gap: 12px;">
+        <button class="cta-btn" id="btnCreateNotebook" type="button">&#43; Create New Notebook</button>
+      </div>
+    </div>
+
+    <div class="nb-shell">
+      <!-- Toolbar: Sorting & Filtering -->
+      <div class="nb-toolbar" style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap; padding: 0 10px;">
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label for="sortSelect" style="font-size:0.85rem; font-weight:600; color:var(--muted);">Sort by:</label>
+            <select id="sortSelect" style="padding:6px 12px; font-size:0.825rem; border-radius:8px; width:auto; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text); cursor:pointer; outline:none;">
+              <option value="last_used" selected>Last Edited</option>
+              <option value="created">Created Date</option>
+              <option value="name">Name</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label for="filterRiskSelect" style="font-size:0.85rem; font-weight:600; color:var(--muted);">Filter by Risk:</label>
+            <select id="filterRiskSelect" style="padding:6px 12px; font-size:0.825rem; border-radius:8px; width:auto; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text); cursor:pointer; outline:none;">
+              <option value="all" selected>All Predictions</option>
+              <option value="low">Low Risk</option>
+              <option value="medium">Medium Risk</option>
+              <option value="high">High Risk</option>
+              <option value="none">No Predictions</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="events-grid" id="notebooksGrid">
+        <div class="nb-empty">
+          <span class="nb-empty-icon">&#128213;</span>
+          <h3>Loading your Notebooks...</h3>
+          <p>Please wait while we fetch your saved experiments.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ── Create Notebook Dialog ─────────────────────────────────────────── -->
+  <div class="nb-dialog-backdrop" id="createDialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" hidden>
+    <div class="nb-dialog">
+      <div class="nb-dialog-header">
+        <h2 id="dialogTitle">&#128214; New Notebook</h2>
+        <button class="nb-dialog-close" id="btnCloseDialog" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="nb-dialog-body">
+        <p class="nb-dialog-hint">Give your notebook a name so you can recognise it later. This is purely a label — it's not event data and won't affect the ML models.</p>
+        <div class="nb-field-group">
+          <label for="nbName">Notebook Name <span class="nb-required">*</span></label>
+          <input type="text" id="nbName" name="nbName" placeholder="e.g. Tech Conference – Summer 2026" maxlength="120" autocomplete="off" />
+        </div>
+        <div class="nb-field-group">
+          <label for="nbDesc">Short Description <span class="nb-optional">(optional)</span></label>
+          <textarea id="nbDesc" name="nbDesc" placeholder="Any notes for yourself about what you're experimenting with…" rows="3" maxlength="500"></textarea>
+        </div>
+        <div class="nb-dialog-actions">
+          <button class="nb-btn-cancel" id="btnCancelDialog" type="button">Cancel</button>
+          <button class="nb-btn-create" id="btnConfirmCreate" type="button">&#10003; Create Notebook</button>
+        </div>
+        <p class="nb-dialog-error" id="dialogError" hidden></p>
+      </div>
+    </div>
+  </div>
+
+  <footer id="support">
+    <div class="contact-block">
+      <h3>Contact</h3>
+      <ul class="contact-list">
+        <li><span>Email:</span> mohamed.320230191@ejust.edu.eg</li>
+        <li><span>Phone:</span> +20-1013077615</li>
+        <li><span>Hotline:</span> +20-1029123440</li>
+      </ul>
+      <a class="contact-btn" href="/html/contact-form.html">Go to Contact Form -></a>
+    </div>
+    <div class="contact-block">
+      <h3>Visit</h3>
+      <ul class="contact-list">
+        <li>Alexandria, Borg El-Arab, Egypt</li>
+        <li>or Gharbia, Tanta</li>
+        <li>Sun - Thu : 8:00 AM - 11:59 PM</li>
+      </ul>
+    </div>
+    <div class="contact-block">
+      <h3>Connect</h3>
+      <div class="socials">
+        <div class="chip">Instagram</div>
+        <div class="chip">LinkedIn</div>
+        <div class="chip">Twitter</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const header = document.querySelector('header');
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelectorAll('nav a');
+      if (!header || !menuToggle) return;
+      const setMenuState = (open) => {
+        header.classList.toggle('menu-open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+      };
+      menuToggle.addEventListener('click', () => setMenuState(!header.classList.contains('menu-open')));
+      navLinks.forEach((link) => link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) setMenuState(false);
+      }));
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) setMenuState(false);
+      });
+    })();
+  </script>
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../js/notebooks-page.js?v=3"></script>
+  <script src="../public/js/back-to-top.js"></script>
+</body>
+
+</html>

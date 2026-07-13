@@ -94,7 +94,8 @@
     activeAmenities: [],
     didLoadVenueCatalog: false,
     featuredAutoScrollDirection: 1,
-    featuredAutoScrollTimer: null
+    featuredAutoScrollTimer: null,
+    platformFeeSettings: { type: 'fixed', value: 500, fallback: 200 }
   };
 
   const form = document.getElementById('createEventForm');
@@ -378,11 +379,21 @@
     return GOVERNORATE_ALIASES[cleaned.toLowerCase()] || cleaned;
   }
 
-  function listingFee(totalSeats) {
-    const seats = Math.max(0, Number(totalSeats || 0));
-    if (seats <= 500) return { tier: 'Small', fee: 5000 };
-    if (seats <= 1000) return { tier: 'Medium', fee: 8000 };
-    return { tier: 'Large', fee: 12000 };
+  function calculateActivePlatformFee() {
+    const settings = state.platformFeeSettings || { type: 'fixed', value: 500, fallback: 200 };
+    const currentVenueType = state.venueType || 'host_owned';
+    const venueFee = currentVenueType === 'platform_booked' && state.selectedVenue
+      ? Number(state.selectedVenue.pricePerDay || 0)
+      : 0;
+
+    if (settings.type === 'percentage') {
+      if (currentVenueType === 'platform_booked' && venueFee > 0) {
+        return Math.round(venueFee * (Number(settings.value) / 100) * 100) / 100;
+      }
+      return Number(settings.fallback) || 0;
+    } else {
+      return Number(settings.value) || 0;
+    }
   }
 
   function seatTotals() {
@@ -398,14 +409,22 @@
 
   function updateCapacityUI() {
     const totals = seatTotals();
-    const fee = listingFee(totals.total);
+    const fee = calculateActivePlatformFee();
     const unit = state.venueType === 'online' ? 'attendees' : 'seats';
     totalCapacityPreview.textContent = `${totals.total.toLocaleString('en-US')} total ${unit}`;
-    totalCapacityMeta.textContent = totals.total > 0
-      ? `Listing fee tier: ${fee.tier} · ${money(fee.fee)}`
-      : state.venueType === 'online'
-        ? 'Add attendee capacity to calculate capacity and listing fee.'
-        : 'Add seat quantities to calculate capacity and listing fee.';
+    
+    const settings = state.platformFeeSettings || { type: 'fixed', value: 500, fallback: 200 };
+    if (settings.type === 'percentage') {
+      if (state.venueType === 'platform_booked') {
+        totalCapacityMeta.textContent = state.selectedVenue
+          ? `Platform fee: ${settings.value}% of Venue Fee · ${money(fee)}`
+          : `Platform fee: ${settings.value}% of Venue Fee (select venue to calculate)`;
+      } else {
+        totalCapacityMeta.textContent = `Platform fee: ${money(fee)} (flat fallback fee)`;
+      }
+    } else {
+      totalCapacityMeta.textContent = `Platform fee: ${money(fee)} (fixed rate)`;
+    }
   }
 
   function sectionsForStep(step) {
@@ -1492,7 +1511,7 @@
     const totals = seatTotals();
     const currentVenueType = state.venueType || 'host_owned';
     const currentVenue = state.selectedVenue;
-    const listing = listingFee(totals.total);
+    const listingFeeVal = calculateActivePlatformFee();
     const venueFee = currentVenueType === 'platform_booked' && currentVenue
       ? Number(currentVenue.pricePerDay || 0)
       : 0;
@@ -1549,9 +1568,9 @@
       hostPhone: document.getElementById('host-phone').value.trim(),
       hostOrganization: document.getElementById('host-organization').value.trim(),
       aiMarketingRequested: true,
-      listingFee: listing.fee,
+      listingFee: listingFeeVal,
       venueFee,
-      totalDueNow: listing.fee + venueFee
+      totalDueNow: listingFeeVal + venueFee
     };
   }
 
@@ -1969,6 +1988,205 @@
   });
   window.addEventListener('resize', updateFeaturedRailUI);
 
+  async function fetchPlatformFeeSettings() {
+    try {
+      const data = await apiJson('/Events/platform-fee-settings', { method: 'GET' });
+      if (data.success && data.settings) {
+        state.platformFeeSettings = data.settings;
+        updateCapacityUI();
+      }
+    } catch (err) {
+      console.warn('Could not fetch platform fee settings, using defaults:', err);
+    }
+  }
+
+  // ── Notebooks: Save as Notebook ──────────────────────────────────────────
+  async function saveAsNotebook() {
+    const token = localStorage.getItem('token');
+    if (!token || localStorage.getItem('isLoggedIn') === 'guest') {
+      window.alert('Please sign in to save a Notebook.');
+      return;
+    }
+
+    const name = window.prompt('Enter a name for this Notebook template:', 'My Event Template');
+    if (!name || !name.trim()) return; // cancelled or empty
+
+    const payload = buildPayload();
+    const saveBtn = document.getElementById('saveNotebookBtn');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '\u{1F4D3} Saving\u2026'; }
+
+    try {
+      const response = await fetch(`${API_BASE}/notebooks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: name.trim(), payload })
+      });
+      const data = await response.json();
+      if (data.success) {
+        window.alert(`\u2705 Notebook "${name.trim()}" saved! You can load it later from the Notebooks page.`);
+      } else {
+        window.alert('Failed to save Notebook: ' + (data.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Save notebook error:', err);
+      window.alert('Network error. Could not save Notebook.');
+    } finally {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '&#128213; Save as Notebook'; }
+    }
+  }
+
+  // ── Notebooks: Hydrate form from saved payload ────────────────────────────
+  async function hydrateFormFromPayload(payload) {
+    if (!payload) return;
+
+    // Step 0 — Venue type + venue selection
+    const vType = payload.location_type === 'online' ? 'online'
+      : (payload.venueType === 'platform_booked' ? 'platform_booked' : 'host_owned');
+
+    if (payload.selectedVenue && vType === 'platform_booked') {
+      // Restore the selected venue object into state, then apply mode
+      state.venueType = 'platform_booked';
+      state.selectedVenue = payload.selectedVenue;
+      // Highlight browse card as selected
+      if (browseVenueBtn) browseVenueBtn.closest('.venue-choice-card').classList.add('selected');
+      if (ownVenueBtn) ownVenueBtn.closest('.venue-choice-card').classList.remove('selected');
+      if (onlineEventBtn) onlineEventBtn.closest('.venue-choice-card').classList.remove('selected');
+      venueSearchPanel.classList.remove('hidden');
+      venuePathNote.classList.remove('hidden');
+      venuePathNote.textContent = 'Platform venue restored from Notebook.';
+    } else {
+      setVenueType(vType);
+    }
+
+    // Flush UI for venue mode before filling remaining fields
+    applyVenueMode();
+
+    // Step 1 — Basic Info
+    const titleEl = document.getElementById('event-title');
+    if (titleEl && payload.title) titleEl.value = payload.title;
+
+    if (eventTypeSelect && payload.eventType) {
+      eventTypeSelect.value = payload.eventType;
+      eventTypeSelect.dispatchEvent(new Event('change'));
+    }
+
+    const descEl = document.getElementById('event-description');
+    if (descEl && payload.description) descEl.value = payload.description;
+
+    const imgEl = document.getElementById('event-image');
+    if (imgEl && payload.imageUrl) imgEl.value = payload.imageUrl;
+
+    // Step 2 — Time & Location
+    if (eventDateInput && payload.eventDate) eventDateInput.value = payload.eventDate;
+    if (eventTimeInput && payload.eventTime) eventTimeInput.value = payload.eventTime;
+
+    if (vType === 'online') {
+      if (onlinePlatformSelect && payload.onlinePlatform) onlinePlatformSelect.value = payload.onlinePlatform;
+      if (onlineTimezoneSelect && payload.onlineTimezone) onlineTimezoneSelect.value = payload.onlineTimezone;
+      if (onlineUrlInput && payload.onlineUrl) onlineUrlInput.value = payload.onlineUrl;
+      if (onlineAccessInput && payload.onlineAccess) onlineAccessInput.value = payload.onlineAccess;
+    } else {
+      // Governorate (only when not platform-locked)
+      if (eventGovernorateSelect && payload.governorate && vType !== 'platform_booked') {
+        eventGovernorateSelect.value = payload.governorate;
+      }
+      // Map coordinates
+      if (payload.latitude && payload.longitude) {
+        latInput.value = payload.latitude;
+        lngInput.value = payload.longitude;
+        setMarker(Number(payload.latitude), Number(payload.longitude), 14);
+      }
+      if (venueAddressInput && payload.venueAddress && vType !== 'platform_booked') {
+        venueAddressInput.value = payload.venueAddress;
+      }
+    }
+
+    // Step 3 — Ticketing
+    if (vType !== 'platform_booked') {
+      // Seats are user-editable only for non-platform modes
+      if (standardSeatsInput && payload.standardSeats != null) standardSeatsInput.value = payload.standardSeats;
+      if (specialSeatsInput && payload.specialSeats != null) specialSeatsInput.value = payload.specialSeats;
+      if (vipSeatsInput && payload.vipSeats != null) vipSeatsInput.value = payload.vipSeats;
+    }
+    if (vType === 'online' && onlineAttendeesInput && payload.standardSeats != null) {
+      onlineAttendeesInput.value = payload.standardSeats;
+    }
+
+    const ageEl = document.getElementById('age-restriction');
+    if (ageEl && payload.ageRestriction) ageEl.value = payload.ageRestriction;
+
+    const priceStdEl = document.getElementById('price-standard');
+    if (priceStdEl && payload.priceStandard != null) priceStdEl.value = payload.priceStandard;
+
+    const priceSplEl = document.getElementById('price-special');
+    if (priceSplEl && payload.priceSpecial != null) priceSplEl.value = payload.priceSpecial;
+
+    const priceVipEl = document.getElementById('price-vip');
+    if (priceVipEl && payload.priceVip != null) priceVipEl.value = payload.priceVip;
+
+    const regDeadEl = document.getElementById('registration-deadline');
+    if (regDeadEl && payload.registrationDeadline) regDeadEl.value = payload.registrationDeadline;
+
+    // Step 4 — Agenda & Host
+    const agendaEl = document.getElementById('event-agenda');
+    if (agendaEl && payload.eventAgenda) agendaEl.value = payload.eventAgenda;
+
+    const termsEl = document.getElementById('terms-conditions');
+    if (termsEl && payload.termsConditions) termsEl.value = payload.termsConditions;
+
+    const logEl = document.getElementById('logistics');
+    if (logEl && payload.logistics) logEl.value = payload.logistics;
+
+    const ocNameEl = document.getElementById('oc-name');
+    if (ocNameEl && payload.ocName) ocNameEl.value = payload.ocName;
+    const ocEmailEl = document.getElementById('oc-email');
+    if (ocEmailEl && payload.ocEmail) ocEmailEl.value = payload.ocEmail;
+    const ocPhoneEl = document.getElementById('oc-phone');
+    if (ocPhoneEl && payload.ocPhone) ocPhoneEl.value = payload.ocPhone;
+
+    const hostNameEl = document.getElementById('host-name');
+    if (hostNameEl && payload.hostName) hostNameEl.value = payload.hostName;
+    const hostEmailEl = document.getElementById('host-email');
+    if (hostEmailEl && payload.hostEmail) hostEmailEl.value = payload.hostEmail;
+    const hostPhoneEl = document.getElementById('host-phone');
+    if (hostPhoneEl && payload.hostPhone) hostPhoneEl.value = payload.hostPhone;
+    const hostOrgEl = document.getElementById('host-organization');
+    if (hostOrgEl && payload.hostOrganization) hostOrgEl.value = payload.hostOrganization;
+
+    // Refresh capacity + fee UI
+    updateCapacityUI();
+
+    // Navigate to step 1 so the user can review from the start
+    setStep(0);
+
+    // Small banner to indicate the notebook was loaded
+    const hero = document.querySelector('.hero');
+    if (hero) {
+      const banner = document.createElement('div');
+      banner.id = 'notebookLoadBanner';
+      Object.assign(banner.style, {
+        background: 'rgba(99,102,241,0.15)',
+        border: '1px solid rgba(99,102,241,0.35)',
+        borderRadius: '12px',
+        padding: '14px 20px',
+        marginTop: '16px',
+        fontSize: '0.9rem',
+        fontWeight: '600',
+        color: '#a5b4fc'
+      });
+      banner.innerHTML = '\u{1F4D3} <strong>Notebook loaded.</strong> All saved fields have been pre-filled. Review and edit as needed, then publish your event.';
+      hero.appendChild(banner);
+      setTimeout(() => { if (banner.parentNode) banner.parentNode.removeChild(banner); }, 7000);
+    }
+
+    // Clean up localStorage notebook keys
+    localStorage.removeItem('notebookPayload');
+    localStorage.removeItem('notebookId');
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
     bindMenu();
     initMap();
@@ -1986,6 +2204,26 @@
     startFeaturedAutoScroll();
     await loadFeaturedVenues();
     await refreshVenueSuggestions();
+    await fetchPlatformFeeSettings();
+
+    // ── Notebook restore ──────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const notebookIdParam = urlParams.get('notebookId');
+    const storedPayload = localStorage.getItem('notebookPayload');
+    if (notebookIdParam && storedPayload) {
+      try {
+        const payload = JSON.parse(storedPayload);
+        await hydrateFormFromPayload(payload);
+      } catch (parseErr) {
+        console.warn('Failed to parse stored notebook payload:', parseErr);
+      }
+    }
+
+    // Wire up Save as Notebook button
+    const saveNotebookBtn = document.getElementById('saveNotebookBtn');
+    if (saveNotebookBtn) {
+      saveNotebookBtn.addEventListener('click', saveAsNotebook);
+    }
   });
 })();
 

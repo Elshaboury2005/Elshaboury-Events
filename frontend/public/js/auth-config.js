@@ -1,4 +1,4 @@
-﻿const AuthConfig = {
+const AuthConfig = {
     // API base URL - override via window.API_BASE_URL (set before this script) or meta name="api-base-url"
     apiBaseUrl: (typeof window !== 'undefined' && window.API_BASE_URL) ||
         (typeof document !== 'undefined' && document.querySelector('meta[name="api-base-url"]')?.getAttribute('content')) ||
@@ -29,7 +29,9 @@
             'ticket.html',
             'reserve-seat.html', // Require sign-in to book seats
             'contact-form.html', // Support form is for signed-in users only
-            'support.html'
+            'support.html',
+            'notebooks.html',
+            'notebook-detail.html'
         ],
         public: [
             'index.html',

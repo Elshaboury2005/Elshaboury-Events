@@ -65,6 +65,45 @@ const Notebook = {
     return result.affectedRows > 0;
   },
 
+  updateIdentity: async (id, userId, name, description) => {
+    const [result] = await pool.execute(
+      'UPDATE notebooks SET name = ?, description = ?, last_used_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?',
+      [name, description || null, id, userId]
+    );
+    return result.affectedRows > 0;
+  },
+
+  duplicate: async (id, userId) => {
+    const [rows] = await pool.execute(
+      `SELECT name, description, payload, ml_fields, last_prediction 
+       FROM notebooks WHERE id = ? AND user_id = ?`,
+      [id, userId]
+    );
+    if (!rows[0]) return null;
+    const orig = rows[0];
+    
+    // 2. Clone it with name + " (Copy)"
+    const newName = `${orig.name} (Copy)`;
+    const [result] = await pool.execute(
+      `INSERT INTO notebooks (user_id, name, description, payload, ml_fields, last_prediction) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        userId, 
+        newName, 
+        orig.description, 
+        orig.payload ? (typeof orig.payload === 'string' ? orig.payload : JSON.stringify(orig.payload)) : null,
+        orig.ml_fields ? (typeof orig.ml_fields === 'string' ? orig.ml_fields : JSON.stringify(orig.ml_fields)) : null,
+        orig.last_prediction ? (typeof orig.last_prediction === 'string' ? orig.last_prediction : JSON.stringify(orig.last_prediction)) : null
+      ]
+    );
+    return {
+      id: result.insertId,
+      user_id: userId,
+      name: newName,
+      description: orig.description
+    };
+  },
+
   delete: async (id, userId) => {
     const [result] = await pool.execute(
       'DELETE FROM notebooks WHERE id = ? AND user_id = ?',

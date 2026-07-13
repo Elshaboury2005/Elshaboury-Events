@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -298,7 +298,9 @@
       document.getElementById('exportPdf').addEventListener('click', () => {
         const html = document.getElementById('reportTable').outerHTML;
         const win = window.open('', '_blank');
-        win.document.write(`<html><head><title>Revenue Report</title><style>body{font-family:Arial,sans-serif;padding:16px;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}th{background:#f5f5f5;}</style></head><body><h2>Revenue Report</h2>${html}</body></html>`);
+        win.document.write(`<html><head><title>Revenue Report</title><style>body{font-family:Arial,sans-serif;padding:16px;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}th{background:#f5f5f5;}</style></head><body><h2>Revenue Report</h2>${html}
+  <script src="/public/js/back-to-top.js"></script>
+</body></html>`);
         win.document.close();
         win.print();
       });
@@ -306,6 +308,8 @@
       await loadReport();
     })();
   </script>
+  <script src="/public/js/back-to-top.js"></script>
+
 </body>
 </html>
 

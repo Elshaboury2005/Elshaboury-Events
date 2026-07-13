@@ -12,6 +12,7 @@
     <script src="../public/js/auth-config.js"></script>
     <script src="../public/js/auth-guard.js"></script>
     <link rel="stylesheet" href="../css/signin.css">
+  <link rel="stylesheet" href="../css/workshop/workshop-signin.css">
   <link rel="stylesheet" href="../css/navbar.css">
 </head>
 
@@ -31,9 +32,18 @@
 
     <div class="login-container">
         <div class="login-card">
-            <h2 class="login-title">Login</h2>
-            <p class="login-subtitle">Welcome back to Elshaboury Events</p>
-            <div id="platformLockNotice" class="message-box error" style="display:none; margin-bottom: 16px;"></div>
+
+            <!-- Tab switcher -->
+            <div class="ws-tab-switcher" id="wsTabSwitcher" role="tablist" aria-label="Login mode">
+                <button class="ws-tab active" id="tabSignIn" role="tab" aria-selected="true" aria-controls="panelSignIn" type="button">Sign In</button>
+                <button class="ws-tab" id="tabWorkshop" role="tab" aria-selected="false" aria-controls="panelWorkshop" type="button">🔧 Enter Workshop</button>
+            </div>
+
+            <!-- ── Panel A: Normal Sign In (unchanged) ────────────────── -->
+            <div id="panelSignIn" role="tabpanel" aria-labelledby="tabSignIn">
+                <h2 class="login-title">Login</h2>
+                <p class="login-subtitle">Welcome back to Elshaboury Events</p>
+                <div id="platformLockNotice" class="message-box error" style="display:none; margin-bottom: 16px;"></div>
 
             <form id="loginForm">
                 <div class="form-group">
@@ -65,6 +75,42 @@
             </div>
 
             <div id="messageBox" class="message-box"></div>
+            </div><!-- /panelSignIn -->
+
+            <!-- ── Panel B: Enter Workshop ────────────────────────────── -->
+            <div id="panelWorkshop" role="tabpanel" aria-labelledby="tabWorkshop" hidden>
+                <h2 class="login-title" style="font-size:1.35rem;">🔧 Enter Workshop</h2>
+                <p class="login-subtitle">Access your event team workspace</p>
+
+                <form id="workshopLoginForm" novalidate>
+                    <div class="form-group">
+                        <label for="wsEmail" class="form-label">Your Personal Email</label>
+                        <input type="email" class="form-control" id="wsEmail"
+                               placeholder="The email your organizer registered for you" required autocomplete="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wsUsername" class="form-label">Workshop Username</label>
+                        <input type="text" class="form-control" id="wsUsername"
+                               placeholder="Provided by your event organizer" required autocomplete="off">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wsCode" class="form-label">Workshop Access Code</label>
+                        <div class="password-field">
+                            <input type="password" class="form-control" id="wsCode"
+                                   placeholder="Secret code from your organizer" required autocomplete="off">
+                            <button type="button" class="password-toggle" id="wsCodeToggle" aria-label="Show access code">&#128065;</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-login" style="background:linear-gradient(120deg,#7c3aed,#2563eb);">
+                        Enter Workshop
+                    </button>
+                </form>
+
+                <div id="wsMessageBox" class="message-box"></div>
+            </div><!-- /panelWorkshop -->
         </div>
     </div>
 
@@ -249,10 +295,104 @@
             window.location.href = '/admin/login.html';
         });
     </script>
-    <script src="../js/ai-assistant.js"></script>
-</body>
 
-</html>
+    <!-- ── Workshop tab + login logic ─────────────────────────────────────── -->
+    <script>
+      (function () {
+        const tabSignIn   = document.getElementById('tabSignIn');
+        const tabWorkshop = document.getElementById('tabWorkshop');
+        const panelSignIn = document.getElementById('panelSignIn');
+        const panelWS     = document.getElementById('panelWorkshop');
+
+        function switchTab(active) {
+          const isWS = active === 'workshop';
+          tabSignIn.classList.toggle('active', !isWS);
+          tabWorkshop.classList.toggle('active', isWS);
+          tabSignIn.setAttribute('aria-selected', String(!isWS));
+          tabWorkshop.setAttribute('aria-selected', String(isWS));
+          panelSignIn.hidden = isWS;
+          panelWS.hidden = !isWS;
+        }
+
+        tabSignIn.addEventListener('click',   () => switchTab('signin'));
+        tabWorkshop.addEventListener('click', () => switchTab('workshop'));
+
+        // Auto-open Workshop tab if ?wserror=1 redirected here
+        if (new URLSearchParams(window.location.search).get('wserror') === '1') {
+          switchTab('workshop');
+        }
+
+        // ── Access code toggle ─────────────────────────────────────────────
+        const wsCodeInput  = document.getElementById('wsCode');
+        const wsCodeToggle = document.getElementById('wsCodeToggle');
+        wsCodeToggle.addEventListener('click', () => {
+          const show = wsCodeInput.type === 'password';
+          wsCodeInput.type = show ? 'text' : 'password';
+          wsCodeToggle.innerHTML = show ? '&#128584;' : '&#128065;';
+          wsCodeToggle.setAttribute('aria-label', show ? 'Hide access code' : 'Show access code');
+        });
+
+        // ── Workshop login form ────────────────────────────────────────────
+        const wsForm   = document.getElementById('workshopLoginForm');
+        const wsMsgBox = document.getElementById('wsMessageBox');
+        const API_BASE = window.AuthConfig?.apiBaseUrl || '/api';
+
+        wsForm.addEventListener('submit', async function (e) {
+          e.preventDefault();
+          wsMsgBox.className = 'message-box';
+
+          const email           = document.getElementById('wsEmail').value.trim();
+          const workshopUsername = document.getElementById('wsUsername').value.trim();
+          const accessCode      = document.getElementById('wsCode').value;
+
+          if (!email || !workshopUsername || !accessCode) {
+            wsMsgBox.classList.add('error', 'show');
+            wsMsgBox.textContent = 'Please fill in all three fields.';
+            return;
+          }
+
+          const submitBtn = wsForm.querySelector('[type="submit"]');
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Verifying…';
+
+          try {
+            const res  = await fetch(`${API_BASE}/workshop/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, workshopUsername, accessCode })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+              localStorage.setItem('workshopToken',  data.token);
+              localStorage.setItem('workshopMember', JSON.stringify(data.member));
+
+              wsMsgBox.classList.add('success', 'show');
+              wsMsgBox.textContent = 'Access granted! Redirecting to your workshop…';
+
+              setTimeout(() => {
+                window.location.href = '/html/workshop/workshop-dashboard.html';
+              }, 1200);
+            } else {
+              wsMsgBox.classList.add('error', 'show');
+              wsMsgBox.textContent = data.message || 'Invalid workshop credentials.';
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Enter Workshop';
+            }
+          } catch (err) {
+            wsMsgBox.classList.add('error', 'show');
+            wsMsgBox.textContent = 'An error occurred. Please try again.';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Enter Workshop';
+          }
+        });
+      })();
+    </script>
+
+    <script src="../js/ai-assistant.js"></script>
+  <script src="../public/js/back-to-top.js"></script>
+
+</body>
 
 
 

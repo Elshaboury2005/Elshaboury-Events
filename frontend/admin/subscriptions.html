@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Subscriptions | Elshaboury Events Admin</title>
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <script src="/public/js/auth-config.js"></script>
+  <script src="/admin/js/admin-common.js"></script>
+  <script src="/admin/js/admin-layout.js"></script>
+  <style>
+    /* ── Subscriptions Admin extra styles ── */
+    .plan-editor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 22px;
+    }
+    .plan-editor-card {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .plan-editor-card.is-featured {
+      border-color: rgba(255,138,0,.35);
+      background: rgba(255,138,0,.06);
+    }
+    .plan-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .plan-title {
+      font-size: 1.1rem;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+    }
+    .plan-toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--line-strong);
+      cursor: pointer;
+      transition: background 0.25s ease;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.25s ease;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(18px);
+    }
+    .plan-field-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      display: block;
+    }
+    .plan-input {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.18s ease;
+    }
+    .plan-input:focus {
+      outline: none;
+      border-color: var(--grad-start);
+    }
+    /* Features list editor */
+    .feat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .feat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .feat-item input {
+      flex: 1;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.88rem;
+    }
+    .feat-item input:focus {
+      outline: none;
+      border-color: var(--grad-start);
+    }
+    .feat-del-btn {
+      background: rgba(239,68,68,.15);
+      border: 1px solid rgba(239,68,68,.3);
+      color: var(--danger);
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-size: 1rem;
+      transition: background 0.18s ease;
+    }
+    .feat-del-btn:hover {
+      background: rgba(239,68,68,.28);
+    }
+    .feat-add-btn {
+      margin-top: 4px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px dashed var(--line-strong);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: border-color 0.18s ease, color 0.18s ease;
+      text-align: left;
+    }
+    .feat-add-btn:hover {
+      border-color: var(--grad-start);
+      color: var(--text);
+    }
+    .plan-save-btn {
+      margin-top: 4px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .plan-save-btn:hover {
+      opacity: 0.88;
+      transform: translateY(-1px);
+    }
+    .plan-save-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .plan-status-msg {
+      font-size: 0.82rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      display: none;
+    }
+    .plan-status-msg.success {
+      display: block;
+      background: rgba(24,182,127,.12);
+      color: var(--success);
+      border: 1px solid rgba(24,182,127,.25);
+    }
+    .plan-status-msg.error {
+      display: block;
+      background: rgba(239,68,68,.1);
+      color: var(--danger);
+      border: 1px solid rgba(239,68,68,.22);
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    (async function init() {
+      const ok = await AdminApp.requireAuth();
+      if (!ok) return;
+      renderAdminLayout('Manage Subscriptions');
+
+      const page = document.getElementById('pageContent');
+      page.innerHTML = `
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3 class="section-title">Subscription Plans</h3>
+              <p class="section-meta">Edit plan prices, feature lists, and visibility. Changes reflect immediately on the public Subscriptions page.</p>
+            </div>
+          </div>
+          <div class="plan-editor-grid" id="planEditorGrid">
+            <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Loading plans…</div>
+          </div>
+        </div>
+      `;
+
+      const grid = document.getElementById('planEditorGrid');
+
+      // ── Fetch All Plans ──────────────────────────────────────
+      let allPlans = [];
+
+      async function fetchPlans() {
+        try {
+          const res  = await AdminApp.request('/Admin/subscriptions');
+          const data = await res.json();
+          if (data.success && Array.isArray(data.plans)) {
+            allPlans = data.plans;
+            renderGrid();
+          } else {
+            grid.innerHTML = `<div style="grid-column:1/-1;color:var(--danger);padding:32px;text-align:center;">Failed to load plans</div>`;
+          }
+        } catch (err) {
+          grid.innerHTML = `<div style="grid-column:1/-1;color:var(--danger);padding:32px;text-align:center;">Error: ${AdminApp.escapeHtml(err.message)}</div>`;
+        }
+      }
+
+      // ── Render Grid ──────────────────────────────────────────
+      function renderGrid() {
+        grid.innerHTML = allPlans.map(plan => buildCardHtml(plan)).join('');
+        allPlans.forEach(plan => attachCardEvents(plan.plan_key));
+      }
+
+      function buildCardHtml(plan) {
+        const features = Array.isArray(plan.features) ? plan.features : [];
+        const isFree    = plan.plan_key === 'free_trial';
+        const featured  = plan.plan_key === 'annual';
+
+        const priceFields = isFree ? '' : `
+          <div>
+            <label class="plan-field-label">Price (numeric, e.g. 9.99)</label>
+            <input type="number" step="0.01" min="0" class="plan-input" id="price_${plan.plan_key}" value="${plan.price != null ? plan.price : ''}" placeholder="Leave blank = free/contact" />
+          </div>
+          <div>
+            <label class="plan-field-label">Price Label (display string, e.g. "$9.99/month")</label>
+            <input type="text" class="plan-input" id="price_label_${plan.plan_key}" value="${AdminApp.escapeHtml(plan.price_label || '')}" placeholder='e.g. "$9.99/month"' />
+          </div>
+        `;
+
+        const featuresHtml = features.map((f, i) => `
+          <div class="feat-item" id="feat_${plan.plan_key}_${i}">
+            <input type="text" value="${AdminApp.escapeHtml(f)}" data-feat-idx="${i}" data-plan="${plan.plan_key}" />
+            <button class="feat-del-btn" data-feat-idx="${i}" data-plan="${plan.plan_key}" title="Remove feature">&times;</button>
+          </div>
+        `).join('');
+
+        return `
+          <div class="plan-editor-card${featured ? ' is-featured' : ''}" id="card_${plan.plan_key}">
+            <div class="plan-header">
+              <div class="plan-title">${AdminApp.escapeHtml(plan.label)}</div>
+              <label class="plan-toggle-label">
+                <span class="toggle-switch">
+                  <input type="checkbox" id="enabled_${plan.plan_key}" ${plan.is_enabled ? 'checked' : ''} />
+                  <span class="toggle-slider"></span>
+                </span>
+                Visible
+              </label>
+            </div>
+
+            ${priceFields}
+
+            <div>
+              <label class="plan-field-label">Badge Text (optional, e.g. "Best Value")</label>
+              <input type="text" class="plan-input" id="badge_${plan.plan_key}" value="${AdminApp.escapeHtml(plan.badge || '')}" placeholder="Leave blank for no badge" />
+            </div>
+
+            <div>
+              <label class="plan-field-label">Sort Order (lower = first)</label>
+              <input type="number" min="0" class="plan-input" id="sort_${plan.plan_key}" value="${plan.sort_order || 0}" />
+            </div>
+
+            <div>
+              <label class="plan-field-label">Features</label>
+              <div class="feat-list" id="featList_${plan.plan_key}">${featuresHtml}</div>
+              <button class="feat-add-btn" id="addFeat_${plan.plan_key}">+ Add feature</button>
+            </div>
+
+            <div class="plan-status-msg" id="status_${plan.plan_key}"></div>
+
+            <button class="plan-save-btn" id="save_${plan.plan_key}">Save Changes</button>
+          </div>
+        `;
+      }
+
+      // ── Events for a single card ─────────────────────────────
+      function attachCardEvents(planKey) {
+        const plan = allPlans.find(p => p.plan_key === planKey);
+        if (!plan) return;
+
+        // Add feature button
+        const addBtn = document.getElementById(`addFeat_${planKey}`);
+        if (addBtn) {
+          addBtn.addEventListener('click', () => {
+            const list = document.getElementById(`featList_${planKey}`);
+            const idx = list.querySelectorAll('.feat-item').length;
+            const div = document.createElement('div');
+            div.className = 'feat-item';
+            div.id = `feat_${planKey}_${idx}`;
+            div.innerHTML = `
+              <input type="text" value="" data-feat-idx="${idx}" data-plan="${planKey}" placeholder="New feature..." />
+              <button class="feat-del-btn" data-feat-idx="${idx}" data-plan="${planKey}" title="Remove">&times;</button>
+            `;
+            list.appendChild(div);
+            attachDeleteListeners(planKey);
+            div.querySelector('input').focus();
+          });
+        }
+
+        // Auto-update price label input as price is edited
+        const priceInput = document.getElementById(`price_${planKey}`);
+        const priceLabelInput = document.getElementById(`price_label_${planKey}`);
+        if (priceInput && priceLabelInput) {
+          priceInput.addEventListener('input', () => {
+            const val = priceInput.value.trim();
+            if (val) {
+              const num = parseFloat(val);
+              if (!isNaN(num)) {
+                const formatted = num % 1 === 0 ? num.toString() : num.toFixed(2);
+                const period = planKey === 'monthly' ? '/month' : (planKey === 'annual' ? '/year' : '');
+                priceLabelInput.value = `$${formatted}${period}`;
+              }
+            } else {
+              priceLabelInput.value = '';
+            }
+          });
+        }
+
+        attachDeleteListeners(planKey);
+
+        // Save button
+        const saveBtn = document.getElementById(`save_${planKey}`);
+        if (saveBtn) {
+          saveBtn.addEventListener('click', () => savePlan(planKey));
+        }
+      }
+
+      function attachDeleteListeners(planKey) {
+        const list = document.getElementById(`featList_${planKey}`);
+        if (!list) return;
+        list.querySelectorAll('.feat-del-btn').forEach(btn => {
+          btn.onclick = () => {
+            const item = btn.closest('.feat-item');
+            if (item) item.remove();
+          };
+        });
+      }
+
+      // ── Collect & Save ───────────────────────────────────────
+      async function savePlan(planKey) {
+        const saveBtn = document.getElementById(`save_${planKey}`);
+        const statusEl = document.getElementById(`status_${planKey}`);
+        const plan = allPlans.find(p => p.plan_key === planKey);
+        if (!plan) return;
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+        statusEl.className = 'plan-status-msg';
+        statusEl.style.display = 'none';
+
+        // Collect feature inputs
+        const featList = document.getElementById(`featList_${planKey}`);
+        const featureInputs = featList.querySelectorAll('input[type="text"]');
+        const features = Array.from(featureInputs)
+          .map(inp => inp.value.trim())
+          .filter(Boolean);
+
+        const isFree = planKey === 'free_trial';
+        const priceRaw = isFree ? null : document.getElementById(`price_${planKey}`)?.value;
+        const price = (priceRaw !== null && priceRaw !== '') ? parseFloat(priceRaw) : null;
+        const price_label = isFree ? (plan.price_label || 'Free / 7 days') : (document.getElementById(`price_label_${planKey}`)?.value?.trim() || null);
+        const badge = document.getElementById(`badge_${planKey}`)?.value?.trim() || null;
+        const sort_order = parseInt(document.getElementById(`sort_${planKey}`)?.value || '0', 10);
+        const is_enabled = document.getElementById(`enabled_${planKey}`)?.checked ? 1 : 0;
+
+        const body = {
+          label: plan.label,
+          price,
+          price_label,
+          features,
+          is_enabled,
+          badge,
+          sort_order
+        };
+
+        try {
+          const res  = await AdminApp.request(`/Admin/subscriptions/${planKey}`, {
+            method: 'PUT',
+            body: JSON.stringify(body)
+          });
+          const data = await res.json();
+          if (data.success) {
+            // Update local cache
+            const idx = allPlans.findIndex(p => p.plan_key === planKey);
+            if (idx !== -1) allPlans[idx] = { ...allPlans[idx], ...data.plan, features };
+            statusEl.textContent = 'Saved successfully!';
+            statusEl.className = 'plan-status-msg success';
+            setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+          } else {
+            statusEl.textContent = data.message || 'Failed to save';
+            statusEl.className = 'plan-status-msg error';
+          }
+        } catch (err) {
+          statusEl.textContent = 'Error: ' + err.message;
+          statusEl.className = 'plan-status-msg error';
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Changes';
+        }
+      }
+
+      await fetchPlans();
+    })();
+  </script>
+</body>
+</html>

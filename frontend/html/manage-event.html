@@ -393,6 +393,101 @@
 
       <div class="marketing-plan-result" id="marketingPlanResult" hidden></div>
     </section>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         Workshop Section  (new — additive only, no existing code changed)
+         ════════════════════════════════════════════════════════════════════ -->
+    <section class="content-section" id="workshopSection" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;padding:28px;margin-bottom:0;">
+      <div class="section-title-row" style="margin-bottom:20px;border-bottom:1px solid var(--card-border);padding-bottom:14px;">
+        <h2 style="margin:0;display:flex;align-items:center;gap:10px;">
+          <span style="width:38px;height:38px;border-radius:10px;background:linear-gradient(120deg,#7c3aed,#2563eb);display:grid;place-items:center;font-size:.95rem;font-weight:900;flex-shrink:0;">WS</span>
+          Workshop
+        </h2>
+        <p style="color:var(--muted);font-size:.84rem;margin-top:4px;">A private team portal scoped to this event — completely separate from platform accounts.</p>
+      </div>
+
+      <!-- Loading state -->
+      <div id="wsOrgLoading" style="text-align:center;padding:28px;color:var(--muted);">Loading workshop status…</div>
+
+      <!-- ── Already-created view ──────────────────────────────────────── -->
+      <div id="wsOrgExisting" hidden>
+        <div style="display:flex;align-items:center;gap:14px;background:rgba(50,213,131,.08);border:1px solid rgba(50,213,131,.25);border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+          <span style="font-size:1.6rem;">✅</span>
+          <div>
+            <p style="font-weight:700;color:#32d583;">Workshop Created</p>
+            <p style="font-size:.83rem;color:var(--muted);">Username: <strong id="wsOrgUsername" style="color:var(--text);"></strong></p>
+          </div>
+          <a id="wsOrgPortalLink" href="/html/workshop/workshop-dashboard.html" target="_blank"
+             class="nav-btn nav-btn-gradient" style="margin-left:auto;background:linear-gradient(120deg,#7c3aed,#2563eb);border:none;">
+            Open Workshop Portal ↗
+          </a>
+        </div>
+
+        <!-- Categories + member list -->
+        <h3 style="font-size:.95rem;margin-bottom:12px;">Categories &amp; Team</h3>
+        <div id="wsOrgCategoryList" style="display:flex;flex-direction:column;gap:14px;"></div>
+
+        <!-- Add member to existing workshop -->
+        <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--card-border);">
+          <h3 style="font-size:.93rem;margin-bottom:14px;">➕ Add Member to Category</h3>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="input-group" style="flex:1;min-width:160px;">
+              <label for="wsOrgAddCategory">Category</label>
+              <select id="wsOrgAddCategory" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--card-border);background:var(--bg-color);color:var(--text);"></select>
+            </div>
+            <div class="input-group" style="flex:1;min-width:160px;">
+              <label for="wsOrgAddEmail">Email</label>
+              <input id="wsOrgAddEmail" type="email" placeholder="member@example.com" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--card-border);background:var(--bg-color);color:var(--text);">
+            </div>
+            <div class="input-group" style="min-width:130px;">
+              <label for="wsOrgAddRole">Role</label>
+              <select id="wsOrgAddRole" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--card-border);background:var(--bg-color);color:var(--text);">
+                <option value="member">Member</option>
+                <option value="vice_head">Vice Head</option>
+                <option value="head">Head</option>
+              </select>
+            </div>
+            <button id="wsOrgAddMemberBtn" class="nav-btn gradient-btn" type="button">Add Member</button>
+          </div>
+          <p id="wsOrgAddMsg" class="ops-message" hidden></p>
+        </div>
+      </div>
+
+      <!-- ── Create Workshop form ──────────────────────────────────────── -->
+      <div id="wsOrgCreatePanel" hidden>
+        <p style="color:var(--muted);font-size:.88rem;margin-bottom:18px;">No workshop has been created for this event yet. Set one up below.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+          <div class="input-group">
+            <label for="wsCreateUsername">Workshop Username <span class="required-mark">*</span></label>
+            <input id="wsCreateUsername" type="text" placeholder="e.g. summit2025-team" autocomplete="off">
+            <p class="field-help">Unique across all workshops. Members use this to log in.</p>
+          </div>
+          <div class="input-group">
+            <label for="wsCreateCode">Access Code <span class="required-mark">*</span></label>
+            <input id="wsCreateCode" type="password" placeholder="Min. 4 characters" autocomplete="new-password">
+            <p class="field-help">Shared secret — members enter this alongside their email.</p>
+          </div>
+        </div>
+
+        <!-- Category builder -->
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <h3 style="font-size:.95rem;">Categories</h3>
+            <button id="wsAddCategoryBtn" class="nav-btn" type="button" style="font-size:.8rem;padding:6px 14px;">＋ Add Category</button>
+          </div>
+          <div id="wsCategoryBuilder" style="display:flex;flex-direction:column;gap:14px;"></div>
+        </div>
+
+        <div class="form-actions">
+          <button id="wsCreateSubmitBtn" class="nav-btn gradient-btn" type="button"
+                  style="background:linear-gradient(120deg,#7c3aed,#2563eb);border:none;">
+            Create Workshop
+          </button>
+        </div>
+        <p id="wsCreateMsg" class="ops-message" hidden></p>
+      </div>
+    </section>
   </main>
 
   <div class="modal-overlay" id="seatsModal" aria-hidden="true">
@@ -2819,8 +2914,198 @@
       setTimeout(loadVenueDetails, 1000); // ensure it is loaded after other data
     });
   </script>
+
+  <!-- ── Workshop organizer JS (additive — isolated IIFE) ─────────────────── -->
+  <script>
+  (function () {
+    var API_BASE_WS = (window.AuthConfig && window.AuthConfig.apiBaseUrl) || '/api';
+
+    function authHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+      };
+    }
+
+    function showOpsMsg(el, type, text) {
+      el.hidden = false;
+      el.style.color = type === 'success' ? '#32d583' : '#ff5d73';
+      el.textContent = text;
+      if (type === 'success') setTimeout(function () { el.hidden = true; }, 4000);
+    }
+
+    function rolePillHtml(role) {
+      var colors = { head: '#ff9a55', vice_head: '#67b3ff', member: '#b4c9cf' };
+      var labels = { head: 'Head', vice_head: 'Vice Head', member: 'Member' };
+      return '<span style="font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:20px;background:rgba(255,255,255,.08);color:' + (colors[role] || '#b4c9cf') + ';">' + (labels[role] || role) + '</span>';
+    }
+
+    function renderExisting(workshop) {
+      document.getElementById('wsOrgUsername').textContent = workshop.username;
+      document.getElementById('wsOrgLoading').hidden = true;
+      document.getElementById('wsOrgExisting').hidden = false;
+
+      var list = document.getElementById('wsOrgCategoryList');
+      list.innerHTML = '';
+      var catSelect = document.getElementById('wsOrgAddCategory');
+      catSelect.innerHTML = '';
+
+      (workshop.categories || []).forEach(function (cat) {
+        var opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = cat.category_name;
+        catSelect.appendChild(opt);
+
+        var memberRows = (cat.members || []).map(function (m) {
+          return '<tr><td style="padding:6px 8px;">' + m.email + '</td><td style="padding:6px 8px;">' + rolePillHtml(m.role) + '</td></tr>';
+        }).join('');
+
+        var card = document.createElement('div');
+        card.style.cssText = 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 16px;margin-bottom:4px;';
+        card.innerHTML = '<p style="font-weight:700;margin-bottom:10px;">' + cat.category_name + '</p>' +
+          (memberRows
+            ? '<table style="width:100%;font-size:.84rem;"><thead><tr>' +
+              '<th style="text-align:left;padding:4px 8px;color:#b4c9cf;font-size:.72rem;text-transform:uppercase;">Email</th>' +
+              '<th style="text-align:left;padding:4px 8px;color:#b4c9cf;font-size:.72rem;text-transform:uppercase;">Role</th>' +
+              '</tr></thead><tbody>' + memberRows + '</tbody></table>'
+            : '<p style="color:#b4c9cf;font-size:.83rem;">No members yet.</p>');
+        list.appendChild(card);
+      });
+    }
+
+    async function loadWorkshopStatus() {
+      var eId = new URLSearchParams(window.location.search).get('id');
+      if (!eId) return;
+      try {
+        var res = await fetch(API_BASE_WS + '/workshop/event/' + eId, { headers: authHeaders() });
+        var data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        document.getElementById('wsOrgLoading').hidden = true;
+        if (data.workshop) {
+          renderExisting(data.workshop);
+        } else {
+          document.getElementById('wsOrgCreatePanel').hidden = false;
+          addCategoryBlock();
+        }
+      } catch (err) {
+        console.warn('Workshop load:', err.message);
+        var lEl = document.getElementById('wsOrgLoading');
+        if (lEl) lEl.textContent = 'Could not load workshop status.';
+      }
+    }
+
+    var catCount = 0;
+
+    function addCategoryBlock() {
+      catCount++;
+      var idx = catCount;
+      var builder = document.getElementById('wsCategoryBuilder');
+      if (!builder) return;
+      var block = document.createElement('div');
+      block.className = 'ws-cat-block';
+      block.dataset.idx = idx;
+      block.style.cssText = 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:16px;';
+      block.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+          '<strong style="font-size:.9rem;">Category ' + idx + '</strong>' +
+          (idx > 1 ? '<button type="button" class="ws-rm-cat nav-btn" style="font-size:.75rem;padding:4px 10px;background:rgba(255,93,115,.15);border-color:rgba(255,93,115,.3);color:#ff5d73;">✕ Remove</button>' : '') +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">' +
+          '<div class="input-group"><label>Category Name <span class="required-mark">*</span></label><input type="text" class="ws-cat-name" placeholder="e.g. Media" style="width:100%;"></div>' +
+          '<div class="input-group"><label>Head Email <span class="required-mark">*</span></label><input type="email" class="ws-cat-head" placeholder="head@example.com" style="width:100%;"></div>' +
+          '<div class="input-group"><label>Vice Head Email</label><input type="email" class="ws-cat-vh" placeholder="optional" style="width:100%;"></div>' +
+        '</div>' +
+        '<div class="input-group" style="margin-top:8px;">' +
+          '<label>Member Emails <span style="color:#b4c9cf;font-weight:400;">(comma-separated, optional)</span></label>' +
+          '<input type="text" class="ws-cat-members" placeholder="member1@example.com, member2@example.com" style="width:100%;">' +
+        '</div>';
+      var rmBtn = block.querySelector('.ws-rm-cat');
+      if (rmBtn) rmBtn.addEventListener('click', function () { block.remove(); });
+      builder.appendChild(block);
+    }
+
+    var addCatBtn = document.getElementById('wsAddCategoryBtn');
+    if (addCatBtn) addCatBtn.addEventListener('click', addCategoryBlock);
+
+    var createBtn = document.getElementById('wsCreateSubmitBtn');
+    if (createBtn) createBtn.addEventListener('click', async function () {
+      var eId      = new URLSearchParams(window.location.search).get('id');
+      var username = document.getElementById('wsCreateUsername').value.trim();
+      var code     = document.getElementById('wsCreateCode').value;
+      var msgEl    = document.getElementById('wsCreateMsg');
+      msgEl.hidden = true;
+
+      var catBlocks = document.querySelectorAll('.ws-cat-block');
+      if (!catBlocks.length) { showOpsMsg(msgEl, 'error', 'Please add at least one category.'); return; }
+
+      var categories = [];
+      var valid = true;
+      catBlocks.forEach(function (block) {
+        var name = block.querySelector('.ws-cat-name').value.trim();
+        var head = block.querySelector('.ws-cat-head').value.trim();
+        var vh   = block.querySelector('.ws-cat-vh').value.trim();
+        var raw  = block.querySelector('.ws-cat-members').value;
+        var mems = raw.split(',').map(function (e) { return e.trim(); }).filter(Boolean);
+        if (!name || !head) { valid = false; return; }
+        categories.push({ name: name, head: head, viceHead: vh || null, members: mems });
+      });
+
+      if (!username || !code) { showOpsMsg(msgEl, 'error', 'Workshop username and access code are required.'); return; }
+      if (!valid)              { showOpsMsg(msgEl, 'error', 'Each category needs a name and a head email.'); return; }
+
+      createBtn.disabled = true; createBtn.textContent = 'Creating…';
+      try {
+        var res  = await fetch(API_BASE_WS + '/workshop/event/' + eId, {
+          method: 'POST', headers: authHeaders(),
+          body: JSON.stringify({ username: username, accessCode: code, categories: categories })
+        });
+        var data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        showOpsMsg(msgEl, 'success', 'Workshop created successfully!');
+        document.getElementById('wsOrgCreatePanel').hidden = true;
+        renderExisting(data.workshop);
+      } catch (err) {
+        showOpsMsg(msgEl, 'error', err.message || 'Failed to create workshop.');
+      } finally {
+        createBtn.disabled = false; createBtn.textContent = 'Create Workshop';
+      }
+    });
+
+    var addMemberBtn = document.getElementById('wsOrgAddMemberBtn');
+    if (addMemberBtn) addMemberBtn.addEventListener('click', async function () {
+      var eId   = new URLSearchParams(window.location.search).get('id');
+      var catId = Number(document.getElementById('wsOrgAddCategory').value);
+      var email = document.getElementById('wsOrgAddEmail').value.trim();
+      var role  = document.getElementById('wsOrgAddRole').value;
+      var msgEl = document.getElementById('wsOrgAddMsg');
+      msgEl.hidden = true;
+      if (!email) { showOpsMsg(msgEl, 'error', 'Please enter an email address.'); return; }
+
+      addMemberBtn.disabled = true; addMemberBtn.textContent = 'Adding…';
+      try {
+        var res  = await fetch(API_BASE_WS + '/workshop/event/' + eId + '/members', {
+          method: 'POST', headers: authHeaders(),
+          body: JSON.stringify({ categoryId: catId, email: email, role: role })
+        });
+        var data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        showOpsMsg(msgEl, 'success', email + ' added as ' + role.replace('_', ' ') + '!');
+        document.getElementById('wsOrgAddEmail').value = '';
+        await loadWorkshopStatus();
+      } catch (err) {
+        showOpsMsg(msgEl, 'error', err.message || 'Failed to add member.');
+      } finally {
+        addMemberBtn.disabled = false; addMemberBtn.textContent = 'Add Member';
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', function () {
+      setTimeout(loadWorkshopStatus, 1500);
+    });
+  })();
+  </script>
+  <script src="../public/js/back-to-top.js"></script>
+
 </body>
 
-
-
-
+</html>

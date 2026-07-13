@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subscriptions | Elshaboury Events</title>
+  <meta name="description" content="Choose the right Elshaboury Events subscription plan — Free Trial, Monthly or Annual — and unlock unlimited bookings, priority support, and VIP event access." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../public/css/auth.css" />
+  <script src="../public/js/auth-config.js"></script>
+  <script src="../public/js/auth-guard.js"></script>
+  <link rel="stylesheet" href="../css/index.css" />
+  <link rel="stylesheet" href="../css/navbar.css" />
+  <link rel="stylesheet" href="../css/subscriptions.css" />
+</head>
+<body>
+  <main>
+    <!-- ── Navbar ── (identical markup to support.html / faq.html) -->
+    <header>
+      <a class="brand" href="/html/index.html">
+        <div class="brand-mark">EE</div>
+        <div>
+          <strong>Elshaboury Events</strong>
+          <p style="color: var(--muted); font-size: 0.85rem;">Curate. Celebrate. Connect.</p>
+        </div>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+      </button>
+      <nav>
+        <a class="nav-btn" href="/html/index.html">Home</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/notification.html">Notifications</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/my-events.html">My Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/fav-events.html">Fav-Events</a>
+        <a class="nav-btn auth-hidden show-if-logged-in" href="/html/create-event.html">Create Event</a>
+        <a class="nav-btn" href="/html/book-event.html">Book Event</a>
+        <a class="nav-btn" href="/html/support.html">Support</a>
+        <a class="nav-btn active" href="/html/subscriptions.html">Subscriptions</a>
+        <a class="nav-btn" href="/html/signin.html">Sign In</a>
+      </nav>
+    </header>
+
+    <div class="sub-shell">
+
+      <!-- ── Hero ── -->
+      <section class="sub-hero">
+        <div class="sub-hero-text">
+          <h1>Choose Your Plan</h1>
+          <p>Unlock more from Elshaboury Events — unlimited bookings, early access, VIP events, and priority support. Pick the plan that fits your style.</p>
+        </div>
+        <div class="sub-hero-icon" aria-hidden="true">&#11088;</div>
+      </section>
+
+      <!-- ── Plans Grid (populated dynamically from /api/subscriptions) ── -->
+      <div class="sub-plans-grid" id="subPlansGrid">
+        <div class="sub-loading">
+          <div class="sub-loading-spinner"></div>
+          Loading plans...
+        </div>
+      </div>
+
+      <!-- ── Footer note ── -->
+      <p class="sub-note">
+        &#x26A0;&#xFE0F;&nbsp; Subscription payments are not active yet &mdash; buttons currently redirect to the homepage.
+        Have questions? <a href="/html/support.html">Contact support</a>.
+      </p>
+
+    </div>
+  </main>
+
+  <script src="../public/js/auth-nav.js"></script>
+  <script src="../public/js/back-to-top.js"></script>
+  <script src="../js/subscriptions.js"></script>
+</body>
+</html>

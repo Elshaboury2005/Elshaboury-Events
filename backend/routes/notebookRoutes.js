@@ -9,6 +9,8 @@ router.get('/', authenticateToken, notebookController.getMyNotebooks);
 router.get('/:id', authenticateToken, notebookController.getNotebookById);
 router.post('/', authenticateToken, notebookController.createNotebook);
 router.post('/:id/use', authenticateToken, notebookController.useNotebook);
+router.put('/:id', authenticateToken, notebookController.updateNotebook);
+router.post('/:id/duplicate', authenticateToken, notebookController.duplicateNotebook);
 router.delete('/:id', authenticateToken, notebookController.deleteNotebook);
 
 // ── ML / Prediction ───────────────────────────────────────────────────────────

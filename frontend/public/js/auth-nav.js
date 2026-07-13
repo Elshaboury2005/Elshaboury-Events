@@ -17,8 +17,12 @@ document.addEventListener('DOMContentLoaded', function () {
         profile: '/html/profile.html',
         wallet: '/html/wallet.html',
         myEvents: '/html/my-events.html',
+        archivedEvents: '/html/archived-events.html',
+        faq: '/html/faq.html',
+        subscriptions: '/html/subscriptions.html',
         venueOwnerDashboard: '/html/venue-owner-dashboard.html',
         favorites: '/html/fav-events.html',
+        notebooks: '/html/notebooks.html',
         signIn: '/html/signin.html'
     };
 
@@ -145,13 +149,31 @@ document.addEventListener('DOMContentLoaded', function () {
                         <a class="ee-dropdown-item" data-route="venue-owner-dashboard" href="${ROUTES.venueOwnerDashboard}">
                             <span class="ee-item-main"><span class="ee-item-icon">V</span>Venue Dashboard</span>
                         </a>
+                        <a class="ee-dropdown-item" data-route="faq" href="${ROUTES.faq}">
+                            <span class="ee-item-main"><span class="ee-item-icon" style="background:linear-gradient(135deg,#ff8a00,#e73886);">?</span>FAQ</span>
+                        </a>
+                        <a class="ee-dropdown-item" data-route="subscriptions" href="${ROUTES.subscriptions}">
+                            <span class="ee-item-main"><span class="ee-item-icon" style="background:linear-gradient(135deg,#10b981,#059669);">S</span>Subscriptions</span>
+                        </a>
             `
             : `
                         <a class="ee-dropdown-item" data-route="my-events" href="${ROUTES.myEvents}">
                             <span class="ee-item-main"><span class="ee-item-icon">M</span>My Events</span>
                         </a>
+                        <a class="ee-dropdown-item" data-route="notebooks" href="${ROUTES.notebooks}">
+                            <span class="ee-item-main"><span class="ee-item-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">N</span>Notebooks</span>
+                        </a>
                         <a class="ee-dropdown-item" data-route="favorites" href="${ROUTES.favorites}">
                             <span class="ee-item-main"><span class="ee-item-icon">F</span>Favorites</span>
+                        </a>
+                        <a class="ee-dropdown-item" data-route="archived-events" href="${ROUTES.archivedEvents}">
+                            <span class="ee-item-main"><span class="ee-item-icon" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);">A</span>Archived</span>
+                        </a>
+                        <a class="ee-dropdown-item" data-route="faq" href="${ROUTES.faq}">
+                            <span class="ee-item-main"><span class="ee-item-icon" style="background:linear-gradient(135deg,#ff8a00,#e73886);">?</span>FAQ</span>
+                        </a>
+                        <a class="ee-dropdown-item" data-route="subscriptions" href="${ROUTES.subscriptions}">
+                            <span class="ee-item-main"><span class="ee-item-icon" style="background:linear-gradient(135deg,#10b981,#059669);">S</span>Subscriptions</span>
                         </a>
             `;
         return `
@@ -202,7 +224,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     <a class="ee-mobile-link" data-route="home" href="${ROUTES.home}">Home</a>
                     <a class="ee-mobile-link" data-route="book-event" href="${ROUTES.bookEvent}">Book Event</a>
                     <a class="ee-mobile-link" data-route="support" href="${ROUTES.support}">Support</a>
-                    <a class="ee-mobile-link ee-mobile-signin" data-action="signin" href="${ROUTES.signIn}">Sign In</a>
+                    <a class="ee-mobile-link" data-route="faq" href="${ROUTES.faq}">FAQ</a>
+                    <a class="ee-mobile-link" data-route="subscriptions" href="${ROUTES.subscriptions}">Subscriptions</a>
+                    <a class="nav-btn ee-signin-btn" data-action="signin" href="${ROUTES.signIn}">Sign In</a>
                 </div>
             `;
         }
@@ -213,6 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 <a class="ee-mobile-link" data-route="home" href="${ROUTES.home}">Home</a>
                 <a class="ee-mobile-link" data-route="venue-owner-dashboard" href="${ROUTES.venueOwnerDashboard}">Venue Dashboard</a>
                 <a class="ee-mobile-link" data-route="support" href="${ROUTES.support}">Support</a>
+                <a class="ee-mobile-link" data-route="faq" href="${ROUTES.faq}">FAQ</a>
+                <a class="ee-mobile-link" data-route="subscriptions" href="${ROUTES.subscriptions}">Subscriptions</a>
                 <a class="ee-mobile-link" data-route="profile" href="${ROUTES.profile}">My Profile</a>
                 <a class="ee-mobile-link" data-route="wallet" href="${ROUTES.wallet}">My Wallet</a>
                 <a class="ee-mobile-link" data-route="notifications" href="${ROUTES.notifications}">
@@ -232,7 +258,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 <a class="ee-mobile-link" data-route="profile" href="${ROUTES.profile}">My Profile</a>
                 <a class="ee-mobile-link" data-route="wallet" href="${ROUTES.wallet}">My Wallet</a>
                 <a class="ee-mobile-link" data-route="my-events" href="${ROUTES.myEvents}">My Events</a>
+                <a class="ee-mobile-link" data-route="notebooks" href="${ROUTES.notebooks}">&#128213; Notebooks</a>
                 <a class="ee-mobile-link" data-route="favorites" href="${ROUTES.favorites}">Favorite Events</a>
+                <a class="ee-mobile-link" data-route="archived-events" href="${ROUTES.archivedEvents}">&#128230; Archived Events</a>
+                <a class="ee-mobile-link" data-route="faq" href="${ROUTES.faq}">&#10067; FAQ</a>
+                <a class="ee-mobile-link" data-route="subscriptions" href="${ROUTES.subscriptions}">&#127915; Subscriptions</a>
                 <a class="ee-mobile-link" data-route="notifications" href="${ROUTES.notifications}">
                     Notifications <span class="ee-mobile-badge" data-role="mobile-notif-badge">0</span>
                 </a>
@@ -257,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const profileScopePages = new Set(['profile.html', 'wallet.html', 'my-events.html', 'fav-events.html', 'venue-owner-dashboard.html']);
+        const profileScopePages = new Set(['profile.html', 'wallet.html', 'my-events.html', 'notebooks.html', 'fav-events.html', 'archived-events.html', 'faq.html', 'subscriptions.html', 'venue-owner-dashboard.html']);
         if (profileScopePages.has(page)) {
             const trigger = nav.querySelector('[data-role="profile-trigger"]');
             if (trigger) trigger.classList.add('active');

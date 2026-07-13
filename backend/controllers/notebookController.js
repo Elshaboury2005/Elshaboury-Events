@@ -70,3 +70,37 @@ exports.deleteNotebook = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to delete notebook' });
   }
 };
+
+exports.updateNotebook = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+    const { name, description } = req.body;
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ success: false, message: 'Notebook name is required' });
+    }
+    const updated = await Notebook.updateIdentity(id, userId, String(name).trim(), description ? String(description).trim() : null);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Notebook not found' });
+    }
+    res.json({ success: true, message: 'Notebook updated successfully' });
+  } catch (error) {
+    console.error('Update notebook error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update notebook' });
+  }
+};
+
+exports.duplicateNotebook = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+    const cloned = await Notebook.duplicate(id, userId);
+    if (!cloned) {
+      return res.status(404).json({ success: false, message: 'Notebook not found' });
+    }
+    res.status(201).json({ success: true, notebook: cloned, message: 'Notebook duplicated successfully' });
+  } catch (error) {
+    console.error('Duplicate notebook error:', error);
+    res.status(500).json({ success: false, message: 'Failed to duplicate notebook' });
+  }
+};

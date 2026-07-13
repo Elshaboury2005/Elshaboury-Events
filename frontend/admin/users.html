@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -301,7 +301,7 @@
         const userName = user.full_name || user.username || 'User';
         userModalAvatar.textContent = AdminApp.getInitials(userName);
         userModalTitle.textContent = userName;
-        userModalSubtitle.textContent = `${user.username || '-'} · ${user.email || '-'}`;
+        userModalSubtitle.textContent = `${user.username || '-'} � ${user.email || '-'}`;
 
         userModalBody.innerHTML = `
           <div class="info-grid">
@@ -451,6 +451,8 @@
       await loadUsers();
     })();
   </script>
+  <script src="/public/js/back-to-top.js"></script>
+
 </body>
 </html>
 

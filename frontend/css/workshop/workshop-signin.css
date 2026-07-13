@@ -1,0 +1,42 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workshop Sign-in Tab Switcher
+   Scoped to the new tab elements only — does NOT override any existing
+   signin.css rules.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+.ws-tab-switcher {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 5px;
+  margin-bottom: 22px;
+}
+
+.ws-tab {
+  flex: 1;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: rgba(180, 201, 207, 0.75);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, color .2s, box-shadow .2s;
+  white-space: nowrap;
+}
+
+.ws-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3f8fa;
+}
+
+.ws-tab.active {
+  background: linear-gradient(120deg, #7c3aed, #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+}

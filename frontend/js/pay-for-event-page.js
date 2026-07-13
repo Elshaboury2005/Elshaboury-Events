@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const API_BASE = window.AuthConfig?.apiBaseUrl || '/api';
   const BRAND_META = {
     visa: { icon: 'fab fa-cc-visa', label: 'Visa' },
@@ -9,6 +9,7 @@
   let draft = null;
   let walletBalance = 0;
   let paymentMethod = 'card';
+  let platformFeeSettings = { type: 'fixed', value: 500, fallback: 200 };
 
   function money(value, withDecimals = false) {
     return `${Number(value || 0).toLocaleString('en-US', withDecimals ? {
@@ -17,11 +18,19 @@
     } : {})} EGP`;
   }
 
-  function listingFee(totalSeats) {
-    const seats = Math.max(0, Number(totalSeats || 0));
-    if (seats <= 500) return { tier: 'Small', fee: 5000 };
-    if (seats <= 1000) return { tier: 'Medium', fee: 8000 };
-    return { tier: 'Large', fee: 12000 };
+  function computeListingFee(venueType, venuePricePerDay) {
+    const settings = platformFeeSettings;
+    if (settings.type === 'percentage' && venueType === 'platform_booked' && venuePricePerDay) {
+      const pct = Number(settings.value || 0) / 100;
+      return {
+        label: `Platform fee (${Number(settings.value || 0)}% of venue price)`,
+        fee: Math.round(Number(venuePricePerDay) * pct * 100) / 100
+      };
+    }
+    const flatFee = settings.type === 'fixed'
+      ? Number(settings.value || 0)
+      : Number(settings.fallback || 0);
+    return { label: 'Platform listing fee (flat)', fee: flatFee };
   }
 
   function totalDue() {
@@ -143,12 +152,28 @@
     return null;
   }
 
+  async function fetchPlatformFeeSettings() {
+    try {
+      const res = await apiRequest('/Events/platform-fee-settings', { method: 'GET' });
+      const data = await res.json();
+      if (res.ok && data.success && data.settings) {
+        platformFeeSettings = data.settings;
+      }
+    } catch (err) {
+      console.warn('Could not fetch platform fee settings, using defaults:', err);
+    }
+  }
+
   function populateSummary() {
-    const listing = listingFee(draft.maxSeats);
     const isOnline = draft.location_type === 'online';
+    const venuePricePerDay = draft.selectedVenue?.pricePerDay || draft.venueFee || 0;
+    const listing = computeListingFee(draft.venueType, venuePricePerDay);
+
+    // Respect fee already calculated server-side (stored in draft.listingFee);
+    // only recompute client-side as a display fallback.
     draft.listingFee = Number(draft.listingFee || listing.fee);
     draft.venueFee = draft.venueType === 'platform_booked'
-      ? Number(draft.venueFee || draft.selectedVenue?.pricePerDay || 0)
+      ? Number(draft.venueFee || venuePricePerDay || 0)
       : 0;
     localStorage.setItem('eventDraft', JSON.stringify(draft));
 
@@ -165,7 +190,7 @@
       : `Standard ${draft.standardSeats || 0} · Special ${draft.specialSeats || 0} · VIP ${draft.vipSeats || 0}`;
     document.getElementById('listingFeeAmount').textContent = money(draft.listingFee);
     document.getElementById('orderTotalFee').textContent = money(totalDue());
-    document.getElementById('summaryListingFee').textContent = `${listing.tier} listing`;
+    document.getElementById('summaryListingFee').textContent = listing.label;
     document.getElementById('venueFeeRow').classList.toggle('hidden', draft.venueType !== 'platform_booked');
     document.getElementById('venueFeeAmount').textContent = money(draft.venueFee);
     document.getElementById('summaryNote').textContent = isOnline
@@ -314,6 +339,7 @@
       return;
     }
 
+    await fetchPlatformFeeSettings();
     populateSummary();
     setupCardPreview();
 

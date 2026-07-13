@@ -1,0 +1,447 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workshop Portal — Design System
+   Follows the same token palette as manage-event.css / notebooks.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg-start:      #0b1f25;
+  --bg-mid:        #123944;
+  --bg-end:        #1a4b58;
+  --panel-bg:      rgba(8, 18, 22, 0.72);
+  --panel-border:  rgba(255, 255, 255, 0.14);
+  --soft-border:   rgba(255, 255, 255, 0.18);
+  --text:          #f3f8fa;
+  --muted:         #b4c9cf;
+  --orange:        #ff7a18;
+  --pink:          #ff4d6d;
+  --accent-grad:   linear-gradient(120deg, #ff7a18, #ff4d6d);
+  --teal-grad:     linear-gradient(140deg, #14b8a6, #0ea5e9);
+  --violet-grad:   linear-gradient(125deg, #7c3aed, #2563eb);
+  --success:       #32d583;
+  --danger:        #ff5d73;
+  --warning:       #f5b546;
+  --info:          #67b3ff;
+  --shadow:        0 28px 65px rgba(0,0,0,0.35);
+  --card-radius:   18px;
+  --card-bg:       rgba(12, 28, 35, 0.65);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(circle at 10% 15%, rgba(255,122,24,0.16), transparent 36%),
+    radial-gradient(circle at 88% 85%, rgba(255,77,109,0.14), transparent 34%),
+    linear-gradient(135deg, var(--bg-start), var(--bg-mid), var(--bg-end));
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn .5s ease;
+}
+
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+/* ── Layout ─────────────────────────────────────────────────────────────────── */
+.ws-wrapper {
+  width: min(1180px, 96vw);
+  margin: 0 auto;
+  padding: 32px 0 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── Workshop Nav ────────────────────────────────────────────────────────────── */
+.ws-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  border-radius: 20px;
+  border: 1px solid var(--panel-border);
+  background: rgba(5, 15, 19, 0.6);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+  flex-wrap: wrap;
+}
+
+.ws-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ws-brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--violet-grad);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: .95rem;
+  letter-spacing: .04em;
+  box-shadow: 0 8px 22px rgba(124,58,237,0.35);
+}
+
+.ws-brand-text strong {
+  display: block;
+  font-size: .97rem;
+  letter-spacing: .01em;
+}
+
+.ws-brand-text span {
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.ws-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ws-role-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: .8rem;
+  font-weight: 600;
+  border: 1px solid var(--panel-border);
+  background: rgba(124,58,237,0.18);
+  color: #c4b5fd;
+  letter-spacing: .02em;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border-radius: 10px;
+  font-size: .88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
+  transition: background .18s, transform .14s, box-shadow .18s;
+  text-decoration: none;
+}
+
+.btn:hover { background: rgba(255,255,255,0.12); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+.btn-accent {
+  background: var(--accent-grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(255,77,109,0.28);
+}
+.btn-accent:hover { box-shadow: 0 10px 28px rgba(255,77,109,0.4); }
+
+.btn-violet {
+  background: var(--violet-grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(124,58,237,0.28);
+}
+.btn-violet:hover { box-shadow: 0 10px 28px rgba(124,58,237,0.4); }
+
+.btn-danger {
+  background: rgba(255,93,115,0.15);
+  border-color: rgba(255,93,115,0.4);
+  color: var(--danger);
+}
+.btn-danger:hover { background: rgba(255,93,115,0.25); }
+
+.btn-sm { padding: 6px 14px; font-size: .82rem; }
+
+/* ── Card base ─────────────────────────────────────────────────────────────── */
+.ws-card {
+  background: var(--card-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--card-radius);
+  padding: 26px 28px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+  animation: fadeIn .45s ease;
+}
+
+.ws-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.ws-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.ws-card-icon.orange  { background: rgba(255,122,24,.18); }
+.ws-card-icon.teal    { background: rgba(20,184,166,.18); }
+.ws-card-icon.violet  { background: rgba(124,58,237,.18); }
+.ws-card-icon.success { background: rgba(50,213,131,.18); }
+
+.ws-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.ws-card-subtitle {
+  font-size: .8rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── Field grid ─────────────────────────────────────────────────────────────── */
+.ws-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.ws-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ws-field-label {
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+}
+
+.ws-field-value {
+  font-size: .93rem;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.ws-field-value.empty { color: var(--muted); font-style: italic; }
+
+.ws-full { grid-column: 1 / -1; }
+
+/* ── Role Banner ────────────────────────────────────────────────────────────── */
+.ws-role-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-radius: 14px;
+  border: 1px solid rgba(124,58,237,0.3);
+  background: rgba(124,58,237,0.1);
+}
+
+.ws-role-banner-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.ws-role-banner h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.ws-role-banner p {
+  font-size: .83rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* ── Members Table ──────────────────────────────────────────────────────────── */
+.ws-members-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: .88rem;
+}
+
+.ws-members-table th {
+  text-align: left;
+  padding: 9px 12px;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.ws-members-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  vertical-align: middle;
+}
+
+.ws-members-table tr:last-child td { border-bottom: none; }
+
+.role-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.role-pill.head      { background: rgba(255,122,24,.2); color: #ff9a55; border: 1px solid rgba(255,122,24,.35); }
+.role-pill.vice_head { background: rgba(103,179,255,.15); color: var(--info); border: 1px solid rgba(103,179,255,.3); }
+.role-pill.member    { background: rgba(255,255,255,.07); color: var(--muted); border: 1px solid var(--panel-border); }
+
+/* ── Add Member Form ────────────────────────────────────────────────────────── */
+.ws-add-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--panel-border);
+  align-items: flex-end;
+}
+
+.ws-add-form .ws-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.ws-add-form label {
+  font-size: .74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+
+.ws-input {
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-family: inherit;
+  font-size: .88rem;
+  transition: border-color .18s, background .18s;
+  outline: none;
+  width: 100%;
+}
+
+.ws-input:focus {
+  border-color: rgba(124,58,237,0.55);
+  background: rgba(124,58,237,0.08);
+}
+
+.ws-input::placeholder { color: rgba(180,201,207,0.5); }
+
+select.ws-input option { background: #112030; }
+
+/* ── Message boxes ──────────────────────────────────────────────────────────── */
+.ws-message {
+  padding: 11px 16px;
+  border-radius: 10px;
+  font-size: .86rem;
+  font-weight: 500;
+  margin-top: 12px;
+  display: none;
+}
+
+.ws-message.show { display: block; animation: fadeIn .3s ease; }
+.ws-message.success { background: rgba(50,213,131,.12); border: 1px solid rgba(50,213,131,.3); color: #32d583; }
+.ws-message.error   { background: rgba(255,93,115,.12); border: 1px solid rgba(255,93,115,.3); color: var(--danger); }
+
+/* ── Loading / Empty states ─────────────────────────────────────────────────── */
+.ws-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: .93rem;
+}
+
+.ws-spinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255,255,255,.15);
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Venue images strip ─────────────────────────────────────────────────────── */
+.ws-venue-images {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.ws-venue-img {
+  width: 100px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+}
+
+/* ── Amenity pills ──────────────────────────────────────────────────────────── */
+.ws-amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ws-amenity {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 600;
+  background: rgba(20,184,166,.15);
+  border: 1px solid rgba(20,184,166,.3);
+  color: #5eead4;
+}
+
+/* ── No venue / no data notices ─────────────────────────────────────────────── */
+.ws-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--panel-border);
+  color: var(--muted);
+  font-size: .86rem;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .ws-wrapper { padding: 20px 0 60px; gap: 18px; }
+  .ws-card { padding: 18px 16px; }
+  .ws-nav { padding: 14px 16px; }
+  .ws-field-grid { grid-template-columns: 1fr; }
+  .ws-add-form { flex-direction: column; }
+  .ws-role-banner { flex-direction: column; text-align: center; }
+}

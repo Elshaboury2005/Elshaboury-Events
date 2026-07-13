@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -81,32 +81,54 @@
       const SETTINGS_CONFIG = [
         {
           key: 'site_name',
-          label: '\u{1F3F7}\uFE0F Site Name',
+          label: '🏷️ Site Name',
           description: 'Public-facing platform name displayed in headers and communications.',
           type: 'text'
         },
         {
           key: 'support_email',
-          label: '\u{1F4E7} Support Email',
+          label: '📧 Support Email',
           description: 'Primary email used for customer support responses and escalations.',
           type: 'email'
         },
         {
           key: 'maintenance_mode',
-          label: '\u{1F6E0}\uFE0F Maintenance Mode',
+          label: '🛠️ Maintenance Mode',
           description: 'When enabled, users are informed that the platform is under maintenance.',
           type: 'toggle'
         },
         {
           key: 'platform_lockdown',
-          label: '\u{1F512} Platform Lockdown',
+          label: '🔒 Platform Lockdown',
           description: 'Immediately blocks all user pages, sign-in, register, guest access, and user APIs. Only the admin console stays available until you turn it off.',
           type: 'toggle'
         },
         {
           key: 'booking_cancellation_window_hours',
-          label: '\u23F1\uFE0F Cancellation Window (Hours)',
+          label: '⏱️ Cancellation Window (Hours)',
           description: 'Number of hours allowed for booking cancellation before event time.',
+          type: 'number'
+        },
+        {
+          key: 'platform_fee_type',
+          label: '💰 Platform Fee Type',
+          description: 'Calculate platform fees as a fixed flat rate or as a percentage of the venue booking cost.',
+          type: 'select',
+          options: [
+            { value: 'fixed', label: 'Fixed Flat Rate' },
+            { value: 'percentage', label: 'Percentage of Venue Booking Fee' }
+          ]
+        },
+        {
+          key: 'platform_fee_value',
+          label: '💵 Platform Fee Value',
+          description: 'Enter the amount in EGP (for fixed type) or percentage value (e.g. 20 for 20% for percentage type).',
+          type: 'number'
+        },
+        {
+          key: 'platform_fee_fallback_fixed',
+          label: '📉 Fallback Flat Fee (EGP)',
+          description: 'Flat fee charged for host-owned or online events when platform fee type is set to percentage.',
           type: 'number'
         }
       ];
@@ -137,6 +159,21 @@
                   <span class="switch-slider"></span>
                 </label>
               </div>
+            `;
+          }
+
+          if (setting.type === 'select') {
+            const optionsHtml = (setting.options || []).map(opt => `
+              <option value="${opt.value}" ${rawValue === opt.value ? 'selected' : ''}>${opt.label}</option>
+            `).join('');
+            return `
+              <label class="label-stack">
+                <span>${setting.label}</span>
+                <select data-setting-key="${setting.key}">
+                  ${optionsHtml}
+                </select>
+                <span class="field-desc">${setting.description}</span>
+              </label>
             `;
           }
 
@@ -283,6 +320,8 @@
       await loadAuditLogs();
     })();
   </script>
+  <script src="/public/js/back-to-top.js"></script>
+
 </body>
 </html>
 

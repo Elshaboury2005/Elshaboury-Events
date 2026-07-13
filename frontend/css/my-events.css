@@ -394,6 +394,18 @@ header.menu-open .menu-toggle span {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* 3-column footer when event is expired (Public View + Post-Event Dashboard + Archive) */
+.organized-card.is-expired .event-footer {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Tighter buttons in the 3-col footer so text never wraps */
+.organized-card.is-expired .event-footer .cta {
+  font-size: 0.78rem;
+  padding: 11px 10px;
+  letter-spacing: 0.01em;
+}
+
 .event-card .cta {
   width: 100%;
   padding: 12px 20px;
@@ -422,6 +434,29 @@ header.menu-open .menu-toggle span {
 
 .cta-dashboard {
   background: linear-gradient(135deg, #0ea5e9, #2563eb) !important;
+}
+
+/* Archive button — violet/indigo gradient */
+.cta-archive {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+  border: 1px solid rgba(124, 58, 237, 0.4);
+}
+
+.cta-archive:hover {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.45) !important;
+}
+
+/* Smooth fade-out when a card is being archived */
+@keyframes archiveOut {
+  0%   { opacity: 1;  transform: translateY(0)    scale(1);    }
+  40%  { opacity: 0.5; transform: translateY(-6px) scale(0.97); }
+  100% { opacity: 0;  transform: translateY(12px) scale(0.92); }
+}
+
+.event-card.archiving {
+  animation: archiveOut 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
 }
 
 .booking-card {
@@ -674,7 +709,8 @@ footer {
     min-height: 0;
   }
 
-  .organized-card .event-footer {
+  .organized-card .event-footer,
+  .organized-card.is-expired .event-footer {
     grid-template-columns: 1fr;
   }
 
