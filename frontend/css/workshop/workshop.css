@@ -445,3 +445,173 @@ select.ws-input option { background: #112030; }
   .ws-add-form { flex-direction: column; }
   .ws-role-banner { flex-direction: column; text-align: center; }
 }
+
+/* ── Event Countdown Banner ─────────────────────────────────────────────────── */
+.ws-countdown-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--card-radius);
+  padding: 28px 32px;
+  margin-bottom: 8px;
+  background: linear-gradient(130deg, rgba(12, 60, 80, 0.85) 0%, rgba(20, 184, 166, 0.12) 60%, rgba(14, 165, 233, 0.08) 100%);
+  border: 1.5px solid rgba(20, 184, 166, 0.22);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.35), 0 0 60px rgba(20, 184, 166, 0.06) inset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  animation: cdBannerIn 0.45s ease-out both;
+}
+
+@keyframes cdBannerIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Animated shimmer stripe */
+.ws-countdown-banner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.06), transparent);
+  animation: cdShimmer 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes cdShimmer {
+  0%   { left: -100%; }
+  100% { left: 160%; }
+}
+
+/* Header meta section */
+.ws-countdown-header {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ws-countdown-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #5eead4;
+}
+
+.ws-countdown-event-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+.ws-countdown-date {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Segment group */
+.ws-countdown-segments {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.ws-countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.ws-countdown-num {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  background: rgba(20, 184, 166, 0.1);
+  border: 1px solid rgba(20, 184, 166, 0.2);
+  border-radius: 10px;
+  padding: 8px 14px;
+  min-width: 72px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s, border-color 0.3s;
+  text-shadow: 0 0 18px rgba(20, 184, 166, 0.35);
+}
+
+.ws-countdown-lbl {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.ws-countdown-sep {
+  font-size: 2rem;
+  font-weight: 700;
+  color: rgba(20, 184, 166, 0.4);
+  line-height: 1;
+  margin-bottom: 18px;
+}
+
+/* Urgency states */
+.ws-countdown-banner.urgent {
+  border-color: rgba(245, 181, 70, 0.35);
+  background: linear-gradient(130deg, rgba(12, 60, 80, 0.85) 0%, rgba(245, 181, 70, 0.06) 60%);
+}
+.ws-countdown-banner.urgent .ws-countdown-title { color: var(--warning); }
+.ws-countdown-banner.urgent .ws-countdown-num {
+  border-color: rgba(245, 181, 70, 0.3);
+  text-shadow: 0 0 18px rgba(245, 181, 70, 0.4);
+}
+
+.ws-countdown-banner.very-urgent {
+  border-color: rgba(255, 93, 115, 0.45);
+  background: linear-gradient(130deg, rgba(12, 60, 80, 0.85) 0%, rgba(255, 93, 115, 0.08) 60%);
+  animation: cdBannerIn 0.45s ease-out both, cdPulse 1.5s ease-in-out infinite;
+}
+.ws-countdown-banner.very-urgent .ws-countdown-title { color: var(--danger); }
+.ws-countdown-banner.very-urgent .ws-countdown-num {
+  border-color: rgba(255, 93, 115, 0.4);
+  text-shadow: 0 0 18px rgba(255, 93, 115, 0.5);
+}
+
+@keyframes cdPulse {
+  0%, 100% { box-shadow: 0 8px 40px rgba(0,0,0,0.35), 0 0 0 rgba(255, 93, 115, 0); }
+  50%       { box-shadow: 0 8px 40px rgba(0,0,0,0.35), 0 0 30px rgba(255, 93, 115, 0.15); }
+}
+
+/* Concluded state */
+.ws-countdown-banner.concluded {
+  border-color: rgba(50, 213, 131, 0.3);
+  background: linear-gradient(130deg, rgba(12, 60, 80, 0.85) 0%, rgba(50, 213, 131, 0.06) 60%);
+}
+.ws-countdown-banner.concluded .ws-countdown-title { color: var(--success); }
+.ws-countdown-banner.concluded .ws-countdown-num {
+  border-color: rgba(50, 213, 131, 0.25);
+  color: var(--muted);
+  text-shadow: none;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .ws-countdown-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px 18px;
+  }
+  .ws-countdown-num { font-size: 1.9rem; min-width: 52px; padding: 6px 10px; }
+  .ws-countdown-event-name { max-width: 100%; white-space: normal; }
+}
+

@@ -242,6 +242,53 @@ async function resolveTicketCodeToSeat(eventId, ticketCodeRaw) {
   return matches[0];
 }
 
+
+/**
+ * Resolves the actual amount paid for a booking, with fallbacks to ticket price estimation or payments table lookup.
+ */
+async function resolveBookingAmountPaid(booking, userId, connectionOrPool) {
+  let amountPaid = roundMoney(booking.amount_paid || 0) || 0;
+  if (amountPaid <= 0) {
+    amountPaid = estimateBookingAmountFromTicketPrice(booking);
+  }
+  if (amountPaid <= 0) {
+    const [paymentRows] = await connectionOrPool.execute(
+      `SELECT amount
+       FROM payments
+       WHERE user_id = ? AND event_id = ? AND status = 'completed'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId, booking.event_id]
+    );
+    if (paymentRows.length > 0) {
+      amountPaid = roundMoney(paymentRows[0].amount || 0) || 0;
+    }
+  }
+  return amountPaid;
+}
+
+/**
+ * Validates requested seat numbers against type limits and already taken seats.
+ * Returns error message string on failure, or null on success.
+ */
+function validateSeatSelection(requestedType, requestedSeatList, typeLimit, takenSeats) {
+  const takenSet = new Set((takenSeats[requestedType] || []).map(Number));
+  const outOfRange = requestedSeatList.some((s) => s < 1 || s > typeLimit);
+  const alreadyTaken = requestedSeatList.some((s) => takenSet.has(s));
+  const duplicate = requestedSeatList.length !== new Set(requestedSeatList).size;
+
+  if (outOfRange) {
+    return `Seat numbers must be between 1 and ${typeLimit} for ${requestedType}`;
+  }
+  if (alreadyTaken) {
+    return 'One or more selected seats are already booked';
+  }
+  if (duplicate) {
+    return 'Duplicate seat numbers not allowed';
+  }
+  return null;
+}
+
 async function notifyFirstWaitlistUser(eventId, eventTitle) {
   const [waitRows] = await pool.execute(
     `SELECT w.id, w.user_id, u.email, u.full_name
@@ -322,24 +369,11 @@ exports.create = async (req, res) => {
 
     if (useSeatNumbers) {
       const taken = await Booking.getTakenSeatsByEvent(eventId, connection);
-      const takenSet = new Set((taken[requestedType] || []).map(Number));
-      const outOfRange = requestedSeatList.some((s) => s < 1 || s > typeLimit);
-      const alreadyTaken = requestedSeatList.some((s) => takenSet.has(s));
-      const duplicate = requestedSeatList.length !== new Set(requestedSeatList).size;
-      if (outOfRange) {
+      const validationError = validateSeatSelection(requestedType, requestedSeatList, typeLimit, taken);
+      if (validationError) {
         await connection.rollback();
         connection.release();
-        return res.status(400).json({ success: false, message: `Seat numbers must be between 1 and ${typeLimit} for ${requestedType}` });
-      }
-      if (alreadyTaken) {
-        await connection.rollback();
-        connection.release();
-        return res.status(400).json({ success: false, message: 'One or more selected seats are already booked' });
-      }
-      if (duplicate) {
-        await connection.rollback();
-        connection.release();
-        return res.status(400).json({ success: false, message: 'Duplicate seat numbers not allowed' });
+        return res.status(400).json({ success: false, message: validationError });
       }
     } else {
       const currentCount = await Booking.countByEventAndTicketType(eventId, requestedType, connection);
@@ -401,7 +435,7 @@ exports.create = async (req, res) => {
       try { await connection.rollback(); } catch (_) {}
       connection.release();
     }
-    console.error('Create booking error:', error);
+    console.error('[bookingController] create error:', error);
     res.status(500).json({ success: false, message: 'Error creating booking' });
   }
 };
@@ -428,7 +462,7 @@ exports.getMy = async (req, res) => {
     });
     res.json({ success: true, bookings: normalized });
   } catch (error) {
-    console.error('Get bookings error:', error);
+    console.error('[bookingController] getMy error:', error);
     res.status(500).json({ success: false, message: 'Error fetching bookings' });
   }
 };
@@ -457,23 +491,7 @@ exports.cancel = async (req, res) => {
     }
 
     const seatsToRestore = getSeatsCount(booking);
-    let actualAmountPaid = roundMoney(booking.amount_paid || 0) || 0;
-    if (actualAmountPaid <= 0) {
-      actualAmountPaid = estimateBookingAmountFromTicketPrice(booking);
-    }
-    if (actualAmountPaid <= 0) {
-      const [paymentRows] = await connection.execute(
-        `SELECT amount
-         FROM payments
-         WHERE user_id = ? AND event_id = ? AND status = 'completed'
-         ORDER BY created_at DESC
-         LIMIT 1`,
-        [userId, booking.event_id]
-      );
-      if (paymentRows.length > 0) {
-        actualAmountPaid = roundMoney(paymentRows[0].amount || 0) || 0;
-      }
-    }
+    const actualAmountPaid = await resolveBookingAmountPaid(booking, userId, connection);
 
     const policy = calculateRefundPolicy(booking.event_date, actualAmountPaid);
 
@@ -551,7 +569,7 @@ exports.cancel = async (req, res) => {
     try {
       await notifyFirstWaitlistUser(booking.event_id, booking.event_title);
     } catch (notifyError) {
-      console.error('Waitlist notify error after booking cancellation:', notifyError);
+      console.error('[bookingController] notifyFirstWaitlistUser booking cancellation error:', notifyError);
     }
 
     res.json({
@@ -576,7 +594,7 @@ exports.cancel = async (req, res) => {
       try { await connection.rollback(); } catch (_) {}
       connection.release();
     }
-    console.error('Cancel booking error:', error);
+    console.error('[bookingController] cancel error:', error);
     res.status(500).json({ success: false, message: 'Error cancelling booking' });
   }
 };
@@ -594,23 +612,7 @@ exports.previewCancel = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
     }
 
-    let amountPaid = roundMoney(booking.amount_paid || 0) || 0;
-    if (amountPaid <= 0) {
-      amountPaid = estimateBookingAmountFromTicketPrice(booking);
-    }
-    if (amountPaid <= 0) {
-      const [paymentRows] = await pool.execute(
-        `SELECT amount
-         FROM payments
-         WHERE user_id = ? AND event_id = ? AND status = 'completed'
-         ORDER BY created_at DESC
-         LIMIT 1`,
-        [userId, booking.event_id]
-      );
-      if (paymentRows.length > 0) {
-        amountPaid = roundMoney(paymentRows[0].amount || 0) || 0;
-      }
-    }
+    const amountPaid = await resolveBookingAmountPaid(booking, userId, pool);
     const policy = calculateRefundPolicy(booking.event_date, amountPaid);
     const breakdownLine = `You will receive ${formatMoney(policy.refundAmount)} EGP back to your wallet based on our cancellation policy.`;
 
@@ -632,7 +634,7 @@ exports.previewCancel = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Preview cancel error:', error);
+    console.error('[bookingController] previewCancel error:', error);
     res.status(500).json({ success: false, message: 'Error preparing cancellation preview' });
   }
 };
@@ -703,23 +705,7 @@ exports.cancelSeat = async (req, res) => {
     const totalSeatsBefore = seats.length;
     const remainingSeats = seats.filter((seat) => seat !== targetSeat);
 
-    let bookingAmountPaid = roundMoney(booking.amount_paid || 0) || 0;
-    if (bookingAmountPaid <= 0) {
-      bookingAmountPaid = estimateBookingAmountFromTicketPrice(booking);
-    }
-    if (bookingAmountPaid <= 0) {
-      const [paymentRows] = await connection.execute(
-        `SELECT amount
-         FROM payments
-         WHERE user_id = ? AND event_id = ? AND status = 'completed'
-         ORDER BY created_at DESC
-         LIMIT 1`,
-        [userId, booking.event_id]
-      );
-      if (paymentRows.length > 0) {
-        bookingAmountPaid = roundMoney(paymentRows[0].amount || 0) || 0;
-      }
-    }
+    const bookingAmountPaid = await resolveBookingAmountPaid(booking, userId, connection);
 
     const bookingWalletAmountUsed = roundMoney(booking.wallet_amount_used || 0) || 0;
     const seatAmountPaid = totalSeatsBefore > 0
@@ -841,7 +827,7 @@ exports.cancelSeat = async (req, res) => {
     try {
       await notifyFirstWaitlistUser(booking.event_id, booking.event_title);
     } catch (notifyError) {
-      console.error('Waitlist notify error after seat cancellation:', notifyError);
+      console.error('[bookingController] notifyFirstWaitlistUser seat cancellation error:', notifyError);
     }
 
     res.json({
@@ -867,7 +853,7 @@ exports.cancelSeat = async (req, res) => {
       try { await connection.rollback(); } catch (_) {}
       connection.release();
     }
-    console.error('Cancel seat error:', error);
+    console.error('[bookingController] cancelSeat error:', error);
     res.status(500).json({ success: false, message: 'Error cancelling ticket seat' });
   }
 };
@@ -886,7 +872,7 @@ exports.getByEventId = async (req, res) => {
     const bookings = await augmentBookingsWithTicketCheckins(rawBookings);
     res.json({ success: true, bookings });
   } catch (error) {
-    console.error('Error fetching event bookings:', error);
+    console.error('[bookingController] getByEventId error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -939,7 +925,7 @@ exports.checkInByTicketCode = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Check-in by ticket code error:', error);
+    console.error('[bookingController] checkInByTicketCode error:', error);
     res.status(500).json({ success: false, message: 'Error checking in ticket' });
   }
 };
@@ -992,7 +978,7 @@ exports.checkIn = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Check-in error:', error);
+    console.error('[bookingController] checkIn error:', error);
     res.status(500).json({ success: false, message: 'Error checking in attendee' });
   }
 };

@@ -19,23 +19,7 @@
   <div class="ws-wrapper">
 
     <!-- ── Workshop Nav ──────────────────────────────────────────────────── -->
-    <nav class="ws-nav" aria-label="Workshop navigation">
-      <div class="ws-brand">
-        <div class="ws-brand-mark">WS</div>
-        <div class="ws-brand-text">
-          <strong>Workshop Portal</strong>
-          <span>Elshaboury Events — Team Space</span>
-        </div>
-      </div>
-
-      <div class="ws-nav-right">
-        <span id="wsNavRole" class="ws-role-badge">Loading…</span>
-        <span id="wsNavEmail" style="color:var(--muted);font-size:.82rem;"></span>
-        <button id="wsLogoutBtn" class="btn btn-danger btn-sm" type="button" aria-label="Leave workshop">
-          ⎋ Leave
-        </button>
-      </div>
-    </nav>
+    <nav class="ws-nav" aria-label="Workshop navigation"></nav>
 
     <!-- ── Main content rendered by JS ─────────────────────────────────── -->
     <div id="wsDashboardMain" aria-live="polite">
@@ -47,6 +31,7 @@
 
   </div><!-- /.ws-wrapper -->
 
+  <script src="../../js/workshop/workshop-nav.js"></script>
   <script src="../../js/workshop/workshop-dashboard.js"></script>
 </body>
 

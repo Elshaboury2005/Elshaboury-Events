@@ -23,7 +23,47 @@ const { cancelAndRefundVenueBooking } = require('../services/venueOwnerEscrowSer
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function parseJsonArray(rawValue, fallback = []) {
+/**
+ * Fetches a venue and verifies the requesting user owns it.
+ * Returns the venue on success, or sends a 403/404 and returns null.
+ */
+async function requireVenueOwnership(res, venueId, ownerId) {
+  if (!Number.isFinite(venueId) || venueId <= 0) {
+    res.status(400).json({ success: false, message: 'Invalid venue ID' });
+    return null;
+  }
+  const venue = await Venue.findById(venueId);
+  if (!venue) {
+    res.status(404).json({ success: false, message: 'Venue not found' });
+    return null;
+  }
+  if (String(venue.owner_id) !== String(ownerId)) {
+    res.status(403).json({ success: false, message: 'You do not own this venue' });
+    return null;
+  }
+  return venue;
+}
+
+/**
+ * Fetches a booking and verifies the requesting user owns the associated venue.
+ * Returns the booking on success, or sends a 403/404 and returns null.
+ */
+async function requireBookingOwnership(res, bookingId, ownerId) {
+  if (!Number.isFinite(bookingId) || bookingId <= 0) {
+    res.status(400).json({ success: false, message: 'Invalid booking ID' });
+    return null;
+  }
+  const booking = await VenueBooking.findById(bookingId);
+  if (!booking) {
+    res.status(404).json({ success: false, message: 'Booking not found' });
+    return null;
+  }
+  if (String(booking.venue_owner_id) !== String(ownerId)) {
+    res.status(403).json({ success: false, message: 'This booking is not for your venue' });
+    return null;
+  }
+  return booking;
+}function parseJsonArray(rawValue, fallback = []) {
   if (!rawValue) return fallback;
   if (Array.isArray(rawValue)) return rawValue;
   try {
@@ -226,7 +266,7 @@ exports.submitVenue = async (req, res) => {
       venue: normalizeVenueForOwner(venue)
     });
   } catch (error) {
-    console.error('submitVenue error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] submitVenue error:', error);
     res.status(500).json({ success: false, message: 'Failed to submit venue' });
   }
 };
@@ -242,7 +282,7 @@ exports.getMyVenues = async (req, res) => {
       venues: rows.map(normalizeVenueForOwner)
     });
   } catch (error) {
-    console.error('getMyVenues error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getMyVenues error:', error);
     res.status(500).json({ success: false, message: 'Failed to load venues' });
   }
 };
@@ -256,11 +296,8 @@ exports.updateMyVenue = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid venue ID' });
     }
 
-    const venue = await Venue.findById(venueId);
-    if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
-    if (venue.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'You do not own this venue' });
-    }
+    const venue = await requireVenueOwnership(res, venueId, ownerId);
+    if (!venue) return;
     if (['rejected', 'suspended'].includes(venue.status)) {
       return res.status(400).json({ success: false, message: `Cannot edit a ${venue.status} venue` });
     }
@@ -334,7 +371,7 @@ exports.updateMyVenue = async (req, res) => {
     const updated = await Venue.update(venueId, updates);
     res.json({ success: true, venue: normalizeVenueForOwner(updated) });
   } catch (error) {
-    console.error('updateMyVenue error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] updateMyVenue error:', error);
     res.status(500).json({ success: false, message: 'Failed to update venue' });
   }
 };
@@ -350,7 +387,7 @@ exports.getBookingRequests = async (req, res) => {
       bookingRequests: rows.map(normalizeBookingForOwner)
     });
   } catch (error) {
-    console.error('getBookingRequests error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getBookingRequests error:', error);
     res.status(500).json({ success: false, message: 'Failed to load booking requests' });
   }
 };
@@ -365,11 +402,8 @@ exports.acceptBookingRequest = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     }
 
-    const booking = await VenueBooking.findById(bookingId);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    if (booking.venue_owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'This booking is not for your venue' });
-    }
+    const booking = await requireBookingOwnership(res, bookingId, ownerId);
+    if (!booking) return;
     if (booking.status !== 'pending_venue_response' && booking.status !== 'awaiting_dual_approval') {
       return res.status(400).json({
         success: false,
@@ -441,7 +475,7 @@ exports.acceptBookingRequest = async (req, res) => {
       const { checkAndTransferVenuePayment } = require('../services/venueOwnerEscrowService');
       await checkAndTransferVenuePayment(bookingId);
     } catch (err) {
-      console.error('Failed checkAndTransferVenuePayment in acceptBookingRequest:', err);
+      console.error('[venueOwnerController] Failed checkAndTransferVenuePayment in acceptBookingRequest:', err);
     }
 
     // Notify host
@@ -484,7 +518,7 @@ exports.acceptBookingRequest = async (req, res) => {
       try { await connection.rollback(); } catch (_) {}
       connection.release();
     }
-    console.error('acceptBookingRequest error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] acceptBookingRequest error:', error);
     res.status(500).json({ success: false, message: error.message || 'Failed to accept booking' });
   }
 };
@@ -500,11 +534,8 @@ exports.declineBookingRequest = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     }
 
-    const booking = await VenueBooking.findById(bookingId);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    if (booking.venue_owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'This booking is not for your venue' });
-    }
+    const booking = await requireBookingOwnership(res, bookingId, ownerId);
+    if (!booking) return;
     if (booking.status !== 'pending_venue_response' && booking.status !== 'awaiting_dual_approval') {
       return res.status(400).json({
         success: false,
@@ -562,7 +593,7 @@ exports.declineBookingRequest = async (req, res) => {
       try { await connection.rollback(); } catch (_) {}
       connection.release();
     }
-    console.error('declineBookingRequest error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] declineBookingRequest error:', error);
     res.status(500).json({ success: false, message: 'Failed to decline booking' });
   }
 };
@@ -578,7 +609,7 @@ exports.getUpcomingBookings = async (req, res) => {
       bookings: rows.map(normalizeBookingForOwner)
     });
   } catch (error) {
-    console.error('getUpcomingBookings error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getUpcomingBookings error:', error);
     res.status(500).json({ success: false, message: 'Failed to load upcoming bookings' });
   }
 };
@@ -594,7 +625,7 @@ exports.getBookingHistory = async (req, res) => {
       bookings: rows.map(normalizeBookingForOwner)
     });
   } catch (error) {
-    console.error('getBookingHistory error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getBookingHistory error:', error);
     res.status(500).json({ success: false, message: 'Failed to load booking history' });
   }
 };
@@ -615,7 +646,7 @@ exports.getWallet = async (req, res) => {
     if (error.message === 'User not found') {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    console.error('venueOwner getWallet error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] venueOwner getWallet error:', error);
     res.status(500).json({ success: false, message: 'Failed to load wallet data' });
   }
 };
@@ -677,7 +708,7 @@ exports.withdrawWallet = async (req, res) => {
     if (error.message === 'Insufficient wallet balance') {
       return res.status(400).json({ success: false, message: 'Withdrawal amount exceeds available wallet balance' });
     }
-    console.error('venueOwner withdrawWallet error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] venueOwner withdrawWallet error:', error);
     res.status(500).json({ success: false, message: error.message || 'Failed to withdraw wallet balance' });
   }
 };
@@ -746,7 +777,7 @@ exports.getAnalytics = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('venueOwner getAnalytics error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] venueOwner getAnalytics error:', error);
     res.status(500).json({ success: false, message: 'Failed to load analytics' });
   }
 };
@@ -779,11 +810,8 @@ exports.addAvailabilityBlock = async (req, res) => {
       }
     }
 
-    const venue = await Venue.findById(venueId);
-    if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
-    if (venue.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'You do not own this venue' });
-    }
+    const venue = await requireVenueOwnership(res, venueId, ownerId);
+    if (!venue) return;
 
     // Check for duplicates
     const [existing] = await pool.execute(
@@ -803,7 +831,7 @@ exports.addAvailabilityBlock = async (req, res) => {
 
     res.status(201).json({ success: true, blockId: result.insertId });
   } catch (error) {
-    console.error('addAvailabilityBlock error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] addAvailabilityBlock error:', error);
     res.status(500).json({ success: false, message: 'Failed to add availability block' });
   }
 };
@@ -817,11 +845,8 @@ exports.getAvailabilityBlocks = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid venue ID' });
     }
 
-    const venue = await Venue.findById(venueId);
-    if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
-    if (venue.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'You do not own this venue' });
-    }
+    const venue = await requireVenueOwnership(res, venueId, ownerId);
+    if (!venue) return;
 
     const [blocks] = await pool.execute(
       `SELECT id, block_type, date, weekday, is_active, reason, created_at FROM venue_availability_blocks WHERE venue_id = ?`,
@@ -854,7 +879,7 @@ exports.getAvailabilityBlocks = async (req, res) => {
       recurringWeekdays
     });
   } catch (error) {
-    console.error('getAvailabilityBlocks error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getAvailabilityBlocks error:', error);
     res.status(500).json({ success: false, message: 'Failed to load availability blocks' });
   }
 };
@@ -869,11 +894,8 @@ exports.toggleAvailabilityBlock = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid venue or block ID' });
     }
 
-    const venue = await Venue.findById(venueId);
-    if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
-    if (venue.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'You do not own this venue' });
-    }
+    const venue = await requireVenueOwnership(res, venueId, ownerId);
+    if (!venue) return;
 
     const [blocks] = await pool.execute(`SELECT is_active FROM venue_availability_blocks WHERE id = ? AND venue_id = ?`, [blockId, venueId]);
     if (blocks.length === 0) {
@@ -885,7 +907,7 @@ exports.toggleAvailabilityBlock = async (req, res) => {
     await pool.execute(`UPDATE venue_availability_blocks SET is_active = ? WHERE id = ?`, [newStatus, blockId]);
     res.json({ success: true, message: 'Block toggled successfully', isActive: newStatus });
   } catch (error) {
-    console.error('toggleAvailabilityBlock error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] toggleAvailabilityBlock error:', error);
     res.status(500).json({ success: false, message: 'Failed to toggle availability block' });
   }
 };
@@ -901,11 +923,8 @@ exports.deleteAvailabilityBlock = async (req, res) => {
     }
 
     // Verify ownership
-    const venue = await Venue.findById(venueId);
-    if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
-    if (venue.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'You do not own this venue' });
-    }
+    const venue = await requireVenueOwnership(res, venueId, ownerId);
+    if (!venue) return;
 
     // Verify block belongs to this venue
     const [blockRows] = await pool.execute(
@@ -919,7 +938,7 @@ exports.deleteAvailabilityBlock = async (req, res) => {
     const deleted = await Venue.deleteAvailabilityBlock(blockId);
     res.json({ success: deleted, message: deleted ? 'Block removed' : 'Block not found' });
   } catch (error) {
-    console.error('deleteAvailabilityBlock error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] deleteAvailabilityBlock error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete availability block' });
   }
 };
@@ -936,11 +955,8 @@ exports.cancelBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     }
 
-    const booking = await VenueBooking.findById(bookingId);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    if (booking.venue_owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'This booking is not for your venue' });
-    }
+    const booking = await requireBookingOwnership(res, bookingId, ownerId);
+    if (!booking) return;
     if (['cancelled', 'declined', 'declined_auto_expired'].includes(booking.status)) {
       return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
     }
@@ -980,7 +996,7 @@ exports.cancelBooking = async (req, res) => {
       try { await connection.rollback(); } catch (_) {}
       connection.release();
     }
-    console.error('venueOwner cancelBooking error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] venueOwner cancelBooking error:', error);
     res.status(500).json({ success: false, message: 'Failed to cancel booking' });
   }
 };
@@ -997,11 +1013,8 @@ exports.getVenueBookingsTable = async (req, res) => {
     }
 
     // Ownership check
-    const venue = await Venue.findById(venueId);
-    if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
-    if (venue.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'You do not own this venue' });
-    }
+    const venue = await requireVenueOwnership(res, venueId, ownerId);
+    if (!venue) return;
 
     const statusFilter = req.query.status || 'all';
 
@@ -1076,7 +1089,7 @@ exports.getVenueBookingsTable = async (req, res) => {
 
     res.json({ success: true, venueId, bookings });
   } catch (error) {
-    console.error('getVenueBookingsTable error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getVenueBookingsTable error:', error);
     res.status(500).json({ success: false, message: 'Failed to load venue bookings' });
   }
 };
@@ -1092,11 +1105,8 @@ exports.getBookingDetails = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     }
 
-    const booking = await VenueBooking.findById(bookingId);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    if (booking.venue_owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'This booking is not for your venue' });
-    }
+    const booking = await requireBookingOwnership(res, bookingId, ownerId);
+    if (!booking) return;
 
     // Fetch additional event/host details not in VenueBooking.findById
     const [eventRows] = await pool.execute(
@@ -1175,7 +1185,7 @@ exports.getBookingDetails = async (req, res) => {
       } : null
     });
   } catch (error) {
-    console.error('getBookingDetails error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getBookingDetails error:', error);
     res.status(500).json({ success: false, message: 'Failed to load booking details' });
   }
 };
@@ -1192,11 +1202,8 @@ exports.getVenueTimeline = async (req, res) => {
     }
 
     // Ownership check
-    const venue = await Venue.findById(venueId);
-    if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
-    if (venue.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'You do not own this venue' });
-    }
+    const venue = await requireVenueOwnership(res, venueId, ownerId);
+    if (!venue) return;
 
     // Fetch all non-cancelled, non-declined bookings
     const [rows] = await pool.execute(
@@ -1249,7 +1256,7 @@ exports.getVenueTimeline = async (req, res) => {
       availabilityBlocks
     });
   } catch (error) {
-    console.error('getVenueTimeline error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getVenueTimeline error:', error);
     res.status(500).json({ success: false, message: 'Failed to load venue timeline' });
   }
 };
@@ -1305,7 +1312,7 @@ exports.checkVenueAvailability = async (req, res) => {
       } : null
     });
   } catch (error) {
-    console.error('checkVenueAvailability error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] checkVenueAvailability error:', error);
     res.status(500).json({ success: false, message: 'Failed to check venue availability' });
   }
 };
@@ -1326,7 +1333,7 @@ exports.getMyReviews = async (req, res) => {
     );
     res.json({ success: true, reviews: rows });
   } catch (error) {
-    console.error('getMyReviews error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getMyReviews error:', error);
     res.status(500).json({ success: false, message: 'Failed to load reviews' });
   }
 };
@@ -1347,11 +1354,8 @@ exports.getEventSeatsStatus = async (req, res) => {
     }
 
     // Ownership check
-    const venue = await Venue.findById(venueId);
-    if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
-    if (venue.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'You do not own this venue' });
-    }
+    const venue = await requireVenueOwnership(res, venueId, ownerId);
+    if (!venue) return;
 
     // Verify the event has a confirmed venue booking at this venue
     const [bookingRows] = await pool.execute(
@@ -1442,7 +1446,7 @@ exports.getEventSeatsStatus = async (req, res) => {
       bookedSeats: individualBookedSeats
     });
   } catch (error) {
-    console.error('getEventSeatsStatus error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getEventSeatsStatus error:', error);
     res.status(500).json({ success: false, message: 'Failed to load seat status' });
   }
 };
@@ -1518,7 +1522,7 @@ exports.bookSeat = async (req, res) => {
     await walletController.payForBooking(req, res);
 
   } catch (error) {
-    console.error('bookSeat error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] bookSeat error:', error);
     res.status(500).json({ success: false, message: 'Failed to book seat' });
   }
 };
@@ -1641,7 +1645,7 @@ exports.getEventTeam = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('getEventTeam error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getEventTeam error:', error);
     res.status(500).json({ success: false, message: 'Failed to load event team details' });
   }
 };
@@ -1701,7 +1705,7 @@ exports.getEligibleHosts = async (req, res) => {
 
     return res.json({ success: true, hosts: [...seen.values()], venue: { id: venueRows[0].id, name: venueRows[0].name } });
   } catch (error) {
-    console.error('getEligibleHosts error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getEligibleHosts error:', error);
     return res.status(500).json({ success: false, message: 'Failed to load eligible hosts' });
   }
 };
@@ -1788,7 +1792,7 @@ exports.sendVenueOwnerNotification = async (req, res) => {
         await Notification.create(recipient.id, fullTitle, message, type);
         sentCount++;
       } catch (notifErr) {
-        console.error(`Failed to send notification to ${recipient.id}:`, notifErr.message);
+        console.error(`[venueOwnerController] Failed to send notification to ${recipient.id}:`, notifErr.message);
       }
 
       if (recipient.email) {
@@ -1801,7 +1805,7 @@ exports.sendVenueOwnerNotification = async (req, res) => {
           });
           emailQueuedCount++;
         } catch (emailErr) {
-          console.error(`Failed to queue notification email to ${recipient.email}:`, emailErr.message);
+          console.error(`[venueOwnerController] Failed to queue notification email to ${recipient.email}:`, emailErr.message);
         }
       }
     }
@@ -1818,7 +1822,7 @@ exports.sendVenueOwnerNotification = async (req, res) => {
 
     return res.json({ success: true, sentCount, emailQueuedCount });
   } catch (error) {
-    console.error('sendVenueOwnerNotification error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] sendVenueOwnerNotification error:', error);
     return res.status(500).json({ success: false, message: 'Failed to send notification' });
   }
 };
@@ -1866,7 +1870,7 @@ exports.getSentNotificationLog = async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('getSentNotificationLog error:', error);
+    console.error('[venueOwnerController] [venueOwnerController] getSentNotificationLog error:', error);
     return res.status(500).json({ success: false, message: 'Failed to load notification log' });
   }
 };

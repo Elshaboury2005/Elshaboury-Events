@@ -1,0 +1,185 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workshop Portal — Calendar Page Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.calendar-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+}
+
+.calendar-card {
+  padding: 24px;
+}
+
+.meetings-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Calendar Header */
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.calendar-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+/* Calendar Grid */
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.07em;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 12px;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.calendar-day-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  position: relative;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.calendar-day-cell:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  transform: scale(1.05);
+}
+
+.calendar-day-cell.today {
+  border-color: rgba(124, 58, 237, 0.45);
+  background: rgba(124, 58, 237, 0.1);
+  color: #fff;
+  font-weight: 700;
+}
+
+.calendar-day-cell.selected {
+  background: var(--violet-grad);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+.calendar-day-cell.empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Event indicator dot */
+.calendar-day-cell .event-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--orange);
+  border-radius: 50%;
+  position: absolute;
+  bottom: 6px;
+  box-shadow: 0 0 6px var(--orange);
+}
+
+.calendar-day-cell.selected .event-dot {
+  background: #fff;
+  box-shadow: 0 0 4px #fff;
+}
+
+/* Meetings List Side Panel */
+.meetings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.meeting-item-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.meeting-item-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.meeting-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.meeting-time-val {
+  font-weight: 600;
+  color: var(--warning);
+}
+
+.meeting-item-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.meeting-item-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.meeting-item-loc {
+  font-size: 0.74rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px 10px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .calendar-layout {
+    grid-template-columns: 1fr;
+  }
+}

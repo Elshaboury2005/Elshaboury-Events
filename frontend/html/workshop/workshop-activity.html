@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team Activity Feed | Workshop Portal</title>
+  <meta name="description" content="View the activity timeline for your category team." />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/workshop/workshop.css" />
+  <link rel="stylesheet" href="../../css/workshop/workshop-activity.css" />
+</head>
+<body>
+  <div class="ws-wrapper">
+    <!-- Shared Nav -->
+    <nav class="ws-nav" aria-label="Workshop navigation"></nav>
+
+    <!-- Activity Log Card -->
+    <div class="ws-card activity-card">
+      <div class="ws-card-header">
+        <div class="ws-card-icon orange">⚡</div>
+        <div>
+          <div class="ws-card-title">Team Activity Feed</div>
+          <div class="ws-card-subtitle">Real-time audit log of team category operations</div>
+        </div>
+      </div>
+
+      <!-- Timeline Container -->
+      <div class="timeline-container" id="timelineContainer">
+        <div class="ws-loading">
+          <span class="ws-spinner"></span> Loading activity log...
+        </div>
+      </div>
+
+      <!-- Load More Button -->
+      <div class="load-more-container">
+        <button id="loadMoreBtn" class="btn" style="display:none;" type="button">
+          Load More Activities
+        </button>
+      </div>
+    </div>
+  </div><!-- /.ws-wrapper -->
+
+  <script src="../../js/workshop/workshop-nav.js"></script>
+  <script src="../../js/workshop/workshop-activity.js"></script>
+</body>
+</html>

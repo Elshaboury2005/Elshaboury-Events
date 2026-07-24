@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendee Check-In | Workshop Portal</title>
+  <meta name="description" content="Manually check in ticket holders by Booking ID." />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/workshop/workshop.css" />
+  <link rel="stylesheet" href="../../css/workshop/workshop-checkin.css" />
+</head>
+<body>
+  <div class="ws-wrapper">
+    <!-- Shared Nav -->
+    <nav class="ws-nav" aria-label="Workshop navigation"></nav>
+
+    <!-- Main Grid -->
+    <div class="checkin-grid">
+      <!-- Left Column: Manual Form -->
+      <div class="ws-card checkin-form-card">
+        <div class="ws-card-header">
+          <div class="ws-card-icon violet">🎫</div>
+          <div>
+            <div class="ws-card-title">Staff Gate Check-In</div>
+            <div class="ws-card-subtitle">Enter Booking ID manually to verify and check in attendee</div>
+          </div>
+        </div>
+
+        <form id="checkInForm" class="checkin-form">
+          <div class="ws-input-group">
+            <label for="bookingIdInput">Booking ID (or Ticket ID)</label>
+            <input type="text" id="bookingIdInput" class="ws-input" placeholder="e.g. c4e5672f-537e-4054-9467-f6558c4cc819" autocomplete="off" required />
+          </div>
+          <button type="submit" class="btn btn-violet" id="checkInBtn">
+            Check In Attendee
+          </button>
+        </form>
+
+        <!-- Outcome Feedbacks -->
+        <div class="outcome-container" id="outcomeContainer">
+          <!-- Green Success -->
+          <div class="outcome-panel success" id="successPanel" style="display:none;">
+            <div class="outcome-icon">✓</div>
+            <div class="outcome-details">
+              <h4>Check-In Successful!</h4>
+              <div class="attendee-info">
+                <p><strong>Name:</strong> <span id="successName">Name</span></p>
+                <p><strong>Ticket Type:</strong> <span id="successTicket">Standard</span></p>
+                <p><strong>Seat(s):</strong> <span id="successSeat">—</span></p>
+                <p><strong>Email:</strong> <span id="successEmail">email@example.com</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Amber Duplicate -->
+          <div class="outcome-panel warning" id="warningPanel" style="display:none;">
+            <div class="outcome-icon">⚠</div>
+            <div class="outcome-details">
+              <h4>Already Checked In</h4>
+              <p class="outcome-msg" id="warningMsg">Already checked in at ... by ...</p>
+              <div class="attendee-info">
+                <p><strong>Name:</strong> <span id="warningName">Name</span></p>
+                <p><strong>Ticket Type:</strong> <span id="warningTicket">Standard</span></p>
+                <p><strong>Seat(s):</strong> <span id="warningSeat">—</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Red Error -->
+          <div class="outcome-panel error" id="errorPanel" style="display:none;">
+            <div class="outcome-icon">✗</div>
+            <div class="outcome-details">
+              <h4>Verification Failed</h4>
+              <p class="outcome-msg" id="errorMsg">Invalid booking or foreign event ticket.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Stats & Counter -->
+      <div class="ws-card stats-card">
+        <div class="ws-card-header">
+          <div class="ws-card-icon teal">📊</div>
+          <div>
+            <div class="ws-card-title">Check-In Statistics</div>
+            <div class="ws-card-subtitle">Real-time attendance tracking</div>
+          </div>
+        </div>
+
+        <div class="stats-counter-container">
+          <span class="stats-counter-value" id="checkInProgressVal">0 / 0</span>
+          <span class="stats-counter-label">attendees checked in</span>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar" style="margin-top:20px;height:12px;">
+          <div id="checkInProgressBar" class="progress-fill" style="width:0%;"></div>
+        </div>
+        <p style="text-align:right;font-size:0.75rem;color:var(--muted);margin-top:8px;" id="progressPercentageText">0% Complete</p>
+      </div>
+    </div>
+  </div><!-- /.ws-wrapper -->
+
+  <script src="../../js/workshop/workshop-nav.js"></script>
+  <script src="../../js/workshop/workshop-checkin.js"></script>
+</body>
+</html>

@@ -20,6 +20,14 @@ const faqRoutes = require('./routes/faqRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const notebookRoutes = require('./routes/notebookRoutes');
 const workshopRoutes = require('./routes/workshopRoutes');
+const workshopTaskRoutes = require('./routes/workshopTaskRoutes');
+const workshopChatRoutes = require('./routes/workshopChatRoutes');
+const workshopCalendarRoutes = require('./routes/workshopCalendarRoutes');
+const workshopFileRoutes = require('./routes/workshopFileRoutes');
+const workshopActivityRoutes = require('./routes/workshopActivityRoutes');
+const workshopNotificationRoutes = require('./routes/workshopNotificationRoutes');
+const workshopProgressRoutes = require('./routes/workshopProgressRoutes');
+const workshopCheckinRoutes = require('./routes/workshopCheckinRoutes');
 const directChatRoutes = require('./routes/directChatRoutes');
 const adminRoutes = require('./routes/admin/adminRoutes');
 const venueOwnerRoutes = require('./routes/venueOwnerRoutes');
@@ -119,6 +127,14 @@ app.use('/api/faq', faqRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/notebooks', notebookRoutes);
 app.use('/api/workshop', workshopRoutes);
+app.use('/api/workshop/tasks', workshopTaskRoutes);
+app.use('/api/workshop/chat', workshopChatRoutes);
+app.use('/api/workshop/calendar', workshopCalendarRoutes);
+app.use('/api/workshop/files', workshopFileRoutes);
+app.use('/api/workshop/activity', workshopActivityRoutes);
+app.use('/api/workshop/notifications', workshopNotificationRoutes);
+app.use('/api/workshop/progress', workshopProgressRoutes);
+app.use('/api/workshop/checkin', workshopCheckinRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/direct-chat', directChatRoutes);
 app.use('/api/Admin', adminRoutes);
@@ -147,6 +163,13 @@ const runMigrations = async () => {
     'migration_subscriptions',
     'migration_notebooks',
     'migration_workshop',
+    'migration_workshop_tasks',
+    'migration_workshop_chat',
+    'migration_workshop_calendar',
+    'migration_workshop_files',
+    'migration_workshop_activity',
+    'migration_workshop_notifications',
+    'migration_booking_checkin',
   ];
   for (const name of migrations) {
     try {

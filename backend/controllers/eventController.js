@@ -5,7 +5,7 @@ const Venue = require('../models/Venue');
 const VenueBooking = require('../models/VenueBooking');
 const Notification = require('../models/Notification');
 const pool = require('../config/database');
-const { roundMoney } = require('../services/walletService');
+const { roundMoney, creditWallet, debitWallet, lockUserWallet } = require('../services/walletService');
 const {
   normalizeSeatCount,
   resolveUnitPrice,
@@ -24,8 +24,9 @@ const {
   getVaultTransactionsForHost,
   withdrawEventVaultToHost
 } = require('../services/eventVaultService');
-const { cancelAndRefundVenueBooking } = require('../services/venueOwnerEscrowService');
+const { cancelAndRefundVenueBooking, handleHostEventCancellation } = require('../services/venueOwnerEscrowService');
 const { applyAiDecisionToEvent } = require('../services/aiDecisionService');
+const platformFeeService = require('../services/platformFeeService');
 
 const seatsCountExpression = `
 CASE
@@ -202,21 +203,10 @@ function attachAvailability(event, bookingCounts) {
   event.max_seats = config.total;
 }
 
-function getSeatCountFromBooking(booking) {
-  const rawSeatNumbers = booking?.seat_numbers;
-  if (rawSeatNumbers && typeof rawSeatNumbers === 'string') {
-    const seats = rawSeatNumbers
-      .split(',')
-      .map((seat) => parseInt(seat.trim(), 10))
-      .filter((seat) => !isNaN(seat) && seat > 0);
-    if (seats.length > 0) return seats.length;
-  }
-  const fallback = parseInt(booking?.seat_number, 10);
-  return !isNaN(fallback) && fallback > 0 ? fallback : 1;
-}
+
 
 function estimateBookingAmountFromEventPricing(booking, eventPricing) {
-  const seatsCount = getSeatCountFromBooking(booking);
+  const seatsCount = getBookingSeatCount(booking);
   const type = normalizeTicketType(booking?.ticket_type || 'standard');
   let unitPrice = Number(eventPricing?.price_standard || 0);
   if (type === 'special') unitPrice = Number(eventPricing?.price_special || 0);
@@ -230,6 +220,34 @@ function escapeCsv(value) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
+}
+
+
+function parseVenueJsonField(value) {
+  if (!value || typeof value !== 'string') return value || [];
+  try {
+    return JSON.parse(value);
+  } catch (_) {
+    return value.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+}
+
+
+/**
+ * Verifies the authenticated user owns the specified event.
+ * Returns the event on success, or sends a 403/404 response and returns null.
+ */
+async function requireOrganizerOwnership(res, eventId, organizerId) {
+  const event = await Event.findById(eventId);
+  if (!event) {
+    res.status(404).json({ success: false, message: 'Event not found' });
+    return null;
+  }
+  if (event.organizer_id !== organizerId) {
+    res.status(403).json({ success: false, message: 'Only organizer can manage this event' });
+    return null;
+  }
+  return event;
 }
 
 function escapePdfText(text) {
@@ -276,10 +294,8 @@ function buildSimplePdf(lines) {
   return Buffer.from(pdf, 'utf8');
 }
 
-async function getPostEventSummaryData(eventId) {
-  const event = await Event.findById(eventId);
-  if (!event) return null;
 
+async function fetchEventBreakdownRows(eventId) {
   const [breakdownRows] = await pool.execute(
     `
     SELECT
@@ -308,7 +324,10 @@ async function getPostEventSummaryData(eventId) {
   `,
     [eventId]
   );
+  return breakdownRows;
+}
 
+async function fetchRevenueData(eventId) {
   let revenueByTypeRows = [];
   let vaultTotals = {
     total_collected: 0,
@@ -417,7 +436,10 @@ async function getPostEventSummaryData(eventId) {
       balance: 0
     };
   }
+  return { revenueByTypeRows, vaultTotals };
+}
 
+async function fetchReviewStats(eventId) {
   const [reviews] = await pool.execute(
     `SELECT r.id, r.rating, r.review, r.created_at, u.full_name, u.username
      FROM event_reviews r
@@ -442,6 +464,10 @@ async function getPostEventSummaryData(eventId) {
     [eventId]
   );
 
+  return { reviews, avgRows, ratingDistributionRows };
+}
+
+async function fetchCancellationStats(eventId) {
   const [cancellationRows] = await pool.execute(
     `
     SELECT
@@ -506,7 +532,10 @@ async function getPostEventSummaryData(eventId) {
     refundRows = [{ total_refunded: 0 }];
     cancellationReasonRows = [];
   }
+  return { cancellationRows, totalBookingsRows, refundRows, cancellationReasonRows };
+}
 
+async function fetchTimeline(eventId) {
   const [bookingTimelineRows] = await pool.execute(
     `
     SELECT
@@ -557,6 +586,86 @@ async function getPostEventSummaryData(eventId) {
       [eventId]
     );
   }
+
+  const timelineMap = new Map();
+  bookingTimelineRows.forEach((row) => {
+    const day = row.day ? String(row.day).slice(0, 10) : '';
+    if (!day) return;
+    if (!timelineMap.has(day)) timelineMap.set(day, { day, bookings: 0, revenue: 0 });
+    timelineMap.get(day).bookings = Number(row.booked_seats || 0);
+  });
+  paymentTimelineRows.forEach((row) => {
+    const day = row.day ? String(row.day).slice(0, 10) : '';
+    if (!day) return;
+    if (!timelineMap.has(day)) timelineMap.set(day, { day, bookings: 0, revenue: 0 });
+    timelineMap.get(day).revenue = Number(row.revenue || 0);
+  });
+  return Array.from(timelineMap.values()).sort((a, b) => String(a.day).localeCompare(String(b.day)));
+}
+
+async function fetchDemographics(eventId) {
+  const demographics = {
+    byGovernorate: [],
+    byGender: []
+  };
+
+  try {
+    const [governorateRows] = await pool.execute(
+      `
+      SELECT
+        COALESCE(NULLIF(TRIM(u.governorate), ''), 'Unknown') AS label,
+        COALESCE(SUM(${seatsCountExpression}), 0) AS value
+      FROM bookings b
+      INNER JOIN users u ON u.id = b.user_id
+      WHERE b.event_id = ? AND b.status = 'confirmed'
+      GROUP BY label
+      ORDER BY value DESC
+    `,
+      [eventId]
+    );
+    demographics.byGovernorate = governorateRows.map((row) => ({
+      label: row.label || 'Unknown',
+      value: Number(row.value || 0)
+    }));
+  } catch (_) {
+    demographics.byGovernorate = [];
+  }
+
+  try {
+    const [genderRows] = await pool.execute(
+      `
+      SELECT
+        COALESCE(NULLIF(TRIM(u.gender), ''), 'Unknown') AS label,
+        COALESCE(SUM(${seatsCountExpression}), 0) AS value
+      FROM bookings b
+      INNER JOIN users u ON u.id = b.user_id
+      WHERE b.event_id = ? AND b.status = 'confirmed'
+      GROUP BY label
+      ORDER BY value DESC
+    `,
+      [eventId]
+    );
+    demographics.byGender = genderRows.map((row) => ({
+      label: row.label || 'Unknown',
+      value: Number(row.value || 0)
+    }));
+  } catch (_) {
+    demographics.byGender = [];
+  }
+
+  return demographics;
+}
+
+async function getPostEventSummaryData(eventId) {
+  const event = await Event.findById(eventId);
+  if (!event) return null;
+
+  const breakdownRows = await fetchEventBreakdownRows(eventId);
+  const { revenueByTypeRows, vaultTotals } = await fetchRevenueData(eventId);
+  const { reviews, avgRows, ratingDistributionRows } = await fetchReviewStats(eventId);
+  const { cancellationRows, totalBookingsRows, refundRows, cancellationReasonRows } = await fetchCancellationStats(eventId);
+  const timeline = await fetchTimeline(eventId);
+  const demographics = await fetchDemographics(eventId);
 
   const seatConfig = resolveSeatConfig(event);
   const limits = computeTicketLimits(event);
@@ -609,70 +718,6 @@ async function getPostEventSummaryData(eventId) {
     label: row.reason_label || 'Unknown',
     count: Number(row.reason_count || 0)
   }));
-
-  const timelineMap = new Map();
-  bookingTimelineRows.forEach((row) => {
-    const day = row.day ? String(row.day).slice(0, 10) : '';
-    if (!day) return;
-    if (!timelineMap.has(day)) timelineMap.set(day, { day, bookings: 0, revenue: 0 });
-    timelineMap.get(day).bookings = Number(row.booked_seats || 0);
-  });
-  paymentTimelineRows.forEach((row) => {
-    const day = row.day ? String(row.day).slice(0, 10) : '';
-    if (!day) return;
-    if (!timelineMap.has(day)) timelineMap.set(day, { day, bookings: 0, revenue: 0 });
-    timelineMap.get(day).revenue = Number(row.revenue || 0);
-  });
-  const timeline = Array.from(timelineMap.values()).sort((a, b) => String(a.day).localeCompare(String(b.day)));
-
-  const demographics = {
-    byGovernorate: [],
-    byGender: []
-  };
-
-  try {
-    const [governorateRows] = await pool.execute(
-      `
-      SELECT
-        COALESCE(NULLIF(TRIM(u.governorate), ''), 'Unknown') AS label,
-        COALESCE(SUM(${seatsCountExpression}), 0) AS value
-      FROM bookings b
-      INNER JOIN users u ON u.id = b.user_id
-      WHERE b.event_id = ? AND b.status = 'confirmed'
-      GROUP BY label
-      ORDER BY value DESC
-    `,
-      [eventId]
-    );
-    demographics.byGovernorate = governorateRows.map((row) => ({
-      label: row.label || 'Unknown',
-      value: Number(row.value || 0)
-    }));
-  } catch (_) {
-    demographics.byGovernorate = [];
-  }
-
-  try {
-    const [genderRows] = await pool.execute(
-      `
-      SELECT
-        COALESCE(NULLIF(TRIM(u.gender), ''), 'Unknown') AS label,
-        COALESCE(SUM(${seatsCountExpression}), 0) AS value
-      FROM bookings b
-      INNER JOIN users u ON u.id = b.user_id
-      WHERE b.event_id = ? AND b.status = 'confirmed'
-      GROUP BY label
-      ORDER BY value DESC
-    `,
-      [eventId]
-    );
-    demographics.byGender = genderRows.map((row) => ({
-      label: row.label || 'Unknown',
-      value: Number(row.value || 0)
-    }));
-  } catch (_) {
-    demographics.byGender = [];
-  }
 
   return {
     event: {
@@ -742,7 +787,7 @@ exports.getAll = async (req, res) => {
     events.forEach((event) => enrichEventUrgency(event, now));
     res.json({ success: true, events });
   } catch (error) {
-    console.error('Get events error:', error);
+    console.error('[eventController] getAll error:', error);
     res.status(500).json({ success: false, message: 'Error fetching events' });
   }
 };
@@ -765,7 +810,7 @@ exports.getById = async (req, res) => {
 
     res.json({ success: true, event });
   } catch (error) {
-    console.error('Get event error:', error);
+    console.error('[eventController] getById error:', error);
     res.status(500).json({ success: false, message: 'Error fetching event' });
   }
 };
@@ -788,7 +833,7 @@ exports.trackView = async (req, res) => {
 
     return res.status(201).json({ success: true });
   } catch (error) {
-    console.error('Track event view error:', error);
+    console.error('[eventController] trackView error:', error);
     return res.status(500).json({ success: false, message: 'Error tracking event view' });
   }
 };
@@ -815,7 +860,7 @@ exports.getViewsLast24Hours = async (req, res) => {
       views_last_24_hours: Number(rows[0]?.total || 0)
     });
   } catch (error) {
-    console.error('Get event views error:', error);
+    console.error('[eventController] getViewsLast24Hours error:', error);
     return res.status(500).json({ success: false, message: 'Error loading event views' });
   }
 };
@@ -840,7 +885,7 @@ exports.getSeatMap = async (req, res) => {
       taken
     });
   } catch (error) {
-    console.error('Get seat map error:', error);
+    console.error('[eventController] getSeatMap error:', error);
     res.status(500).json({ success: false, message: 'Error fetching seat map' });
   }
 };
@@ -922,7 +967,7 @@ exports.create = async (req, res) => {
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    const platformFeeService = require('../services/platformFeeService');
+    
     const platformFeeSettings = await platformFeeService.getPlatformFeeSettings();
     let calculatedPlatformFee = platformFeeService.calculatePlatformFee(
       platformFeeSettings,
@@ -1074,7 +1119,7 @@ exports.create = async (req, res) => {
       try { await connection.rollback(); } catch (_) {}
       connection.release();
     }
-    console.error('Create event error:', error);
+    console.error('[eventController] create error:', error);
     res.status(500).json({ success: false, message: 'Error creating event' });
   }
 };
@@ -1101,7 +1146,7 @@ exports.update = async (req, res) => {
     const event = await Event.findById(id);
     res.json({ success: true, message: 'Event updated successfully', event });
   } catch (error) {
-    console.error('Update event error:', error);
+    console.error('[eventController] update error:', error);
     res.status(500).json({ success: false, message: 'Error updating event' });
   }
 };
@@ -1122,7 +1167,7 @@ exports.delete = async (req, res) => {
     await Event.delete(id);
     res.json({ success: true, message: 'Event deleted successfully' });
   } catch (error) {
-    console.error('Delete event error:', error);
+    console.error('[eventController] delete error:', error);
     res.status(500).json({ success: false, message: 'Error deleting event' });
   }
 };
@@ -1133,7 +1178,7 @@ exports.getMyEvents = async (req, res) => {
     const events = await Event.findByOrganizerId(userId);
     res.json({ success: true, events });
   } catch (error) {
-    console.error('Get my events error:', error);
+    console.error('[eventController] getMyEvents error:', error);
     res.status(500).json({ success: false, message: 'Error fetching your events' });
   }
 };
@@ -1229,7 +1274,7 @@ exports.getCancellationSummary = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get cancellation summary error:', error);
+    console.error('[eventController] getCancellationSummary error:', error);
     res.status(500).json({ success: false, message: 'Error loading cancellation summary' });
   }
 };
@@ -1239,13 +1284,13 @@ exports.cancelEventWithRefunds = async (req, res) => {
     const organizerId = req.user.userId;
     const { id: eventId } = req.params;
 
-    const { handleHostEventCancellation } = require('../services/venueOwnerEscrowService');
+    
 
     const result = await handleHostEventCancellation(eventId, organizerId);
 
     res.json(result);
   } catch (error) {
-    console.error('Cancel event with refunds error:', error);
+    console.error('[eventController] cancelEventWithRefunds error:', error);
     res.status(500).json({ success: false, message: error.message || 'Error cancelling event and issuing refunds' });
   }
 };
@@ -1276,7 +1321,7 @@ exports.getReviews = async (req, res) => {
     if (error.code === 'ER_NO_SUCH_TABLE') {
       return res.json({ success: true, reviews: [], summary: { count: 0, avgRating: 0 } });
     }
-    console.error('Get reviews error:', error);
+    console.error('[eventController] getReviews error:', error);
     res.status(500).json({ success: false, message: 'Error loading reviews' });
   }
 };
@@ -1325,7 +1370,7 @@ exports.addReview = async (req, res) => {
 
     res.json({ success: true, message: 'Review saved successfully' });
   } catch (error) {
-    console.error('Add review error:', error);
+    console.error('[eventController] addReview error:', error);
     res.status(500).json({ success: false, message: 'Error saving review' });
   }
 };
@@ -1354,7 +1399,7 @@ exports.joinWaitlist = async (req, res) => {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ success: false, message: 'You are already on the waitlist for this event' });
     }
-    console.error('Join waitlist error:', error);
+    console.error('[eventController] joinWaitlist error:', error);
     res.status(500).json({ success: false, message: 'Error joining waitlist' });
   }
 };
@@ -1365,9 +1410,8 @@ exports.createPromoCode = async (req, res) => {
     const { id: eventId } = req.params;
     const { code, discountType, discountValue, maxUses, expiresAt } = req.body;
 
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-    if (event.organizer_id !== organizerId) return res.status(403).json({ success: false, message: 'Only organizer can create promo codes' });
+    const event = await requireOrganizerOwnership(res, eventId, organizerId);
+    if (!event) return;
 
     const cleanCode = String(code || '').trim().toUpperCase();
     if (!cleanCode) return res.status(400).json({ success: false, message: 'Promo code is required' });
@@ -1386,7 +1430,7 @@ exports.createPromoCode = async (req, res) => {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ success: false, message: 'Promo code already exists for this event' });
     }
-    console.error('Create promo code error:', error);
+    console.error('[eventController] createPromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error creating promo code' });
   }
 };
@@ -1395,9 +1439,8 @@ exports.getPromoCodes = async (req, res) => {
   try {
     const organizerId = req.user.userId;
     const { id: eventId } = req.params;
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-    if (event.organizer_id !== organizerId) return res.status(403).json({ success: false, message: 'Only organizer can view promo codes' });
+    const event = await requireOrganizerOwnership(res, eventId, organizerId);
+    if (!event) return;
 
     const [rows] = await pool.execute(
       `SELECT id, code, discount_type, discount_value, max_uses, used_count, expires_at, is_active, created_at
@@ -1406,7 +1449,7 @@ exports.getPromoCodes = async (req, res) => {
     );
     res.json({ success: true, promoCodes: rows });
   } catch (error) {
-    console.error('Get promo codes error:', error);
+    console.error('[eventController] getPromoCodes error:', error);
     res.status(500).json({ success: false, message: 'Error loading promo codes' });
   }
 };
@@ -1416,9 +1459,8 @@ exports.deactivatePromoCode = async (req, res) => {
     const organizerId = req.user.userId;
     const { id: eventId, promoId } = req.params;
 
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-    if (event.organizer_id !== organizerId) return res.status(403).json({ success: false, message: 'Only organizer can manage promo codes' });
+    const event = await requireOrganizerOwnership(res, eventId, organizerId);
+    if (!event) return;
 
     const [promoRows] = await pool.execute(
       `SELECT id, is_active FROM promo_codes WHERE id = ? AND event_id = ? LIMIT 1`,
@@ -1437,7 +1479,7 @@ exports.deactivatePromoCode = async (req, res) => {
 
     res.json({ success: true, message: 'Promo code deactivated successfully' });
   } catch (error) {
-    console.error('Deactivate promo code error:', error);
+    console.error('[eventController] deactivatePromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error deactivating promo code' });
   }
 };
@@ -1447,9 +1489,8 @@ exports.activatePromoCode = async (req, res) => {
     const organizerId = req.user.userId;
     const { id: eventId, promoId } = req.params;
 
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-    if (event.organizer_id !== organizerId) return res.status(403).json({ success: false, message: 'Only organizer can manage promo codes' });
+    const event = await requireOrganizerOwnership(res, eventId, organizerId);
+    if (!event) return;
 
     const [promoRows] = await pool.execute(
       `SELECT id, is_active FROM promo_codes WHERE id = ? AND event_id = ? LIMIT 1`,
@@ -1468,7 +1509,7 @@ exports.activatePromoCode = async (req, res) => {
 
     res.json({ success: true, message: 'Promo code activated successfully' });
   } catch (error) {
-    console.error('Activate promo code error:', error);
+    console.error('[eventController] activatePromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error activating promo code' });
   }
 };
@@ -1478,9 +1519,8 @@ exports.deletePromoCode = async (req, res) => {
     const organizerId = req.user.userId;
     const { id: eventId, promoId } = req.params;
 
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-    if (event.organizer_id !== organizerId) return res.status(403).json({ success: false, message: 'Only organizer can manage promo codes' });
+    const event = await requireOrganizerOwnership(res, eventId, organizerId);
+    if (!event) return;
 
     const [result] = await pool.execute(
       `DELETE FROM promo_codes WHERE id = ? AND event_id = ?`,
@@ -1493,7 +1533,7 @@ exports.deletePromoCode = async (req, res) => {
 
     res.json({ success: true, message: 'Promo code deleted successfully' });
   } catch (error) {
-    console.error('Delete promo code error:', error);
+    console.error('[eventController] deletePromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error deleting promo code' });
   }
 };
@@ -1548,7 +1588,7 @@ exports.validatePromoCode = async (req, res) => {
       finalAmount: promoTotals.finalAmount
     });
   } catch (error) {
-    console.error('Validate promo code error:', error);
+    console.error('[eventController] validatePromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error validating promo code' });
   }
 };
@@ -1576,7 +1616,7 @@ exports.getPostEventSummary = async (req, res) => {
     delete responseSummary.event.organizer_id;
     res.json({ success: true, summary: responseSummary });
   } catch (error) {
-    console.error('Post-event summary error:', error);
+    console.error('[eventController] getPostEventSummary error:', error);
     res.status(500).json({ success: false, message: 'Error loading post-event summary' });
   }
 };
@@ -1609,7 +1649,7 @@ exports.getVault = async (req, res) => {
       transactions: result.transactions || []
     });
   } catch (error) {
-    console.error('Get event vault error:', error);
+    console.error('[eventController] getVault error:', error);
     return res.status(500).json({ success: false, message: 'Error loading event vault' });
   }
 };
@@ -1634,7 +1674,7 @@ exports.getVaultTransactions = async (req, res) => {
       transactions: result.transactions || []
     });
   } catch (error) {
-    console.error('Get vault transactions error:', error);
+    console.error('[eventController] getVaultTransactions error:', error);
     return res.status(500).json({ success: false, message: 'Error loading vault transactions' });
   }
 };
@@ -1669,7 +1709,7 @@ exports.withdrawVault = async (req, res) => {
       vault: result.vault
     });
   } catch (error) {
-    console.error('Withdraw event vault error:', error);
+    console.error('[eventController] withdrawVault error:', error);
     return res.status(500).json({ success: false, message: 'Error processing vault withdrawal' });
   }
 };
@@ -1716,7 +1756,7 @@ exports.exportPostEventReport = async (req, res) => {
       ];
 
       attendees.forEach((attendee, index) => {
-        const seatCount = getSeatCountFromBooking(attendee);
+        const seatCount = getBookingSeatCount(attendee);
         lines.push(
           `${index + 1}. ${attendee.full_name || attendee.username || 'User'} | ${attendee.email || 'N/A'} | ${attendee.ticket_type || 'Standard'} | seats: ${seatCount} | status: ${attendee.status}`
         );
@@ -1749,7 +1789,7 @@ exports.exportPostEventReport = async (req, res) => {
         attendee.username || '',
         attendee.email || '',
         attendee.ticket_type || 'Standard',
-        getSeatCountFromBooking(attendee),
+        getBookingSeatCount(attendee),
         attendee.attended ? 'Yes' : 'No',
         attendee.status || '',
         attendee.booking_date || attendee.created_at || ''
@@ -1761,7 +1801,7 @@ exports.exportPostEventReport = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="event-report-${eventId}.csv"`);
     res.send(csv);
   } catch (error) {
-    console.error('Export post-event report error:', error);
+    console.error('[eventController] exportPostEventReport error:', error);
     res.status(500).json({ success: false, message: 'Error exporting report' });
   }
 };
@@ -1784,7 +1824,7 @@ exports.getRevenueTrend = async (req, res) => {
     );
     res.json({ success: true, points: rows.map((r) => ({ day: r.day, revenue: Number(r.revenue || 0) })) });
   } catch (error) {
-    console.error('Revenue trend error:', error);
+    console.error('[eventController] getRevenueTrend error:', error);
     res.status(500).json({ success: false, message: 'Error loading revenue trend' });
   }
 };
@@ -1881,7 +1921,7 @@ exports.selectVenue = async (req, res) => {
 
     const diff = roundMoney(newVenueFee - oldVenueFee);
 
-    const { creditWallet, debitWallet, lockUserWallet } = require('../services/walletService');
+    
     
     const walletRow = await lockUserWallet(hostId, connection);
     if (!walletRow) {
@@ -1987,7 +2027,7 @@ exports.selectVenue = async (req, res) => {
       try { await connection.rollback(); } catch (_) {}
       connection.release();
     }
-    console.error('selectVenue error:', error);
+    console.error('[eventController] selectVenue error:', error);
     return res.status(500).json({ success: false, message: 'Error selecting new venue' });
   }
 };
@@ -2037,20 +2077,8 @@ exports.getVenueDetails = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Associated venue not found' });
     }
 
-    if (typeof venue.images === 'string') {
-      try {
-        venue.images = JSON.parse(venue.images);
-      } catch (_) {
-        venue.images = venue.images.split(',').map(img => img.trim()).filter(Boolean);
-      }
-    }
-    if (typeof venue.amenities === 'string') {
-      try {
-        venue.amenities = JSON.parse(venue.amenities);
-      } catch (_) {
-        venue.amenities = venue.amenities.split(',').map(am => am.trim()).filter(Boolean);
-      }
-    }
+    venue.images = parseVenueJsonField(venue.images);
+    venue.amenities = parseVenueJsonField(venue.amenities);
 
     const [bookedDatesRows] = await pool.execute(
       `SELECT event_date FROM venue_bookings
@@ -2122,14 +2150,14 @@ exports.getVenueDetails = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('getVenueDetails error:', error);
+    console.error('[eventController] getVenueDetails error:', error);
     return res.status(500).json({ success: false, message: 'Error fetching venue details' });
   }
 };
 
 exports.getPlatformFeeSettings = async (req, res) => {
   try {
-    const platformFeeService = require('../services/platformFeeService');
+    
     const settings = await platformFeeService.getPlatformFeeSettings();
     res.json({ success: true, settings });
   } catch (error) {

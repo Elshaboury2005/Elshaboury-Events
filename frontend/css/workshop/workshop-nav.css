@@ -1,0 +1,208 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workshop Portal Navigation Header & Notification Dropdown Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Nav Links Container */
+.ws-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 auto 0 24px;
+}
+
+.ws-nav-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: color 0.2s, background-color 0.2s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ws-nav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ws-nav-link.active {
+  color: #fff;
+  background: rgba(124, 58, 237, 0.15);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  font-weight: 600;
+}
+
+/* Unread Chat Dot */
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--danger);
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px var(--danger);
+}
+
+/* Bell & Dropdown Container */
+.ws-bell-container {
+  position: relative;
+  display: inline-block;
+}
+
+.ws-bell-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.ws-bell-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ws-bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 0 6px rgba(255, 93, 115, 0.6);
+  border: 1px solid #000;
+}
+
+.ws-bell-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  background: rgba(12, 28, 35, 0.95);
+  border: 1px solid var(--soft-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(20px);
+  animation: navFadeIn 0.2s ease;
+}
+
+@keyframes navFadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ws-bell-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.ws-bell-dropdown-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.ws-bell-action-btn {
+  background: none;
+  border: none;
+  color: #c4b5fd;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.ws-bell-action-btn:hover {
+  color: #fff;
+}
+
+.ws-bell-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.ws-bell-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.8rem;
+  color: var(--muted);
+  transition: background 0.2s;
+  cursor: pointer;
+  display: block;
+  text-decoration: none;
+}
+
+.ws-bell-item:last-child {
+  border-bottom: none;
+}
+
+.ws-bell-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.ws-bell-item.unread {
+  background: rgba(124, 58, 237, 0.08);
+  border-left: 3px solid #7c3aed;
+  color: var(--text);
+}
+
+.ws-bell-time {
+  display: block;
+  font-size: 0.7rem;
+  color: rgba(180, 201, 207, 0.6);
+  margin-top: 4px;
+}
+
+.ws-bell-item-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba(180, 201, 207, 0.5);
+}
+
+/* Mobile Responsiveness for Nav */
+@media (max-width: 900px) {
+  .ws-nav-links {
+    order: 3;
+    width: 100%;
+    margin: 12px 0 0 0;
+    justify-content: space-around;
+    border-top: 1px solid var(--panel-border);
+    padding-top: 12px;
+  }
+}
+@media (max-width: 640px) {
+  .ws-nav-links {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+  .ws-bell-dropdown {
+    right: -60px;
+    width: 290px;
+  }
+}

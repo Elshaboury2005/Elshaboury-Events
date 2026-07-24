@@ -176,7 +176,7 @@ async function fetchOrganizerStats(userId) {
       verified_organizer: parseInt(row.verified_organizer, 10) === 1 ? 1 : 0,
     };
   } catch (err) {
-    console.error('fetchOrganizerStats error:', err.message);
+    console.error('[notebookPredictionController] fetchOrganizerStats error:', err.message);
     return {};
   }
 }
@@ -309,7 +309,7 @@ exports.runPrediction = async (req, res) => {
     try {
       predictionResult = await callPythonPredict(features);
     } catch (predictErr) {
-      console.error('Predict service error:', predictErr.message);
+      console.error('[notebookPredictionController] Predict service error:', predictErr.message);
       return res.status(502).json({
         success: false,
         message: 'Prediction service is unavailable. Please ensure the Python service is running.',
@@ -331,7 +331,7 @@ exports.runPrediction = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('runPrediction error:', err);
+    console.error('[notebookPredictionController] runPrediction error:', err);
     res.status(500).json({ success: false, message: 'Internal server error during prediction' });
   }
 };
@@ -353,7 +353,7 @@ exports.getOrganizerStats = async (req, res) => {
     const stats = await fetchOrganizerStats(userId);
     res.json({ success: true, stats });
   } catch (err) {
-    console.error('getOrganizerStats error:', err);
+    console.error('[notebookPredictionController] getOrganizerStats error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch organizer stats' });
   }
 };
@@ -381,7 +381,7 @@ exports.saveMlFields = async (req, res) => {
     await Notebook.updateMlFields(id, userId, { category1: ml_fields });
     res.json({ success: true, message: 'Fields saved' });
   } catch (err) {
-    console.error('saveMlFields error:', err);
+    console.error('[notebookPredictionController] saveMlFields error:', err);
     res.status(500).json({ success: false, message: 'Failed to save fields' });
   }
 };

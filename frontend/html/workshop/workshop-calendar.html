@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Category Calendar | Workshop Portal</title>
+  <meta name="description" content="View and manage meeting schedules for your team category." />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/workshop/workshop.css" />
+  <link rel="stylesheet" href="../../css/workshop/workshop-calendar.css" />
+</head>
+<body>
+  <div class="ws-wrapper">
+    <!-- Shared Nav -->
+    <nav class="ws-nav" aria-label="Workshop navigation"></nav>
+
+    <!-- Header Actions -->
+    <div class="ws-header-actions">
+      <h2>Team Calendar &amp; Meetings</h2>
+      <button id="wsAddMeetingBtn" class="btn btn-violet" type="button">
+        ＋ Propose Meeting
+      </button>
+    </div>
+
+    <!-- Calendar Layout -->
+    <div class="calendar-layout">
+      <!-- Calendar Grid Side -->
+      <div class="ws-card calendar-card">
+        <div class="calendar-header">
+          <button id="prevMonthBtn" class="btn btn-sm" type="button">◀</button>
+          <h3 id="currentMonthYear">Month Year</h3>
+          <button id="nextMonthBtn" class="btn btn-sm" type="button">▶</button>
+        </div>
+
+        <div class="calendar-weekdays">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="calendar-days" id="calendarDaysGrid"></div>
+      </div>
+
+      <!-- Meetings List Side -->
+      <div class="ws-card meetings-card">
+        <div class="ws-card-header">
+          <div class="ws-card-icon orange">⏰</div>
+          <div>
+            <div class="ws-card-title" id="selectedDateTitle">Select a Day</div>
+            <div class="ws-card-subtitle">Meetings scheduled for this day</div>
+          </div>
+        </div>
+
+        <div class="meetings-list" id="meetingsListPane">
+          <div class="ws-bell-item-empty">Click on a day with a dot to view meetings.</div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /.ws-wrapper -->
+
+  <!-- Meeting Form Modal -->
+  <div class="ws-modal" id="meetingModal" style="display:none;">
+    <div class="ws-modal-content">
+      <div class="ws-modal-header">
+        <h3 id="meetingModalTitleText">Propose Meeting</h3>
+        <button class="ws-modal-close" id="closeMeetingModalBtn" type="button">&times;</button>
+      </div>
+      <form id="meetingForm" class="ws-modal-form">
+        <input type="hidden" id="meetingIdField" />
+
+        <div class="ws-input-group">
+          <label for="meetingTitle">Meeting Title *</label>
+          <input type="text" id="meetingTitle" class="ws-input" placeholder="e.g. Weekly Alignment Sync" required />
+        </div>
+
+        <div class="ws-input-group">
+          <label for="meetingDesc">Description</label>
+          <textarea id="meetingDesc" class="ws-input" rows="3" placeholder="Objective, agenda, etc."></textarea>
+        </div>
+
+        <div class="ws-input-group">
+          <label for="meetingDate">Date *</label>
+          <input type="date" id="meetingDate" class="ws-input" required />
+        </div>
+
+        <div class="ws-form-row">
+          <div class="ws-input-group">
+            <label for="meetingStartTime">Start Time *</label>
+            <input type="time" id="meetingStartTime" class="ws-input" required />
+          </div>
+
+          <div class="ws-input-group">
+            <label for="meetingEndTime">End Time</label>
+            <input type="time" id="meetingEndTime" class="ws-input" />
+          </div>
+        </div>
+
+        <div class="ws-input-group">
+          <label for="meetingLocation">Location / Link</label>
+          <input type="text" id="meetingLocation" class="ws-input" placeholder="e.g. Online (Google Meet) or Meeting Room A" />
+        </div>
+
+        <div class="ws-modal-footer">
+          <button type="button" class="btn btn-danger" id="deleteMeetingBtn" style="display:none; margin-right:auto;">
+            🗑️ Delete
+          </button>
+          <button type="button" class="btn" id="cancelMeetingModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-violet" id="saveMeetingBtn">Submit</button>
+        </div>
+      </form>
+      <div id="meetingModalMsg" class="ws-message"></div>
+    </div>
+  </div>
+
+  <script src="../../js/workshop/workshop-nav.js"></script>
+  <script src="../../js/workshop/workshop-calendar.js"></script>
+</body>
+</html>

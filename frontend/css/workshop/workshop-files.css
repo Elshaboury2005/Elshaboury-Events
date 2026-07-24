@@ -1,0 +1,139 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workshop Portal — File Upload & Library Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.upload-card {
+  padding: 24px;
+}
+
+/* Dropzone styling */
+.upload-dropzone {
+  border: 2px dashed var(--panel-border);
+  border-radius: 12px;
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.01);
+  transition: all 0.22s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-dropzone:hover {
+  border-color: rgba(20, 184, 166, 0.45);
+  background: rgba(20, 184, 166, 0.04);
+}
+
+.upload-dropzone.dragover {
+  border-color: #14b8a6;
+  background: rgba(20, 184, 166, 0.08);
+  transform: scale(1.01);
+}
+
+.dropzone-prompt span {
+  font-size: 2.2rem;
+  display: block;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));
+}
+
+.dropzone-prompt p {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.dropzone-prompt strong {
+  color: #14b8a6;
+}
+
+/* Progress bar container */
+.upload-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.progress-bar {
+  flex-grow: 1;
+  background: rgba(255, 255, 255, 0.07);
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: var(--teal-grad);
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  transition: width 0.15s ease-out;
+  box-shadow: 0 0 8px rgba(20, 184, 166, 0.4);
+}
+
+.progress-text {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #5eead4;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Table overrides and layouts */
+.files-list-card {
+  padding: 24px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.files-table td {
+  font-size: 0.86rem;
+}
+
+.file-name-cell {
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+/* Action button groupings */
+.files-actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-download {
+  background: rgba(20, 184, 166, 0.15);
+  border-color: rgba(20, 184, 166, 0.3);
+  color: #14b8a6;
+}
+
+.btn-download:hover {
+  background: rgba(20, 184, 166, 0.25);
+  color: #5eead4;
+}
+
+@media (max-width: 640px) {
+  .files-actions-cell {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}

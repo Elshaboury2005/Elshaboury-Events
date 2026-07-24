@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shared Documents | Workshop Portal</title>
+  <meta name="description" content="Access and upload category resources and documents." />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/workshop/workshop.css" />
+  <link rel="stylesheet" href="../../css/workshop/workshop-files.css" />
+</head>
+<body>
+  <div class="ws-wrapper">
+    <!-- Shared Nav -->
+    <nav class="ws-nav" aria-label="Workshop navigation"></nav>
+
+    <!-- Upload Zone Card -->
+    <div class="ws-card upload-card">
+      <div class="ws-card-header">
+        <div class="ws-card-icon teal">📤</div>
+        <div>
+          <div class="ws-card-title">Upload Category Resources</div>
+          <div class="ws-card-subtitle">Drop files here or click to browse. Max size: 20MB. Executables are blocked.</div>
+        </div>
+      </div>
+
+      <div class="upload-dropzone" id="uploadDropzone">
+        <div class="dropzone-prompt">
+          <span>📁</span>
+          <p>Drag &amp; drop file here or <strong>click to browse</strong></p>
+        </div>
+        <input type="file" id="fileBrowseInput" style="display:none;" />
+      </div>
+      <div id="uploadProgressContainer" class="upload-progress-container" style="display:none;">
+        <div class="progress-bar">
+          <div id="uploadProgressBar" class="progress-fill" style="width:0%;"></div>
+        </div>
+        <span id="uploadProgressText" class="progress-text">0%</span>
+      </div>
+      <div id="fileUploadMsg" class="ws-message"></div>
+    </div>
+
+    <!-- Files List Card -->
+    <div class="ws-card files-list-card">
+      <div class="ws-card-header">
+        <div class="ws-card-icon orange">📂</div>
+        <div>
+          <div class="ws-card-title">Shared File Library</div>
+          <div class="ws-card-subtitle">Document storage for your team</div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="ws-members-table files-table">
+          <thead>
+            <tr>
+              <th>File Name</th>
+              <th>Uploaded By</th>
+              <th>Size</th>
+              <th>Date</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="filesListBody">
+            <tr>
+              <td colspan="5" style="text-align:center;color:var(--muted);padding:40px 10px;">
+                <span class="ws-spinner"></span> Loading file library...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /.ws-wrapper -->
+
+  <script src="../../js/workshop/workshop-nav.js"></script>
+  <script src="../../js/workshop/workshop-files.js"></script>
+</body>
+</html>

@@ -68,11 +68,16 @@ function workshopLogout() {
 
 // ── Initialise nav ────────────────────────────────────────────────────────────
 function initNav() {
-  document.getElementById('wsNavEmail').textContent = workshopMember.email || '';
-  const roleMap = { head: '🔑 Head', vice_head: '🧩 Vice Head', member: '👤 Member' };
-  document.getElementById('wsNavRole').textContent =
-    `${roleMap[workshopMember.role] || workshopMember.role} · ${workshopMember.categoryName}`;
-  document.getElementById('wsLogoutBtn').addEventListener('click', workshopLogout);
+  const emailEl = document.getElementById('wsNavEmail');
+  const roleEl = document.getElementById('wsNavRole');
+  const logoutBtn = document.getElementById('wsLogoutBtn');
+
+  if (emailEl) emailEl.textContent = workshopMember.email || '';
+  if (roleEl) {
+    const roleMap = { head: '🔑 Head', vice_head: '🧩 Vice Head', member: '👤 Member' };
+    roleEl.textContent = `${roleMap[workshopMember.role] || workshopMember.role} · ${workshopMember.categoryName}`;
+  }
+  if (logoutBtn) logoutBtn.addEventListener('click', workshopLogout);
 }
 
 // ── Load dashboard data ───────────────────────────────────────────────────────
@@ -80,11 +85,23 @@ async function loadDashboard() {
   const container = document.getElementById('wsDashboardMain');
   container.innerHTML = `<div class="ws-loading"><span class="ws-spinner"></span>Loading workshop data…</div>`;
 
-  let data;
+  let data, progressData, checkinData, calendarData;
   try {
-    const res = await fetch(`${API}/dashboard`, { headers: apiHeaders() });
+    const headers = apiHeaders();
+    const [res, progRes, checkRes, calRes] = await Promise.all([
+      fetch(`${API}/dashboard`, { headers }),
+      fetch('/api/workshop/progress', { headers }),
+      fetch('/api/workshop/checkin/summary', { headers }),
+      fetch('/api/workshop/calendar', { headers })
+    ]);
+
     data = await res.json();
     if (!data.success) throw new Error(data.message || 'Failed to load dashboard');
+
+    try { progressData = await progRes.json(); } catch (_) { progressData = null; }
+    try { checkinData = await checkRes.json(); } catch (_) { checkinData = null; }
+    try { calendarData = await calRes.json(); } catch (_) { calendarData = null; }
+
   } catch (err) {
     container.innerHTML = `
       <div class="ws-card">
@@ -99,12 +116,24 @@ async function loadDashboard() {
   const { event, venue, member } = data;
   const isHead = member.role === 'head';
 
+  const stats = progressData && progressData.success ? progressData.stats : null;
+  const checkin = checkinData && checkinData.success ? checkinData : null;
+  const meetings = calendarData && calendarData.success ? calendarData.events : [];
+
   container.innerHTML = `
+    ${renderCountdownBanner(event)}
     ${renderRoleBanner(member)}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 24px; align-items: stretch;">
+      ${renderCategoryProgressCard(stats, checkin)}
+      ${renderNextMeetingCard(meetings)}
+    </div>
     ${renderEventCard(event)}
     ${venue ? renderVenueCard(venue) : renderNoVenue()}
     ${isHead ? renderManageCategoryPanel() : ''}
   `;
+
+  // Start countdown ticker after DOM is ready
+  startEventCountdown(event.event_date);
 
   if (isHead) {
     await loadCategoryMembers(container);
@@ -504,3 +533,265 @@ document.addEventListener('DOMContentLoaded', () => {
   initNav();
   loadDashboard();
 });
+
+// ── Widget Renderers ─────────────────────────────────────────────────────────
+function renderCategoryProgressCard(stats, checkin) {
+  const percentage = stats ? stats.completionPercentage : 0;
+  const todo = stats ? stats.todo : 0;
+  const inProgress = stats ? stats.in_progress : 0;
+  const done = stats ? stats.done : 0;
+  const overdue = stats ? stats.overdueTasks : 0;
+  const members = stats ? stats.memberCount : 0;
+
+  const checkedIn = checkin ? checkin.checkedInCount : 0;
+  const totalCheckin = checkin ? checkin.totalCount : 0;
+
+  return `
+    <div class="ws-card" id="wsProgressCard" style="flex: 1; display: flex; flex-direction: column;">
+      <div class="ws-card-header">
+        <div class="ws-card-icon success">📊</div>
+        <div>
+          <div class="ws-card-title">Category &amp; Event Progress</div>
+          <div class="ws-card-subtitle">Live health status of category tasks and event check-in</div>
+        </div>
+      </div>
+
+      <div class="ws-field-grid" style="margin-bottom: 20px;">
+        <div class="ws-field ws-full">
+          <span class="ws-field-label">Tasks Completion</span>
+          <div class="progress-bar" style="background: rgba(255,255,255,0.07); height: 12px; border-radius: 6px; overflow: hidden; margin: 6px 0; border: 1px solid var(--panel-border);">
+            <div class="progress-fill" style="background: var(--teal-grad); height: 100%; width: ${percentage}%; border-radius: 6px; transition: width 0.3s; box-shadow: 0 0 8px rgba(20, 184, 166, 0.3);"></div>
+          </div>
+          <span class="ws-field-value" style="font-weight: 700; font-size: 0.86rem; color: #5eead4;">${percentage}% Tasks Completed (${done} / ${stats ? stats.totalTasks : 0})</span>
+        </div>
+      </div>
+
+      <div class="ws-field-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-top: auto;">
+        <div class="ws-field" style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--panel-border); text-align: center;">
+          <span class="ws-field-label" style="font-size: 0.65rem;">To Do</span>
+          <span class="ws-field-value" style="font-size: 1.15rem; font-weight: 700; color: var(--muted);">${todo}</span>
+        </div>
+        <div class="ws-field" style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--panel-border); text-align: center;">
+          <span class="ws-field-label" style="font-size: 0.65rem;">In Progress</span>
+          <span class="ws-field-value" style="font-size: 1.15rem; font-weight: 700; color: var(--warning);">${inProgress}</span>
+        </div>
+        <div class="ws-field" style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--panel-border); text-align: center;">
+          <span class="ws-field-label" style="font-size: 0.65rem;">Done</span>
+          <span class="ws-field-value" style="font-size: 1.15rem; font-weight: 700; color: var(--success);">${done}</span>
+        </div>
+        <div class="ws-field" style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: ${overdue > 0 ? '1.5px solid var(--danger)' : '1px solid var(--panel-border)'}; text-align: center;">
+          <span class="ws-field-label" style="font-size: 0.65rem; ${overdue > 0 ? 'color: var(--danger); font-weight:700;' : ''}">Overdue</span>
+          <span class="ws-field-value" style="font-size: 1.15rem; font-weight: 700; color: ${overdue > 0 ? 'var(--danger)' : 'var(--muted)'};">${overdue}</span>
+        </div>
+        <div class="ws-field" style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--panel-border); text-align: center;">
+          <span class="ws-field-label" style="font-size: 0.65rem;">Team Members</span>
+          <span class="ws-field-value" style="font-size: 1.15rem; font-weight: 700; color: var(--info);">${members}</span>
+        </div>
+        <div class="ws-field" style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--panel-border); text-align: center;">
+          <span class="ws-field-label" style="font-size: 0.65rem;">Checked In</span>
+          <span class="ws-field-value" style="font-size: 1.15rem; font-weight: 700; color: #5eead4;">${checkedIn} / ${totalCheckin}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderNextMeetingCard(events) {
+  if (!events || events.length === 0) {
+    return `
+      <div class="ws-card" id="wsMeetingWidgetCard" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="ws-card-header">
+          <div class="ws-card-icon orange">⏰</div>
+          <div>
+            <div class="ws-card-title">Next Meeting</div>
+            <div class="ws-card-subtitle">Upcoming team sync schedules</div>
+          </div>
+        </div>
+        <div class="ws-notice" style="margin-top: auto; margin-bottom: auto;">
+          <span>⏰</span>
+          <span>No upcoming meetings scheduled.</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Find nearest upcoming meeting
+  const now = new Date();
+  const upcoming = events
+    .filter(e => new Date(e.event_date + 'T' + e.start_time) >= now)
+    .sort((a, b) => new Date(a.event_date + 'T' + a.start_time) - new Date(b.event_date + 'T' + b.start_time));
+
+  if (upcoming.length === 0) {
+    return `
+      <div class="ws-card" id="wsMeetingWidgetCard" style="flex: 1; display: flex; flex-direction: column;">
+        <div class="ws-card-header">
+          <div class="ws-card-icon orange">⏰</div>
+          <div>
+            <div class="ws-card-title">Next Meeting</div>
+            <div class="ws-card-subtitle">Upcoming team sync schedules</div>
+          </div>
+        </div>
+        <div class="ws-notice" style="margin-top: auto; margin-bottom: auto;">
+          <span>⏰</span>
+          <span>No upcoming meetings scheduled.</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const next = upcoming[0];
+  const dateObj = new Date(next.event_date + 'T' + next.start_time);
+
+  // Format nicely
+  const timeStr = dateObj.toLocaleTimeString('en-EG', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = dateObj.toLocaleDateString('en-EG', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+  let whenStr = `${dateStr} at ${timeStr}`;
+  const tomorrow = new Date();
+  tomorrow.setDate(now.getDate() + 1);
+  if (dateObj.toDateString() === now.toDateString()) {
+    whenStr = `Today at ${timeStr}`;
+  } else if (dateObj.toDateString() === tomorrow.toDateString()) {
+    whenStr = `Tomorrow at ${timeStr}`;
+  }
+
+  return `
+    <div class="ws-card" id="wsMeetingWidgetCard" style="flex: 1; display: flex; flex-direction: column;">
+      <div class="ws-card-header">
+        <div class="ws-card-icon orange">⏰</div>
+        <div>
+          <div class="ws-card-title">Next Meeting</div>
+          <div class="ws-card-subtitle">Upcoming team sync schedules</div>
+        </div>
+      </div>
+
+      <div class="ws-field-grid" style="margin-top: auto; margin-bottom: auto;">
+        <div class="ws-field ws-full">
+          <span class="ws-field-label" style="color: var(--warning); font-weight:700;">NEXT: ${escapeHtml(next.title)}</span>
+          <span class="ws-field-value" style="font-size:1.1rem;font-weight:700;margin-top:4px;">${whenStr}</span>
+        </div>
+        ${next.location ? `
+        <div class="ws-field ws-full" style="margin-top: 6px;">
+          <span class="ws-field-label">Location</span>
+          <span class="ws-field-value">📍 ${escapeHtml(next.location)}</span>
+        </div>` : ''}
+        ${next.description ? `
+        <div class="ws-field ws-full" style="margin-top: 6px;">
+          <span class="ws-field-label">Agenda / Description</span>
+          <span class="ws-field-value" style="font-size:0.82rem;color:var(--muted);">${escapeHtml(next.description)}</span>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ── Event Countdown Banner ─────────────────────────────────────────────────────
+function renderCountdownBanner(event) {
+  if (!event || !event.event_date) return '';
+
+  const eventDate = new Date(event.event_date);
+  const now = new Date();
+  const isPast = eventDate < now;
+
+  const titleLabel = isPast ? '🎉 Event Has Concluded' : '⏳ Event Countdown';
+
+  return `
+    <div class="ws-countdown-banner" id="wsCountdownBanner">
+      <div class="ws-countdown-header">
+        <span class="ws-countdown-title">${titleLabel}</span>
+        <span class="ws-countdown-event-name">${escapeHtml(event.title)}</span>
+        <span class="ws-countdown-date">${new Date(event.event_date).toLocaleString('en-EG', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        })}</span>
+      </div>
+      <div class="ws-countdown-segments" id="wsCountdownSegments">
+        <div class="ws-countdown-unit">
+          <span class="ws-countdown-num" id="cdDays">--</span>
+          <span class="ws-countdown-lbl">Days</span>
+        </div>
+        <div class="ws-countdown-sep">:</div>
+        <div class="ws-countdown-unit">
+          <span class="ws-countdown-num" id="cdHours">--</span>
+          <span class="ws-countdown-lbl">Hours</span>
+        </div>
+        <div class="ws-countdown-sep">:</div>
+        <div class="ws-countdown-unit">
+          <span class="ws-countdown-num" id="cdMinutes">--</span>
+          <span class="ws-countdown-lbl">Minutes</span>
+        </div>
+        <div class="ws-countdown-sep">:</div>
+        <div class="ws-countdown-unit">
+          <span class="ws-countdown-num" id="cdSeconds">--</span>
+          <span class="ws-countdown-lbl">Seconds</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+let _countdownInterval = null;
+
+function startEventCountdown(eventDateStr) {
+  if (!eventDateStr) return;
+
+  // Clear any previous ticker
+  if (_countdownInterval) clearInterval(_countdownInterval);
+
+  const target = new Date(eventDateStr).getTime();
+
+  const dEl = document.getElementById('cdDays');
+  const hEl = document.getElementById('cdHours');
+  const mEl = document.getElementById('cdMinutes');
+  const sEl = document.getElementById('cdSeconds');
+  const banner = document.getElementById('wsCountdownBanner');
+  const titleEl = banner ? banner.querySelector('.ws-countdown-title') : null;
+
+  function tick() {
+    const now = Date.now();
+    const diff = target - now;
+
+    if (diff <= 0) {
+      // Event in progress or concluded
+      if (dEl) dEl.textContent = '00';
+      if (hEl) hEl.textContent = '00';
+      if (mEl) mEl.textContent = '00';
+      if (sEl) sEl.textContent = '00';
+      if (titleEl) titleEl.textContent = '🎉 Event Has Concluded';
+      if (banner) banner.classList.add('concluded');
+      clearInterval(_countdownInterval);
+      return;
+    }
+
+    const days    = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    const pad = n => String(n).padStart(2, '0');
+    if (dEl) dEl.textContent = pad(days);
+    if (hEl) hEl.textContent = pad(hours);
+    if (mEl) mEl.textContent = pad(minutes);
+    if (sEl) sEl.textContent = pad(seconds);
+
+    // Urgency class
+    if (banner) {
+      banner.classList.toggle('urgent', diff < 24 * 60 * 60 * 1000); // < 1 day
+      banner.classList.toggle('very-urgent', diff < 60 * 60 * 1000); // < 1 hour
+    }
+  }
+
+  tick(); // Run immediately
+  _countdownInterval = setInterval(tick, 1000);
+}
+

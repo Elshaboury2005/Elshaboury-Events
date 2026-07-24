@@ -1,0 +1,107 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workshop Portal — Activity Timeline Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.activity-card {
+  padding: 28px;
+}
+
+/* Timeline vertical track */
+.timeline-container {
+  position: relative;
+  margin: 16px 0 20px 30px;
+  padding-left: 30px;
+  border-left: 2px dashed var(--panel-border);
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Day date headers */
+.timeline-day-header {
+  margin: 32px 0 16px -30px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #ff9a55;
+  letter-spacing: 0.08em;
+  background: rgba(255, 122, 24, 0.08);
+  border: 1px solid rgba(255, 122, 24, 0.15);
+  padding: 4px 12px;
+  border-radius: 6px;
+  width: fit-content;
+  display: block;
+}
+
+.timeline-day-header:first-child {
+  margin-top: 0;
+}
+
+/* Action Icons */
+.timeline-badge {
+  position: absolute;
+  left: -44px; /* Centered exactly on the dashed border line */
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #0f242c;
+  border: 1.5px solid var(--panel-border);
+  display: grid;
+  place-items: center;
+  font-size: 0.82rem;
+  z-index: 5;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.timeline-badge.task_created          { border-color: #67b3ff; }
+.timeline-badge.task_status_changed   { border-color: #32d583; }
+.timeline-badge.task_updated          { border-color: #f5b546; }
+.timeline-badge.task_deleted          { border-color: #ff5d73; }
+.timeline-badge.member_added          { border-color: #7c3aed; }
+.timeline-badge.file_uploaded         { border-color: #14b8a6; }
+.timeline-badge.file_deleted          { border-color: #ff5d73; }
+.timeline-badge.meeting_created       { border-color: #ff7a18; }
+.timeline-badge.meeting_updated       { border-color: #f5b546; }
+.timeline-badge.meeting_deleted       { border-color: #ff5d73; }
+.timeline-badge.checkin_scanned       { border-color: #32d583; }
+
+/* Timeline Content */
+.timeline-desc {
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.timeline-desc em {
+  font-style: normal;
+  color: #fff;
+  font-weight: 600;
+}
+
+.timeline-time {
+  font-size: 0.74rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Load more button alignment */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+  border-top: 1px solid var(--panel-border);
+  padding-top: 20px;
+}

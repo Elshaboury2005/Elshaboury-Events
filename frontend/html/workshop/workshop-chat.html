@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team Chat | Workshop Portal</title>
+  <meta name="description" content="Collaborate and discuss with your category team members in real-time." />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../../css/workshop/workshop.css" />
+  <link rel="stylesheet" href="../../css/workshop/workshop-chat.css" />
+</head>
+<body>
+  <div class="ws-wrapper">
+    <!-- Shared Nav -->
+    <nav class="ws-nav" aria-label="Workshop navigation"></nav>
+
+    <!-- Chat Card -->
+    <div class="ws-card chat-card-container">
+      <div class="ws-card-header">
+        <div class="ws-card-icon violet">💬</div>
+        <div>
+          <div class="ws-card-title">Team Chat Room</div>
+          <div class="ws-card-subtitle">Private channel for category: <strong id="chatCategoryName">Loading...</strong></div>
+        </div>
+      </div>
+
+      <!-- Messages Pane -->
+      <div class="chat-messages-pane" id="chatMessagesPane">
+        <div class="ws-loading">
+          <span class="ws-spinner"></span>
+          Loading chat history...
+        </div>
+      </div>
+
+      <!-- Input Pane -->
+      <form class="chat-input-pane" id="chatInputForm">
+        <input type="text" id="chatMessageInput" class="ws-input" placeholder="Type a message to your team..." autocomplete="off" required />
+        <button type="submit" class="btn btn-violet" id="chatSendBtn">
+          Send ➔
+        </button>
+      </form>
+    </div>
+  </div><!-- /.ws-wrapper -->
+
+  <script src="../../js/workshop/workshop-nav.js"></script>
+  <script src="../../js/workshop/workshop-chat.js"></script>
+</body>
+</html>

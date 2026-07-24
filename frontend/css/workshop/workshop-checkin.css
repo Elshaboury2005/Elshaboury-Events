@@ -1,0 +1,179 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workshop Portal — Check-In Gate Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.checkin-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.checkin-form-card {
+  padding: 24px;
+}
+
+.checkin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.checkin-form button {
+  padding: 12px 24px;
+  font-size: 0.95rem;
+}
+
+/* Outcome Panels */
+.outcome-container {
+  margin-top: 10px;
+}
+
+.outcome-panel {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 18px;
+  align-items: flex-start;
+  animation: checkinSlideIn 0.25s ease-out;
+}
+
+@keyframes checkinSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.outcome-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.outcome-details {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.outcome-details h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.outcome-msg {
+  font-size: 0.84rem;
+  margin: 0;
+}
+
+/* Panel Colors & Themes */
+.outcome-panel.success {
+  background: rgba(50, 213, 131, 0.07);
+  border: 1.5px solid rgba(50, 213, 131, 0.35);
+  color: #32d583;
+}
+.outcome-panel.success .outcome-icon {
+  background: rgba(50, 213, 131, 0.18);
+}
+
+.outcome-panel.warning {
+  background: rgba(245, 181, 70, 0.07);
+  border: 1.5px solid rgba(245, 181, 70, 0.35);
+  color: var(--warning);
+}
+.outcome-panel.warning .outcome-icon {
+  background: rgba(245, 181, 70, 0.18);
+}
+
+.outcome-panel.error {
+  background: rgba(255, 93, 115, 0.07);
+  border: 1.5px solid rgba(255, 93, 115, 0.35);
+  color: var(--danger);
+}
+.outcome-panel.error .outcome-icon {
+  background: rgba(255, 93, 115, 0.18);
+}
+
+/* Attendee Details inside Panels */
+.attendee-info {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.attendee-info p {
+  margin: 0;
+}
+
+.attendee-info p strong {
+  color: var(--text);
+}
+
+/* Stats Card Styling */
+.stats-card {
+  padding: 24px;
+}
+
+.stats-counter-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 10px;
+  border-radius: 12px;
+  background: rgba(5, 15, 19, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.stats-counter-value {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.stats-counter-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-top: 8px;
+}
+
+.progress-bar {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: var(--teal-grad);
+  height: 100%;
+  width: 0%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .checkin-grid {
+    grid-template-columns: 1fr;
+  }
+}
