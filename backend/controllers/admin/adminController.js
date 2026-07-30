@@ -415,12 +415,9 @@ exports.login = async (req, res) => {
 
     await logAdminAction(admin.id, 'ADMIN_LOGIN', 'admin', admin.id, { adminId: admin.admin_id }, getClientIp(req));
 
-    res.json({
-      success: true,
-      token,
+    res.json({ success: true, data: { token,
       admin: { id: admin.id, adminId: admin.admin_id, fullName: admin.full_name },
-      sessionTimeoutMinutes: parseInt(process.env.ADMIN_INACTIVITY_MINUTES || '15', 10)
-    });
+      sessionTimeoutMinutes: parseInt(process.env.ADMIN_INACTIVITY_MINUTES || '15', 10) } });
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).json({ success: false, message: 'Admin login failed' });
@@ -428,14 +425,14 @@ exports.login = async (req, res) => {
 };
 
 exports.verify = async (req, res) => {
-  res.json({ success: true, admin: req.admin });
+  res.json({ success: true, data: { admin: req.admin } });
 };
 
 exports.logout = async (req, res) => {
   try {
     await pool.execute('UPDATE admin_sessions SET is_revoked = TRUE WHERE id = ?', [req.admin.sessionId]);
     await logAdminAction(req.admin.id, 'ADMIN_LOGOUT', 'admin', req.admin.id, null, getClientIp(req));
-    res.json({ success: true, message: 'Logged out' });
+    res.json({ success: true, data: { message: 'Logged out' } });
   } catch (error) {
     console.error('Admin logout error:', error);
     res.status(500).json({ success: false, message: 'Logout failed' });
@@ -451,15 +448,12 @@ exports.getDashboardStats = async (req, res) => {
       'SELECT COALESCE(SUM(GREATEST(total_collected - total_refunded, 0)), 0) AS totalRevenue FROM event_vaults'
     );
 
-    res.json({
-      success: true,
-      stats: {
+    res.json({ success: true, data: { stats: {
         totalUsers: users.totalUsers,
         totalEvents: events.totalEvents,
         totalBookings: bookings.totalBookings,
         totalRevenue: Number(revenue.totalRevenue || 0)
-      }
-    });
+      } } });
   } catch (error) {
     console.error('Admin dashboard stats error:', error);
     res.status(500).json({ success: false, message: 'Failed to load dashboard stats' });
@@ -475,7 +469,7 @@ exports.getRecentActivity = async (req, res) => {
        ORDER BY l.created_at DESC
        LIMIT 30`
     );
-    res.json({ success: true, activities: rows });
+    res.json({ success: true, data: { activities: rows } });
   } catch (error) {
     console.error('Admin activity error:', error);
     res.status(500).json({ success: false, message: 'Failed to load recent activity' });
@@ -515,13 +509,10 @@ exports.getRevenueTrend = async (req, res) => {
        ORDER BY day ASC`
     );
 
-    res.json({
-      success: true,
-      trend: rows.map((row) => ({
+    res.json({ success: true, data: { trend: rows.map((row) => ({
         day: formatDateOnly(row.day),
         revenue: Number(row.revenue || 0)
-      }))
-    });
+      })) } });
   } catch (error) {
     console.error('Admin revenue trend error:', error);
     res.status(500).json({ success: false, message: 'Failed to load revenue trend' });
@@ -535,7 +526,7 @@ exports.getUsers = async (req, res) => {
        FROM users
        ORDER BY created_at DESC`
     );
-    res.json({ success: true, users: rows });
+    res.json({ success: true, data: { users: rows } });
   } catch (error) {
     console.error('Admin get users error:', error);
     res.status(500).json({ success: false, message: 'Failed to load users' });
@@ -608,7 +599,7 @@ exports.getUserDetails = async (req, res) => {
       passwordNote: 'Passwords are stored as secure hashes and cannot be viewed in plaintext.'
     };
 
-    res.json({ success: true, user, summary, security, bookings, createdEvents, payments, favorites });
+    res.json({ success: true, data: { user, summary, security, bookings, createdEvents, payments, favorites } });
   } catch (error) {
     console.error('Admin get user details error:', error);
     res.status(500).json({ success: false, message: 'Failed to load user details' });
@@ -621,7 +612,7 @@ exports.updateUserStatus = async (req, res) => {
     const { isActive } = req.body;
     await pool.execute('UPDATE users SET is_active = ? WHERE id = ?', [!!isActive, id]);
     await logAdminAction(req.admin.id, 'UPDATE_USER_STATUS', 'user', id, { isActive: !!isActive }, getClientIp(req));
-    res.json({ success: true, message: 'User status updated' });
+    res.json({ success: true, data: { message: 'User status updated' } });
   } catch (error) {
     console.error('Admin update user status error:', error);
     res.status(500).json({ success: false, message: 'Failed to update user status' });
@@ -633,7 +624,7 @@ exports.deleteUser = async (req, res) => {
     const { id } = req.params;
     await pool.execute('DELETE FROM users WHERE id = ?', [id]);
     await logAdminAction(req.admin.id, 'DELETE_USER', 'user', id, null, getClientIp(req));
-    res.json({ success: true, message: 'User deleted' });
+    res.json({ success: true, data: { message: 'User deleted' } });
   } catch (error) {
     console.error('Admin delete user error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete user' });
@@ -677,7 +668,7 @@ exports.getEvents = async (req, res) => {
       queryParams
     );
 
-    res.json({ success: true, events: rows });
+    res.json({ success: true, data: { events: rows } });
   } catch (error) {
     console.error('Admin get events error:', error);
     res.status(500).json({ success: false, message: 'Failed to load events' });
@@ -748,9 +739,7 @@ exports.getEventDetails = async (req, res) => {
       };
     }
 
-    res.json({
-      success: true,
-      event,
+    res.json({ success: true, data: { event,
       ended,
       stats: {
         totalBookings: Number(bookingStats?.total_bookings || 0),
@@ -758,8 +747,7 @@ exports.getEventDetails = async (req, res) => {
         totalRevenue: Number(revenueStats?.total_revenue || 0)
       },
       report,
-      venueBookingFees
-    });
+      venueBookingFees } });
   } catch (error) {
     console.error('Admin get event details error:', error);
     res.status(500).json({ success: false, message: 'Failed to load event details' });
@@ -781,7 +769,7 @@ exports.updateEvent = async (req, res) => {
 
     await pool.execute(`UPDATE events SET ${setClause} WHERE id = ?`, values);
     await logAdminAction(req.admin.id, 'UPDATE_EVENT', 'event', id, req.body, getClientIp(req));
-    res.json({ success: true, message: 'Event updated' });
+    res.json({ success: true, data: { message: 'Event updated' } });
   } catch (error) {
     console.error('Admin update event error:', error);
     res.status(500).json({ success: false, message: 'Failed to update event' });
@@ -987,16 +975,13 @@ exports.updateEventApproval = async (req, res) => {
       );
 
       await logAdminAction(req.admin.id, 'UPDATE_EVENT_APPROVAL', 'event', id, { status }, getClientIp(req));
-      return res.json({
-        success: true,
-        message: `Event ${status}`,
+      return res.json({ success: true, data: { message: `Event ${status}`,
         refunded: refundResult.refunded,
-        refundAmount: refundResult.totalRefund || 0
-      });
+        refundAmount: refundResult.totalRefund || 0 } });
     }
 
     await logAdminAction(req.admin.id, 'UPDATE_EVENT_APPROVAL', 'event', id, { status }, getClientIp(req));
-    res.json({ success: true, message: `Event ${status}` });
+    res.json({ success: true, data: { message: `Event ${status}` } });
   } catch (error) {
     console.error('Admin update event approval error:', error);
     res.status(500).json({ success: false, message: 'Failed to update event status' });
@@ -1008,7 +993,7 @@ exports.deleteEvent = async (req, res) => {
     const { id } = req.params;
     await pool.execute('DELETE FROM events WHERE id = ?', [id]);
     await logAdminAction(req.admin.id, 'DELETE_EVENT', 'event', id, null, getClientIp(req));
-    res.json({ success: true, message: 'Event deleted' });
+    res.json({ success: true, data: { message: 'Event deleted' } });
   } catch (error) {
     console.error('Admin delete event error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete event' });
@@ -1044,13 +1029,10 @@ exports.getEventAiReport = async (req, res) => {
       try { report = JSON.parse(report); } catch (_) { report = null; }
     }
 
-    return res.json({
-      success: true,
-      eventId: event.id,
+    return res.json({ success: true, data: { eventId: event.id,
       eventTitle: event.title,
       eventStatus: event.event_status,
-      report: report || null
-    });
+      report: report || null } });
   } catch (error) {
     console.error('Admin getEventAiReport error:', error);
     res.status(500).json({ success: false, message: 'Failed to load AI decision report' });
@@ -1065,10 +1047,7 @@ exports.getVenues = async (req, res) => {
     const filteredVenues = allowedStatuses.has(status)
       ? venues.filter((row) => String(row.status || 'approved').toLowerCase() === status)
       : venues;
-    res.json({
-      success: true,
-      venues: filteredVenues.map((row) => normalizeVenueResponse(row))
-    });
+    res.json({ success: true, data: { venues: filteredVenues.map((row) => normalizeVenueResponse(row)) } });
   } catch (error) {
     console.error('Admin get venues error:', error);
     res.status(500).json({ success: false, message: 'Failed to load venues' });
@@ -1099,7 +1078,7 @@ exports.updateVenueStatus = async (req, res) => {
     const updated = await Venue.update(id, updates);
 
     await logAdminAction(req.admin.id, 'UPDATE_VENUE_STATUS', 'venue', String(id), { name: venue.name, status }, getClientIp(req));
-    res.json({ success: true, venue: normalizeVenueResponse({ ...updated, upcoming_bookings: updated.upcoming_bookings || 0 }) });
+    res.json({ success: true, data: { venue: normalizeVenueResponse({ ...updated, upcoming_bookings: updated.upcoming_bookings || 0 }) } });
   } catch (error) {
     console.error('Admin update venue status error:', error);
     res.status(500).json({ success: false, message: 'Failed to update venue status' });
@@ -1119,7 +1098,7 @@ exports.createVenue = async (req, res) => {
       venueType: 'platform'
     });
     await logAdminAction(req.admin.id, 'CREATE_VENUE', 'venue', String(created.id), payload, getClientIp(req));
-    res.status(201).json({ success: true, venue: normalizeVenueResponse({ ...created, upcoming_bookings: 0 }) });
+    res.status(201).json({ success: true, data: { venue: normalizeVenueResponse({ ...created, upcoming_bookings: 0 }) } });
   } catch (error) {
     console.error('Admin create venue error:', error);
     res.status(500).json({ success: false, message: 'Failed to create venue' });
@@ -1136,7 +1115,7 @@ exports.updateVenue = async (req, res) => {
     const payload = normalizeVenuePayload(req.body);
     const updated = await Venue.update(id, payload);
     await logAdminAction(req.admin.id, 'UPDATE_VENUE', 'venue', String(id), payload, getClientIp(req));
-    res.json({ success: true, venue: normalizeVenueResponse({ ...updated, upcoming_bookings: updated.upcoming_bookings || 0 }) });
+    res.json({ success: true, data: { venue: normalizeVenueResponse({ ...updated, upcoming_bookings: updated.upcoming_bookings || 0 }) } });
   } catch (error) {
     console.error('Admin update venue error:', error);
     res.status(500).json({ success: false, message: 'Failed to update venue' });
@@ -1187,9 +1166,7 @@ exports.getVenueAnalytics = async (req, res) => {
     const topVenue = topVenueResult[0];
     const trendRows = trendResult[0];
 
-    res.json({
-      success: true,
-      stats: {
+    res.json({ success: true, data: { stats: {
         totalVenues: Number(totals[0]?.total_venues || 0),
         availableVenues: Number(totals[0]?.available_venues || 0),
         featuredVenues: Number(totals[0]?.featured_venues || 0),
@@ -1208,8 +1185,7 @@ exports.getVenueAnalytics = async (req, res) => {
       trend: trendRows.map((row) => ({
         day: formatDateOnly(row.day),
         revenue: Number(row.revenue || 0)
-      }))
-    });
+      })) } });
   } catch (error) {
     console.error('Admin venue analytics error:', error);
     res.status(500).json({ success: false, message: 'Failed to load venue analytics' });
@@ -1228,9 +1204,7 @@ exports.getVenueCalendar = async (req, res) => {
       Venue.getAvailabilityBlocks(id)
     ]);
 
-    res.json({
-      success: true,
-      bookings: bookings.map((row) => ({
+    res.json({ success: true, data: { bookings: bookings.map((row) => ({
         date: formatDateOnly(row.event_date),
         status: row.status
       })),
@@ -1240,8 +1214,7 @@ exports.getVenueCalendar = async (req, res) => {
         endDate: formatDateOnly(row.end_date),
         reason: row.reason || '',
         createdAt: row.created_at
-      }))
-    });
+      })) } });
   } catch (error) {
     console.error('Admin venue calendar error:', error);
     res.status(500).json({ success: false, message: 'Failed to load venue calendar' });
@@ -1287,15 +1260,12 @@ exports.createVenueAvailabilityBlock = async (req, res) => {
       getClientIp(req)
     );
 
-    res.status(201).json({
-      success: true,
-      block: {
+    res.status(201).json({ success: true, data: { block: {
         id: block.id,
         startDate: formatDateOnly(block.start_date),
         endDate: formatDateOnly(block.end_date),
         reason: block.reason || ''
-      }
-    });
+      } } });
   } catch (error) {
     console.error('Admin create venue block error:', error);
     res.status(500).json({ success: false, message: 'Failed to block venue availability' });
@@ -1323,7 +1293,7 @@ exports.deleteVenueAvailabilityBlock = async (req, res) => {
       getClientIp(req)
     );
 
-    res.json({ success: true, message: 'Availability block removed' });
+    res.json({ success: true, data: { message: 'Availability block removed' } });
   } catch (error) {
     console.error('Admin delete venue block error:', error);
     res.status(500).json({ success: false, message: 'Failed to remove availability block' });
@@ -1333,10 +1303,7 @@ exports.deleteVenueAvailabilityBlock = async (req, res) => {
 exports.getVenueBookings = async (req, res) => {
   try {
     const rows = await VenueBooking.findAll();
-    res.json({
-      success: true,
-      bookings: rows.map((row) => normalizeVenueBookingResponse(row))
-    });
+    res.json({ success: true, data: { bookings: rows.map((row) => normalizeVenueBookingResponse(row)) } });
   } catch (error) {
     console.error('Admin get venue bookings error:', error);
     res.status(500).json({ success: false, message: 'Failed to load venue bookings' });
@@ -1423,14 +1390,11 @@ exports.updateVenueBookingStatus = async (req, res) => {
       walletBalance
     }, getClientIp(req));
 
-    res.json({
-      success: true,
-      booking: normalizeVenueBookingResponse(updated),
+    res.json({ success: true, data: { booking: normalizeVenueBookingResponse(updated),
       refund: {
         amount: refundAmount,
         walletBalance
-      }
-    });
+      } } });
   } catch (error) {
     if (connection) {
       try { await connection.rollback(); } catch (_) {}
@@ -1453,7 +1417,7 @@ exports.getBookings = async (req, res) => {
        LEFT JOIN events e ON e.id = b.event_id
        ORDER BY COALESCE(b.booking_date, b.created_at) DESC`
     );
-    res.json({ success: true, bookings: rows });
+    res.json({ success: true, data: { bookings: rows } });
   } catch (error) {
     console.error('Admin get bookings error:', error);
     res.status(500).json({ success: false, message: 'Failed to load bookings' });
@@ -1482,20 +1446,17 @@ exports.updateBookingStatus = async (req, res) => {
         });
       }
 
-      return res.json({
-        success: true,
-        message: result.message,
+      return res.json({ success: true, data: { message: result.message,
         refund: {
           amount: Number(result.data?.refundAmount || 0),
           walletBalance: Number(result.data?.walletBalance || 0),
           vaultBalance: Number(result.data?.vaultBalance || 0)
-        }
-      });
+        } } });
     }
 
     await pool.execute('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
     await logAdminAction(req.admin.id, 'UPDATE_BOOKING_STATUS', 'booking', id, { status }, getClientIp(req));
-    res.json({ success: true, message: 'Booking status updated' });
+    res.json({ success: true, data: { message: 'Booking status updated' } });
   } catch (error) {
     console.error('Admin update booking status error:', error);
     res.status(500).json({ success: false, message: 'Failed to update booking status' });
@@ -1518,15 +1479,12 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    return res.json({
-      success: true,
-      message: result.message,
+    return res.json({ success: true, data: { message: result.message,
       refund: {
         amount: Number(result.data?.refundAmount || 0),
         walletBalance: Number(result.data?.walletBalance || 0),
         vaultBalance: Number(result.data?.vaultBalance || 0)
-      }
-    });
+      } } });
   } catch (error) {
     console.error('Admin cancel booking error:', error);
     res.status(500).json({ success: false, message: 'Failed to cancel booking' });
@@ -1558,9 +1516,7 @@ exports.getWalletWithdrawals = async (req, res) => {
       [String(req.query.status || '').trim().toLowerCase() === 'all' ? 'all' : statusFilter, statusFilter]
     );
 
-    res.json({
-      success: true,
-      withdrawals: rows.map((row) => ({
+    res.json({ success: true, data: { withdrawals: rows.map((row) => ({
         id: row.id,
         userId: row.user_id,
         userName: row.user_name,
@@ -1573,8 +1529,7 @@ exports.getWalletWithdrawals = async (req, res) => {
         requestedAt: row.requested_at,
         processedAt: row.processed_at,
         referenceId: row.reference_id
-      }))
-    });
+      })) } });
   } catch (error) {
     console.error('Admin get wallet withdrawals error:', error);
     res.status(500).json({ success: false, message: 'Failed to load wallet withdrawals' });
@@ -1618,9 +1573,7 @@ exports.updateWalletWithdrawalStatus = async (req, res) => {
     if (currentStatus === nextStatus) {
       await connection.commit();
       connection.release();
-      return res.json({
-        success: true,
-        message: `Withdrawal is already marked as ${nextStatus}`,
+      return res.json({ success: true, data: { message: `Withdrawal is already marked as ${nextStatus}`,
         withdrawal: {
           id: withdrawal.id,
           userId: withdrawal.user_id,
@@ -1628,8 +1581,7 @@ exports.updateWalletWithdrawalStatus = async (req, res) => {
           cardLastFour: withdrawal.card_last_four,
           status: currentStatus,
           referenceId: withdrawal.reference_id
-        }
-      });
+        } } });
     }
 
     const allowedTransitions = {
@@ -1725,9 +1677,7 @@ exports.updateWalletWithdrawalStatus = async (req, res) => {
     );
 
     const updated = updatedRows[0] || withdrawal;
-    res.json({
-      success: true,
-      message: `Withdrawal marked as ${nextStatus}`,
+    res.json({ success: true, data: { message: `Withdrawal marked as ${nextStatus}`,
       withdrawal: {
         id: updated.id,
         userId: updated.user_id,
@@ -1737,8 +1687,7 @@ exports.updateWalletWithdrawalStatus = async (req, res) => {
         requestedAt: updated.requested_at,
         processedAt: updated.processed_at,
         referenceId: updated.reference_id
-      }
-    });
+      } } });
   } catch (error) {
     if (connection) {
       try { await connection.rollback(); } catch (_) {}
@@ -1771,7 +1720,7 @@ exports.getRevenueReport = async (req, res) => {
       'SELECT COALESCE(SUM(GREATEST(total_collected - total_refunded, 0)), 0) AS overall_revenue FROM event_vaults'
     );
 
-    res.json({ success: true, overallRevenue: Number(overall.overall_revenue || 0), rows });
+    res.json({ success: true, data: { overallRevenue: Number(overall.overall_revenue || 0), rows } });
   } catch (error) {
     console.error('Admin revenue report error:', error);
     res.status(500).json({ success: false, message: 'Failed to build revenue report' });
@@ -1860,12 +1809,9 @@ exports.sendNotification = async (req, res) => {
       getClientIp(req)
     );
     const missingPart = missingEmails.length > 0 ? ` (${missingEmails.length} email(s) not found)` : '';
-    res.json({
-      success: true,
-      message: `Notification sent to ${targetUserIds.length} user(s)${missingPart}`,
+    res.json({ success: true, data: { message: `Notification sent to ${targetUserIds.length} user(s)${missingPart}`,
       sentCount: targetUserIds.length,
-      missingEmails
-    });
+      missingEmails } });
   } catch (error) {
     console.error('Admin send notification error:', error);
     res.status(500).json({ success: false, message: 'Failed to send notifications' });
@@ -1881,7 +1827,7 @@ exports.getSupportTickets = async (req, res) => {
        WHERE t.user_id IS NOT NULL
        ORDER BY t.is_read ASC, t.created_at DESC`
     );
-    res.json({ success: true, tickets: rows });
+    res.json({ success: true, data: { tickets: rows } });
   } catch (error) {
     console.error('Admin support list error:', error);
     res.status(500).json({ success: false, message: 'Failed to load support tickets' });
@@ -1928,7 +1874,7 @@ exports.replySupportTicket = async (req, res) => {
     }
 
     await logAdminAction(req.admin.id, 'REPLY_SUPPORT_TICKET', 'support_ticket', id, { status: normalizedStatus, userNotified: !!ticket.user_id }, getClientIp(req));
-    res.json({ success: true, message: 'Support ticket replied successfully' });
+    res.json({ success: true, data: { message: 'Support ticket replied successfully' } });
   } catch (error) {
     console.error('Admin support reply error:', error);
     res.status(500).json({ success: false, message: 'Failed to reply to support ticket' });
@@ -1946,7 +1892,7 @@ exports.markSupportTicketAsRead = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Support ticket not found' });
     }
     await logAdminAction(req.admin.id, 'MARK_SUPPORT_TICKET_READ', 'support_ticket', id, null, getClientIp(req));
-    res.json({ success: true, message: 'Support ticket marked as read' });
+    res.json({ success: true, data: { message: 'Support ticket marked as read' } });
   } catch (error) {
     console.error('Admin support mark read error:', error);
     res.status(500).json({ success: false, message: 'Failed to mark support ticket as read' });
@@ -1959,7 +1905,7 @@ exports.markAllSupportTicketsAsRead = async (req, res) => {
       'UPDATE support_tickets SET is_read = TRUE WHERE is_read = FALSE'
     );
     await logAdminAction(req.admin.id, 'MARK_ALL_SUPPORT_TICKETS_READ', 'support_ticket', null, null, getClientIp(req));
-    res.json({ success: true, message: 'All support tickets marked as read' });
+    res.json({ success: true, data: { message: 'All support tickets marked as read' } });
   } catch (error) {
     console.error('Admin support mark all read error:', error);
     res.status(500).json({ success: false, message: 'Failed to mark all support tickets as read' });
@@ -1977,7 +1923,7 @@ exports.deleteSupportTicket = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Support ticket not found' });
     }
     await logAdminAction(req.admin.id, 'DELETE_SUPPORT_TICKET', 'support_ticket', id, null, getClientIp(req));
-    res.json({ success: true, message: 'Support ticket deleted' });
+    res.json({ success: true, data: { message: 'Support ticket deleted' } });
   } catch (error) {
     console.error('Admin support delete error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete support ticket' });
@@ -1988,7 +1934,7 @@ exports.deleteAllSupportTickets = async (req, res) => {
   try {
     await pool.execute('DELETE FROM support_tickets');
     await logAdminAction(req.admin.id, 'DELETE_ALL_SUPPORT_TICKETS', 'support_ticket', null, null, getClientIp(req));
-    res.json({ success: true, message: 'All support tickets deleted' });
+    res.json({ success: true, data: { message: 'All support tickets deleted' } });
   } catch (error) {
     console.error('Admin support delete all error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete all support tickets' });
@@ -1998,7 +1944,7 @@ exports.deleteAllSupportTickets = async (req, res) => {
 exports.getSettings = async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT setting_key, setting_value, updated_at FROM site_settings ORDER BY setting_key ASC');
-    res.json({ success: true, settings: rows });
+    res.json({ success: true, data: { settings: rows } });
   } catch (error) {
     console.error('Admin settings get error:', error);
     res.status(500).json({ success: false, message: 'Failed to load settings' });
@@ -2085,12 +2031,9 @@ exports.updateSettings = async (req, res) => {
       },
       getClientIp(req)
     );
-    res.json({
-      success: true,
-      message: maintenanceNotificationCount > 0
+    res.json({ success: true, data: { message: maintenanceNotificationCount > 0
         ? `Settings updated and maintenance ${maintenanceNotificationAction} notification sent to ${maintenanceNotificationCount} user(s)`
-        : 'Settings updated'
-    });
+        : 'Settings updated' } });
   } catch (error) {
     console.error('Admin settings update error:', error);
     res.status(500).json({ success: false, message: 'Failed to update settings' });
@@ -2107,7 +2050,7 @@ exports.getAuditLogs = async (req, res) => {
        ORDER BY l.created_at DESC
        LIMIT 200`
     );
-    res.json({ success: true, logs: rows });
+    res.json({ success: true, data: { logs: rows } });
   } catch (error) {
     console.error('Admin audit log error:', error);
     res.status(500).json({ success: false, message: 'Failed to load audit logs' });
@@ -2123,9 +2066,7 @@ exports.getPendingVenueSubmissions = async (req, res) => {
        WHERE v.status = 'pending_review'
        ORDER BY v.created_at DESC`
     );
-    res.json({
-      success: true,
-      venues: rows.map((row) => ({
+    res.json({ success: true, data: { venues: rows.map((row) => ({
         ...normalizeVenueResponse(row),
         ownerName: row.owner_name,
         ownerEmail: row.owner_email,
@@ -2135,8 +2076,7 @@ exports.getPendingVenueSubmissions = async (req, res) => {
         contactEmail: row.contact_email,
         cancellationPolicy: row.cancellation_policy,
         adminNotes: row.admin_notes
-      }))
-    });
+      })) } });
   } catch (error) {
     console.error('Admin getPendingVenueSubmissions error:', error);
     res.status(500).json({ success: false, message: 'Failed to load pending venue submissions' });
@@ -2172,7 +2112,7 @@ exports.approveVenueSubmission = async (req, res) => {
 
     await logAdminAction(req.admin.id, 'APPROVE_VENUE_SUBMISSION', 'venue', String(id), { name: venue.name }, getClientIp(req));
 
-    res.json({ success: true, message: 'Venue submission approved successfully' });
+    res.json({ success: true, data: { message: 'Venue submission approved successfully' } });
   } catch (error) {
     console.error('Admin approveVenueSubmission error:', error);
     res.status(500).json({ success: false, message: 'Failed to approve venue submission' });
@@ -2212,7 +2152,7 @@ exports.rejectVenueSubmission = async (req, res) => {
 
     await logAdminAction(req.admin.id, 'REJECT_VENUE_SUBMISSION', 'venue', String(id), { name: venue.name, reason }, getClientIp(req));
 
-    res.json({ success: true, message: 'Venue submission rejected successfully' });
+    res.json({ success: true, data: { message: 'Venue submission rejected successfully' } });
   } catch (error) {
     console.error('Admin rejectVenueSubmission error:', error);
     res.status(500).json({ success: false, message: 'Failed to reject venue submission' });
@@ -2252,7 +2192,7 @@ exports.requestVenueChanges = async (req, res) => {
 
     await logAdminAction(req.admin.id, 'REQUEST_VENUE_CHANGES', 'venue', String(id), { name: venue.name, comments }, getClientIp(req));
 
-    res.json({ success: true, message: 'Changes requested successfully' });
+    res.json({ success: true, data: { message: 'Changes requested successfully' } });
   } catch (error) {
     console.error('Admin requestVenueChanges error:', error);
     res.status(500).json({ success: false, message: 'Failed to request venue changes' });
@@ -2269,7 +2209,7 @@ exports.getPlatformWallet = async (req, res) => {
   try {
     const { getPlatformWalletOverview } = require('../../services/platformWalletService');
     const overview = await getPlatformWalletOverview();
-    res.json({ success: true, ...overview });
+    res.json({ success: true, data: { ...overview } });
   } catch (error) {
     console.error('Admin getPlatformWallet error:', error);
     res.status(500).json({ success: false, message: 'Failed to load platform wallet' });
@@ -2288,7 +2228,7 @@ exports.getPlatformWalletTransactions = async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const type = ['credit', 'debit'].includes(req.query.type) ? req.query.type : 'all';
     const result = await getPlatformWalletTransactions({ page, limit, type });
-    res.json({ success: true, ...result });
+    res.json({ success: true, data: { ...result } });
   } catch (error) {
     console.error('Admin getPlatformWalletTransactions error:', error);
     res.status(500).json({ success: false, message: 'Failed to load platform wallet transactions' });
@@ -2325,12 +2265,9 @@ exports.withdrawPlatformWallet = async (req, res) => {
       getClientIp(req)
     );
 
-    res.json({
-      success: true,
-      message: `Successfully withdrew ${amount.toFixed(2)} EGP from the platform wallet`,
+    res.json({ success: true, data: { message: `Successfully withdrew ${amount.toFixed(2)} EGP from the platform wallet`,
       newBalance: result.newBalance,
-      transactionId: result.transactionId
-    });
+      transactionId: result.transactionId } });
   } catch (error) {
     console.error('Admin withdrawPlatformWallet error:', error);
     // Surface balance-check messages directly to the client
@@ -2345,7 +2282,7 @@ exports.withdrawPlatformWallet = async (req, res) => {
 exports.getFaqs = async (req, res) => {
   try {
     const faqs = await FAQ.findAll();
-    res.json({ success: true, faqs });
+    res.json({ success: true, data: { faqs } });
   } catch (error) {
     console.error('Admin getFaqs error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch FAQs' });
@@ -2359,7 +2296,7 @@ exports.createFaq = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Category, question, and answer are required' });
     }
     const newFaq = await FAQ.create({ category, question, answer, sort_order: parseInt(sort_order, 10) || 0 });
-    res.json({ success: true, faq: newFaq, message: 'FAQ created successfully' });
+    res.json({ success: true, data: { faq: newFaq, message: 'FAQ created successfully' } });
   } catch (error) {
     console.error('Admin createFaq error:', error);
     res.status(500).json({ success: false, message: 'Failed to create FAQ' });
@@ -2374,7 +2311,7 @@ exports.updateFaq = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Category, question, and answer are required' });
     }
     const updated = await FAQ.update(id, { category, question, answer, sort_order: parseInt(sort_order, 10) || 0 });
-    res.json({ success: true, faq: updated, message: 'FAQ updated successfully' });
+    res.json({ success: true, data: { faq: updated, message: 'FAQ updated successfully' } });
   } catch (error) {
     console.error('Admin updateFaq error:', error);
     res.status(500).json({ success: false, message: 'Failed to update FAQ' });
@@ -2385,7 +2322,7 @@ exports.deleteFaq = async (req, res) => {
   try {
     const { id } = req.params;
     await FAQ.delete(id);
-    res.json({ success: true, message: 'FAQ deleted successfully' });
+    res.json({ success: true, data: { message: 'FAQ deleted successfully' } });
   } catch (error) {
     console.error('Admin deleteFaq error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete FAQ' });
@@ -2397,7 +2334,7 @@ exports.deleteFaq = async (req, res) => {
 exports.getSubscriptionPlans = async (req, res) => {
   try {
     const plans = await SubscriptionPlan.findAll();
-    res.json({ success: true, plans });
+    res.json({ success: true, data: { plans } });
   } catch (error) {
     console.error('Admin getSubscriptionPlans error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch subscription plans' });
@@ -2414,7 +2351,7 @@ exports.updateSubscriptionPlan = async (req, res) => {
     const updated = await SubscriptionPlan.update(planKey, {
       label, price, price_label, features, is_enabled, badge, sort_order
     });
-    res.json({ success: true, plan: updated, message: 'Subscription plan updated successfully' });
+    res.json({ success: true, data: { plan: updated, message: 'Subscription plan updated successfully' } });
   } catch (error) {
     console.error('Admin updateSubscriptionPlan error:', error);
     res.status(500).json({ success: false, message: 'Failed to update subscription plan' });

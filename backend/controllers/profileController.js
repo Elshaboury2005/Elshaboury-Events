@@ -235,7 +235,7 @@ exports.getProfile = async (req, res) => {
     const userId = req.user.userId;
     const user = await getUserRowWithPassword(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const [activitySummary, quickStats, notificationPreferences] = await Promise.all([
@@ -246,18 +246,20 @@ exports.getProfile = async (req, res) => {
 
     res.json({
       success: true,
-      profile: formatUserPayload(user),
-      activitySummary,
-      quickStats,
-      notificationPreferences,
-      metadata: {
-        governorates: EGYPT_GOVERNORATES,
-        genders: GENDER_VALUES
+      data: {
+        profile: formatUserPayload(user),
+        activitySummary,
+        quickStats,
+        notificationPreferences,
+        metadata: {
+          governorates: EGYPT_GOVERNORATES,
+          genders: GENDER_VALUES
+        }
       }
     });
   } catch (error) {
     console.error('Get profile error:', error);
-    res.status(500).json({ success: false, message: 'Error loading profile' });
+    res.status(500).json({ success: false, error: 'Error loading profile' });
   }
 };
 
@@ -266,7 +268,7 @@ exports.updatePersonalInfo = async (req, res) => {
     const userId = req.user.userId;
     const currentUser = await getUserRowWithPassword(userId);
     if (!currentUser) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const fullName = String(req.body.fullName || '').trim();
@@ -279,35 +281,35 @@ exports.updatePersonalInfo = async (req, res) => {
     const currentPassword = String(req.body.currentPassword || '');
 
     if (!fullName || fullName.length < 2 || fullName.length > 100) {
-      return res.status(400).json({ success: false, message: 'Full name must be between 2 and 100 characters' });
+      return res.status(400).json({ success: false, error: 'Full name must be between 2 and 100 characters' });
     }
 
     if (!/^[a-zA-Z0-9._]{3,30}$/.test(username)) {
-      return res.status(400).json({ success: false, message: 'Username must be 3-30 chars using letters, numbers, dot, underscore' });
+      return res.status(400).json({ success: false, error: 'Username must be 3-30 chars using letters, numbers, dot, underscore' });
     }
 
     if (!validator.isEmail(email)) {
-      return res.status(400).json({ success: false, message: 'Invalid email format' });
+      return res.status(400).json({ success: false, error: 'Invalid email format' });
     }
 
     if (!validatePhone(phoneNumber)) {
-      return res.status(400).json({ success: false, message: 'Invalid phone number format' });
+      return res.status(400).json({ success: false, error: 'Invalid phone number format' });
     }
 
     if (req.body.dateOfBirth && !dateOfBirth) {
-      return res.status(400).json({ success: false, message: 'Invalid date of birth' });
+      return res.status(400).json({ success: false, error: 'Invalid date of birth' });
     }
 
     if (isFutureDate(dateOfBirth)) {
-      return res.status(400).json({ success: false, message: 'Date of birth cannot be in the future' });
+      return res.status(400).json({ success: false, error: 'Date of birth cannot be in the future' });
     }
 
     if (gender && !GENDER_VALUES.includes(gender)) {
-      return res.status(400).json({ success: false, message: 'Invalid gender selection' });
+      return res.status(400).json({ success: false, error: 'Invalid gender selection' });
     }
 
     if (governorate && !EGYPT_GOVERNORATES.includes(governorate)) {
-      return res.status(400).json({ success: false, message: 'Invalid governorate selection' });
+      return res.status(400).json({ success: false, error: 'Invalid governorate selection' });
     }
 
     if (username !== currentUser.username) {
@@ -316,7 +318,7 @@ exports.updatePersonalInfo = async (req, res) => {
         [username, userId]
       );
       if (usernameRows.length > 0) {
-        return res.status(400).json({ success: false, message: 'Username is already taken' });
+        return res.status(400).json({ success: false, error: 'Username is already taken' });
       }
     }
 
@@ -326,16 +328,16 @@ exports.updatePersonalInfo = async (req, res) => {
         [email, userId]
       );
       if (emailRows.length > 0) {
-        return res.status(400).json({ success: false, message: 'Email is already in use' });
+        return res.status(400).json({ success: false, error: 'Email is already in use' });
       }
 
       if (!currentPassword) {
-        return res.status(400).json({ success: false, message: 'Current password is required to change email' });
+        return res.status(400).json({ success: false, error: 'Current password is required to change email' });
       }
 
       const passwordValid = await bcrypt.compare(currentPassword, currentUser.password);
       if (!passwordValid) {
-        return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+        return res.status(400).json({ success: false, error: 'Current password is incorrect' });
       }
     }
 
@@ -349,12 +351,14 @@ exports.updatePersonalInfo = async (req, res) => {
     const updatedUser = await getUserRowWithPassword(userId);
     res.json({
       success: true,
-      message: 'Profile updated successfully',
-      profile: formatUserPayload(updatedUser)
+      data: {
+        message: 'Profile updated successfully',
+        profile: formatUserPayload(updatedUser)
+      }
     });
   } catch (error) {
     console.error('Update personal info error:', error);
-    res.status(500).json({ success: false, message: 'Error updating profile' });
+    res.status(500).json({ success: false, error: 'Error updating profile' });
   }
 };
 
@@ -362,7 +366,7 @@ exports.uploadPhoto = async (req, res) => {
   try {
     const userId = req.user.userId;
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Profile image file is required' });
+      return res.status(400).json({ success: false, error: 'Profile image file is required' });
     }
 
     const imageUrl = `${PROFILE_UPLOAD_PREFIX}${req.file.filename}`;
@@ -371,7 +375,7 @@ exports.uploadPhoto = async (req, res) => {
       [userId]
     );
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const oldImageUrl = rows[0].profile_image_url;
@@ -386,12 +390,14 @@ exports.uploadPhoto = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Profile image updated successfully',
-      profileImageUrl: imageUrl
+      data: {
+        message: 'Profile image updated successfully',
+        profileImageUrl: imageUrl
+      }
     });
   } catch (error) {
     console.error('Upload profile photo error:', error);
-    res.status(500).json({ success: false, message: 'Error uploading profile image' });
+    res.status(500).json({ success: false, error: 'Error uploading profile image' });
   }
 };
 
@@ -404,7 +410,7 @@ exports.removePhoto = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const oldImageUrl = rows[0].profile_image_url;
@@ -417,10 +423,10 @@ exports.removePhoto = async (req, res) => {
       removeLocalProfileImage(oldImageUrl);
     }
 
-    res.json({ success: true, message: 'Profile image removed successfully' });
+    res.json({ success: true, data: { message: 'Profile image removed successfully' } });
   } catch (error) {
     console.error('Remove profile photo error:', error);
-    res.status(500).json({ success: false, message: 'Error removing profile image' });
+    res.status(500).json({ success: false, error: 'Error removing profile image' });
   }
 };
 
@@ -432,15 +438,15 @@ exports.changePassword = async (req, res) => {
     const confirmNewPassword = String(req.body.confirmNewPassword || '');
 
     if (!currentPassword || !newPassword || !confirmNewPassword) {
-      return res.status(400).json({ success: false, message: 'All password fields are required' });
+      return res.status(400).json({ success: false, error: 'All password fields are required' });
     }
 
     if (newPassword !== confirmNewPassword) {
-      return res.status(400).json({ success: false, message: 'New passwords do not match' });
+      return res.status(400).json({ success: false, error: 'New passwords do not match' });
     }
 
     if (newPassword.length < 8) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long' });
+      return res.status(400).json({ success: false, error: 'New password must be at least 8 characters long' });
     }
 
     const checks = [
@@ -451,31 +457,31 @@ exports.changePassword = async (req, res) => {
     ].filter(Boolean).length;
 
     if (checks < 3) {
-      return res.status(400).json({ success: false, message: 'Use a stronger password with mixed character types' });
+      return res.status(400).json({ success: false, error: 'Use a stronger password with mixed character types' });
     }
 
     const user = await getUserRowWithPassword(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const currentValid = await bcrypt.compare(currentPassword, user.password);
     if (!currentValid) {
-      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+      return res.status(400).json({ success: false, error: 'Current password is incorrect' });
     }
 
     const sameAsCurrent = await bcrypt.compare(newPassword, user.password);
     if (sameAsCurrent) {
-      return res.status(400).json({ success: false, message: 'New password must be different from current password' });
+      return res.status(400).json({ success: false, error: 'New password must be different from current password' });
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
     await pool.execute('UPDATE users SET password = ? WHERE id = ?', [hashed, userId]);
 
-    res.json({ success: true, message: 'Password changed successfully' });
+    res.json({ success: true, data: { message: 'Password changed successfully' } });
   } catch (error) {
     console.error('Change password error:', error);
-    res.status(500).json({ success: false, message: 'Error changing password' });
+    res.status(500).json({ success: false, error: 'Error changing password' });
   }
 };
 
@@ -493,13 +499,13 @@ exports.getMyReviews = async (req, res) => {
       [userId]
     );
 
-    res.json({ success: true, reviews: rows });
+    res.json({ success: true, data: { reviews: rows } });
   } catch (error) {
     if (error.code === 'ER_NO_SUCH_TABLE') {
-      return res.json({ success: true, reviews: [] });
+      return res.json({ success: true, data: { reviews: [] } });
     }
     console.error('Get my reviews error:', error);
-    res.status(500).json({ success: false, message: 'Error loading reviews' });
+    res.status(500).json({ success: false, error: 'Error loading reviews' });
   }
 };
 
@@ -511,11 +517,11 @@ exports.updateReview = async (req, res) => {
     const reviewText = String(req.body.review || '').trim();
 
     if (Number.isNaN(rating) || rating < 1 || rating > 5) {
-      return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
+      return res.status(400).json({ success: false, error: 'Rating must be between 1 and 5' });
     }
 
     if (reviewText.length > 2000) {
-      return res.status(400).json({ success: false, message: 'Review text is too long' });
+      return res.status(400).json({ success: false, error: 'Review text is too long' });
     }
 
     const [existingRows] = await pool.execute(
@@ -528,7 +534,7 @@ exports.updateReview = async (req, res) => {
     );
 
     if (existingRows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Review not found' });
+      return res.status(404).json({ success: false, error: 'Review not found' });
     }
 
     await pool.execute(
@@ -536,10 +542,10 @@ exports.updateReview = async (req, res) => {
       [rating, reviewText, reviewId, userId]
     );
 
-    res.json({ success: true, message: 'Review updated successfully' });
+    res.json({ success: true, data: { message: 'Review updated successfully' } });
   } catch (error) {
     console.error('Update review error:', error);
-    res.status(500).json({ success: false, message: 'Error updating review' });
+    res.status(500).json({ success: false, error: 'Error updating review' });
   }
 };
 
@@ -553,13 +559,13 @@ exports.deleteReview = async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'Review not found' });
+      return res.status(404).json({ success: false, error: 'Review not found' });
     }
 
-    res.json({ success: true, message: 'Review deleted successfully' });
+    res.json({ success: true, data: { message: 'Review deleted successfully' } });
   } catch (error) {
     console.error('Delete review error:', error);
-    res.status(500).json({ success: false, message: 'Error deleting review' });
+    res.status(500).json({ success: false, error: 'Error deleting review' });
   }
 };
 
@@ -567,10 +573,10 @@ exports.getNotificationPreferences = async (req, res) => {
   try {
     const userId = req.user.userId;
     const preferences = await Notification.getPreferences(userId);
-    res.json({ success: true, preferences });
+    res.json({ success: true, data: { preferences } });
   } catch (error) {
     console.error('Get notification preferences error:', error);
-    res.status(500).json({ success: false, message: 'Error loading notification preferences' });
+    res.status(500).json({ success: false, error: 'Error loading notification preferences' });
   }
 };
 
@@ -599,13 +605,13 @@ exports.updateNotificationPreferences = async (req, res) => {
     });
 
     const preferences = await Notification.updatePreferences(userId, updates);
-    res.json({ success: true, message: 'Preferences saved', preferences });
+    res.json({ success: true, data: { message: 'Preferences saved', preferences } });
   } catch (error) {
     if (error.message && error.message.startsWith('Invalid boolean value')) {
-      return res.status(400).json({ success: false, message: error.message });
+      return res.status(400).json({ success: false, error: error.message });
     }
     console.error('Update notification preferences error:', error);
-    res.status(500).json({ success: false, message: 'Error saving notification preferences' });
+    res.status(500).json({ success: false, error: 'Error saving notification preferences' });
   }
 };
 
@@ -615,17 +621,17 @@ exports.deleteAccount = async (req, res) => {
     const confirmText = String(req.body.confirmText || '').trim();
 
     if (confirmText !== 'DELETE') {
-      return res.status(400).json({ success: false, message: "Type 'DELETE' to confirm account deletion" });
+      return res.status(400).json({ success: false, error: "Type 'DELETE' to confirm account deletion" });
     }
 
     const [result] = await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
     if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    res.json({ success: true, message: 'Account deleted successfully' });
+    res.json({ success: true, data: { message: 'Account deleted successfully' } });
   } catch (error) {
     console.error('Delete account error:', error);
-    res.status(500).json({ success: false, message: 'Error deleting account' });
+    res.status(500).json({ success: false, error: 'Error deleting account' });
   }
 };

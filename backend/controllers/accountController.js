@@ -23,22 +23,22 @@ exports.register = async (req, res) => {
     const safeRole = (role === 'venue_owner') ? 'venue_owner' : 'user';
 
     if (!fullName || !email || !username || !password || !confirmPassword) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
+      return res.status(400).json({ success: false, error: 'All fields are required' });
     }
     if (password !== confirmPassword) {
-      return res.status(400).json({ success: false, message: 'Passwords do not match' });
+      return res.status(400).json({ success: false, error: 'Passwords do not match' });
     }
     if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long' });
     }
     if (!validator.isEmail(email)) {
-      return res.status(400).json({ success: false, message: 'Invalid email format' });
+      return res.status(400).json({ success: false, error: 'Invalid email format' });
     }
 
     const existsByUsername = await User.existsByUsername(username);
     const existsByEmail = await User.existsByEmail(email);
     if (existsByUsername || existsByEmail) {
-      return res.status(400).json({ success: false, message: 'Username or email already exists' });
+      return res.status(400).json({ success: false, error: 'Username or email already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -47,12 +47,14 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Registration successful! Please login.',
-      user: { id: userId, username, email, fullName, role: safeRole }
+      data: {
+        message: 'Registration successful! Please login.',
+        user: { id: userId, username, email, fullName, role: safeRole }
+      }
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ success: false, message: 'Server error during registration' });
+    res.status(500).json({ success: false, error: 'Server error during registration' });
   }
 };
 
@@ -61,20 +63,20 @@ exports.login = async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ success: false, message: 'Username and password are required' });
+      return res.status(400).json({ success: false, error: 'Username and password are required' });
     }
 
     const user = await User.findByUsernameOrEmail(username);
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid username or password' });
+      return res.status(401).json({ success: false, error: 'Invalid username or password' });
     }
     if (user.is_active === 0 || user.is_active === false) {
-      return res.status(403).json({ success: false, message: 'Your account is deactivated. Contact support.' });
+      return res.status(403).json({ success: false, error: 'Your account is deactivated. Contact support.' });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ success: false, message: 'Invalid username or password' });
+      return res.status(401).json({ success: false, error: 'Invalid username or password' });
     }
 
     await pool.execute('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
@@ -83,7 +85,7 @@ exports.login = async (req, res) => {
     try {
       secret = getJwtSecret();
     } catch (err) {
-      return res.status(500).json({ success: false, message: 'Server misconfiguration: JWT_SECRET required' });
+      return res.status(500).json({ success: false, error: 'Server misconfiguration: JWT_SECRET required' });
     }
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role || 'user' },
@@ -118,19 +120,21 @@ exports.login = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.full_name,
-        role: user.role || 'user'
+      data: {
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          fullName: user.full_name,
+          role: user.role || 'user'
+        }
       }
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ success: false, message: 'Server error during login' });
+    res.status(500).json({ success: false, error: 'Server error during login' });
   }
 };
 
@@ -138,13 +142,13 @@ exports.checkUsername = async (req, res) => {
   try {
     const { username } = req.query;
     if (!username || username.length < 3) {
-      return res.json({ available: false });
+      return res.json({ success: true, data: { available: false } });
     }
     const exists = await User.existsByUsername(username);
-    res.json({ available: !exists });
+    res.json({ success: true, data: { available: !exists } });
   } catch (error) {
     console.error('Username check error:', error);
-    res.status(500).json({ available: false });
+    res.status(500).json({ success: false, error: 'Error checking username availability' });
   }
 };
 
@@ -152,23 +156,25 @@ exports.checkEmail = async (req, res) => {
   try {
     const { email } = req.query;
     if (!email || !validator.isEmail(email)) {
-      return res.json({ available: false });
+      return res.json({ success: true, data: { available: false } });
     }
     const exists = await User.existsByEmail(email);
-    res.json({ available: !exists });
+    res.json({ success: true, data: { available: !exists } });
   } catch (error) {
     console.error('Email check error:', error);
-    res.status(500).json({ available: false });
+    res.status(500).json({ success: false, error: 'Error checking email availability' });
   }
 };
 
 exports.logout = (req, res) => {
-  res.json({ success: true, message: 'Logged out successfully' });
+  res.json({ success: true, data: { message: 'Logged out successfully' } });
 };
 
 exports.verify = (req, res) => {
   res.json({
     success: true,
-    user: { id: req.user.userId, username: req.user.username, role: req.user.role || 'user' }
+    data: {
+      user: { id: req.user.userId, username: req.user.username, role: req.user.role || 'user' }
+    }
   });
 };

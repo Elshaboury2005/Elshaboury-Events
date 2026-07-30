@@ -7,10 +7,10 @@ exports.getTasks = async (req, res) => {
   try {
     const { categoryId } = req.workshopMember;
     const tasks = await WorkshopTask.findByCategoryId(categoryId);
-    return res.json({ success: true, tasks });
+    return res.json({ success: true, data: { tasks } });
   } catch (error) {
     console.error('getTasks error:', error);
-    return res.status(500).json({ success: false, message: 'Server error fetching tasks' });
+    return res.status(500).json({ success: false, error: 'Server error fetching tasks' });
   }
 };
 
@@ -20,7 +20,7 @@ exports.createTask = async (req, res) => {
     const { title, description, assignedTo, dueDate, priority } = req.body;
 
     if (!title || !title.trim()) {
-      return res.status(400).json({ success: false, message: 'Task title is required' });
+      return res.status(400).json({ success: false, error: 'Task title is required' });
     }
 
     let finalAssignedTo = assignedTo ? parseInt(assignedTo, 10) : null;
@@ -30,7 +30,7 @@ exports.createTask = async (req, res) => {
       if (finalAssignedTo !== null && finalAssignedTo !== workshopMemberId) {
         return res.status(403).json({
           success: false,
-          message: 'Regular members can only assign tasks to themselves or leave them unassigned'
+          error: 'Regular members can only assign tasks to themselves or leave them unassigned'
         });
       }
     } else {
@@ -39,7 +39,7 @@ exports.createTask = async (req, res) => {
         const members = await WorkshopMember.findByCategoryId(categoryId);
         const exists = members.some(m => m.id === finalAssignedTo);
         if (!exists) {
-          return res.status(400).json({ success: false, message: 'Assignee must be a member of your category' });
+          return res.status(400).json({ success: false, error: 'Assignee must be a member of your category' });
         }
       }
     }
@@ -65,10 +65,10 @@ exports.createTask = async (req, res) => {
 
     await logWorkshopActivity(categoryId, workshopMemberId, 'task_created', `${email} created task "${title.trim()}"`);
 
-    return res.status(201).json({ success: true, message: 'Task created successfully', taskId });
+    return res.status(201).json({ success: true, data: { message: 'Task created successfully', taskId } });
   } catch (error) {
     console.error('createTask error:', error);
-    return res.status(500).json({ success: false, message: 'Server error creating task' });
+    return res.status(500).json({ success: false, error: 'Server error creating task' });
   }
 };
 
@@ -79,17 +79,17 @@ exports.updateTask = async (req, res) => {
     const { title, description, assignedTo, dueDate, priority } = req.body;
 
     if (!title || !title.trim()) {
-      return res.status(400).json({ success: false, message: 'Task title is required' });
+      return res.status(400).json({ success: false, error: 'Task title is required' });
     }
 
     const task = await WorkshopTask.findById(taskId);
     if (!task) {
-      return res.status(404).json({ success: false, message: 'Task not found' });
+      return res.status(404).json({ success: false, error: 'Task not found' });
     }
 
     // Must belong to the same category
     if (task.category_id !== categoryId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized category access' });
+      return res.status(403).json({ success: false, error: 'Unauthorized category access' });
     }
 
     // Permission check: only creator, assignee, or head/vice_head can update details
@@ -98,7 +98,7 @@ exports.updateTask = async (req, res) => {
     const isLead = role === 'head' || role === 'vice_head';
 
     if (!isCreator && !isAssignee && !isLead) {
-      return res.status(403).json({ success: false, message: 'You do not have permission to edit this task' });
+      return res.status(403).json({ success: false, error: 'You do not have permission to edit this task' });
     }
 
     let finalAssignedTo = assignedTo ? parseInt(assignedTo, 10) : null;
@@ -108,7 +108,7 @@ exports.updateTask = async (req, res) => {
       if (finalAssignedTo !== null && finalAssignedTo !== workshopMemberId) {
         return res.status(403).json({
           success: false,
-          message: 'Regular members can only assign tasks to themselves or leave them unassigned'
+          error: 'Regular members can only assign tasks to themselves or leave them unassigned'
         });
       }
     } else {
@@ -116,7 +116,7 @@ exports.updateTask = async (req, res) => {
         const members = await WorkshopMember.findByCategoryId(categoryId);
         const exists = members.some(m => m.id === finalAssignedTo);
         if (!exists) {
-          return res.status(400).json({ success: false, message: 'Assignee must be a member of your category' });
+          return res.status(400).json({ success: false, error: 'Assignee must be a member of your category' });
         }
       }
     }
@@ -141,10 +141,10 @@ exports.updateTask = async (req, res) => {
 
     await logWorkshopActivity(categoryId, workshopMemberId, 'task_updated', `${email} updated task "${title.trim()}"`);
 
-    return res.json({ success: true, message: 'Task updated successfully' });
+    return res.json({ success: true, data: { message: 'Task updated successfully' } });
   } catch (error) {
     console.error('updateTask error:', error);
-    return res.status(500).json({ success: false, message: 'Server error updating task' });
+    return res.status(500).json({ success: false, error: 'Server error updating task' });
   }
 };
 
@@ -156,16 +156,16 @@ exports.updateTaskStatus = async (req, res) => {
 
     const validStatuses = ['todo', 'in_progress', 'done'];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: 'Invalid status' });
+      return res.status(400).json({ success: false, error: 'Invalid status' });
     }
 
     const task = await WorkshopTask.findById(taskId);
     if (!task) {
-      return res.status(404).json({ success: false, message: 'Task not found' });
+      return res.status(404).json({ success: false, error: 'Task not found' });
     }
 
     if (task.category_id !== categoryId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized category access' });
+      return res.status(403).json({ success: false, error: 'Unauthorized category access' });
     }
 
     // Permission: assignee or head/vice_head
@@ -173,7 +173,7 @@ exports.updateTaskStatus = async (req, res) => {
     const isLead = role === 'head' || role === 'vice_head';
 
     if (!isAssignee && !isLead) {
-      return res.status(403).json({ success: false, message: 'You do not have permission to change this task status' });
+      return res.status(403).json({ success: false, error: 'You do not have permission to change this task status' });
     }
 
     const oldStatus = task.status;
@@ -195,10 +195,10 @@ exports.updateTaskStatus = async (req, res) => {
       `${email} marked "${task.title}" as ${status.replace('_', ' ')}`
     );
 
-    return res.json({ success: true, message: 'Task status updated' });
+    return res.json({ success: true, data: { message: 'Task status updated' } });
   } catch (error) {
     console.error('updateTaskStatus error:', error);
-    return res.status(500).json({ success: false, message: 'Server error updating task status' });
+    return res.status(500).json({ success: false, error: 'Server error updating task status' });
   }
 };
 
@@ -209,11 +209,11 @@ exports.deleteTask = async (req, res) => {
 
     const task = await WorkshopTask.findById(taskId);
     if (!task) {
-      return res.status(404).json({ success: false, message: 'Task not found' });
+      return res.status(404).json({ success: false, error: 'Task not found' });
     }
 
     if (task.category_id !== categoryId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized category access' });
+      return res.status(403).json({ success: false, error: 'Unauthorized category access' });
     }
 
     // Permission: creator or head/vice_head
@@ -221,16 +221,16 @@ exports.deleteTask = async (req, res) => {
     const isLead = role === 'head' || role === 'vice_head';
 
     if (!isCreator && !isLead) {
-      return res.status(403).json({ success: false, message: 'Only the task creator or category leads can delete tasks' });
+      return res.status(403).json({ success: false, error: 'Only the task creator or category leads can delete tasks' });
     }
 
     await WorkshopTask.delete(taskId);
 
     await logWorkshopActivity(categoryId, workshopMemberId, 'task_deleted', `${email} deleted task "${task.title}"`);
 
-    return res.json({ success: true, message: 'Task deleted successfully' });
+    return res.json({ success: true, data: { message: 'Task deleted successfully' } });
   } catch (error) {
     console.error('deleteTask error:', error);
-    return res.status(500).json({ success: false, message: 'Server error deleting task' });
+    return res.status(500).json({ success: false, error: 'Server error deleting task' });
   }
 };

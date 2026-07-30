@@ -24,14 +24,14 @@ exports.getMySupportTickets = async (req, res) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      return res.status(401).json({ success: false, message: 'Sign in is required' });
+      return res.status(401).json({ success: false, error: 'Sign in is required' });
     }
 
     const tickets = await SupportTicket.findByUserId(userId);
-    return res.json({ success: true, tickets });
+    return res.json({ success: true, data: { tickets } });
   } catch (error) {
     console.error('Get my support tickets error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to load your support tickets' });
+    return res.status(500).json({ success: false, error: 'Failed to load your support tickets' });
   }
 };
 
@@ -43,24 +43,24 @@ exports.createSupportTicket = async (req, res) => {
     const message = String(req.body.message || '').trim();
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: 'Sign in is required' });
+      return res.status(401).json({ success: false, error: 'Sign in is required' });
     }
 
     if (!subject || !message) {
-      return res.status(400).json({ success: false, message: 'Subject and message are required' });
+      return res.status(400).json({ success: false, error: 'Subject and message are required' });
     }
 
     if (subject.length > 255) {
-      return res.status(400).json({ success: false, message: 'Subject must be 255 characters or less' });
+      return res.status(400).json({ success: false, error: 'Subject must be 255 characters or less' });
     }
 
     if (message.length > 500) {
-      return res.status(400).json({ success: false, message: 'Message must be 500 characters or less' });
+      return res.status(400).json({ success: false, error: 'Message must be 500 characters or less' });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User account not found' });
+      return res.status(404).json({ success: false, error: 'User account not found' });
     }
 
     const senderName = String(user.full_name || user.username || 'User').trim();
@@ -75,9 +75,9 @@ exports.createSupportTicket = async (req, res) => {
       message
     });
 
-    return res.status(201).json({ success: true, message: 'Support ticket submitted' });
+    return res.status(201).json({ success: true, data: { message: 'Support ticket submitted' } });
   } catch (error) {
     console.error('Create support ticket error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to submit support ticket' });
+    return res.status(500).json({ success: false, error: 'Failed to submit support ticket' });
   }
 };

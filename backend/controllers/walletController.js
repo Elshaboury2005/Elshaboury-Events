@@ -163,16 +163,18 @@ exports.getWallet = async (req, res) => {
 
     res.json({
       success: true,
-      balance: wallet.balance,
-      filter: wallet.filter,
-      transactions: wallet.transactions
+      data: {
+        balance: wallet.balance,
+        filter: wallet.filter,
+        transactions: wallet.transactions
+      }
     });
   } catch (error) {
     if (error.message === 'User not found') {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
     console.error('Get wallet error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load wallet data' });
+    res.status(500).json({ success: false, error: 'Failed to load wallet data' });
   }
 };
 
@@ -185,7 +187,7 @@ exports.topUpWallet = async (req, res) => {
     if (amount == null || amount < 50 || amount > 10000) {
       return res.status(400).json({
         success: false,
-        message: 'Top-up amount must be between 50 and 10,000 EGP'
+        error: 'Top-up amount must be between 50 and 10,000 EGP'
       });
     }
 
@@ -216,18 +218,20 @@ exports.topUpWallet = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Top-up successful',
-      balance: topup.newBalance,
-      payment: {
-        id: payment.paymentId,
-        transactionId: payment.transactionId,
-        amount
-      },
-      walletTransaction: {
-        id: topup.transactionId,
-        amount,
-        type: 'credit',
-        source: 'top-up'
+      data: {
+        message: 'Top-up successful',
+        balance: topup.newBalance,
+        payment: {
+          id: payment.paymentId,
+          transactionId: payment.transactionId,
+          amount
+        },
+        walletTransaction: {
+          id: topup.transactionId,
+          amount,
+          type: 'credit',
+          source: 'top-up'
+        }
       }
     });
   } catch (error) {
@@ -236,7 +240,7 @@ exports.topUpWallet = async (req, res) => {
       connection.release();
     }
     console.error('Top-up error:', error);
-    res.status(500).json({ success: false, message: error.message || 'Failed to top up wallet' });
+    res.status(500).json({ success: false, error: error.message || 'Failed to top up wallet' });
   }
 };
 
@@ -253,31 +257,31 @@ exports.withdrawToCard = async (req, res) => {
     if (amount == null || amount < 100) {
       return res.status(400).json({
         success: false,
-        message: 'Minimum withdrawal amount is 100 EGP'
+        error: 'Minimum withdrawal amount is 100 EGP'
       });
     }
     if (cardNumberDigits.length < 12 || cardNumberDigits.length > 19) {
       return res.status(400).json({
         success: false,
-        message: 'Enter a valid card number'
+        error: 'Enter a valid card number'
       });
     }
     if (cardLastFour.length !== 4) {
       return res.status(400).json({
         success: false,
-        message: 'Card last four digits are required'
+        error: 'Card last four digits are required'
       });
     }
     if (cardHolder.length < 2) {
       return res.status(400).json({
         success: false,
-        message: 'Card holder name is required'
+        error: 'Card holder name is required'
       });
     }
     if (!isValidExpiry(expiry)) {
       return res.status(400).json({
         success: false,
-        message: 'Expiry must be in MM/YY format'
+        error: 'Expiry must be in MM/YY format'
       });
     }
 
@@ -290,7 +294,7 @@ exports.withdrawToCard = async (req, res) => {
       connection.release();
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        error: 'User not found'
       });
     }
 
@@ -306,7 +310,7 @@ exports.withdrawToCard = async (req, res) => {
       connection.release();
       return res.status(400).json({
         success: false,
-        message: 'You already have a pending withdrawal request'
+        error: 'You already have a pending withdrawal request'
       });
     }
 
@@ -316,7 +320,7 @@ exports.withdrawToCard = async (req, res) => {
       connection.release();
       return res.status(400).json({
         success: false,
-        message: `Withdrawal amount exceeds wallet balance (${formatCurrency(currentBalance)} EGP)`
+        error: `Withdrawal amount exceeds wallet balance (${formatCurrency(currentBalance)} EGP)`
       });
     }
 
@@ -350,10 +354,12 @@ exports.withdrawToCard = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Withdrawal request submitted successfully',
-      referenceId,
-      estimatedProcessingTime: '3-5 business days',
-      balance: debitResult.newBalance
+      data: {
+        message: 'Withdrawal request submitted successfully',
+        referenceId,
+        estimatedProcessingTime: '3-5 business days',
+        balance: debitResult.newBalance
+      }
     });
   } catch (error) {
     if (connection) {
@@ -361,7 +367,7 @@ exports.withdrawToCard = async (req, res) => {
       connection.release();
     }
     console.error('Wallet withdrawal error:', error);
-    res.status(500).json({ success: false, message: error.message || 'Failed to request withdrawal' });
+    res.status(500).json({ success: false, error: error.message || 'Failed to request withdrawal' });
   }
 };
 
@@ -378,21 +384,23 @@ exports.getWithdrawals = async (req, res) => {
 
     res.json({
       success: true,
-      withdrawals: rows.map((row) => ({
-        id: row.id,
-        userId: row.user_id,
-        amount: roundMoney(row.amount || 0) || 0,
-        cardLastFour: row.card_last_four,
-        cardHolder: row.card_holder,
-        status: row.status,
-        requestedAt: row.requested_at,
-        processedAt: row.processed_at,
-        referenceId: row.reference_id
-      }))
+      data: {
+        withdrawals: rows.map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          amount: roundMoney(row.amount || 0) || 0,
+          cardLastFour: row.card_last_four,
+          cardHolder: row.card_holder,
+          status: row.status,
+          requestedAt: row.requested_at,
+          processedAt: row.processed_at,
+          referenceId: row.reference_id
+        }))
+      }
     });
   } catch (error) {
     console.error('Get withdrawals error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load withdrawal history' });
+    res.status(500).json({ success: false, error: 'Failed to load withdrawal history' });
   }
 };
 
@@ -404,7 +412,7 @@ exports.getWithdrawalStatus = async (req, res) => {
     if (!referenceId) {
       return res.status(400).json({
         success: false,
-        message: 'Reference ID is required'
+        error: 'Reference ID is required'
       });
     }
 
@@ -419,27 +427,29 @@ exports.getWithdrawalStatus = async (req, res) => {
     if (!rows.length) {
       return res.status(404).json({
         success: false,
-        message: 'Withdrawal request not found'
+        error: 'Withdrawal request not found'
       });
     }
 
     const withdrawal = rows[0];
     res.json({
       success: true,
-      withdrawal: {
-        id: withdrawal.id,
-        amount: roundMoney(withdrawal.amount || 0) || 0,
-        cardLastFour: withdrawal.card_last_four,
-        cardHolder: withdrawal.card_holder,
-        status: withdrawal.status,
-        requestedAt: withdrawal.requested_at,
-        processedAt: withdrawal.processed_at,
-        referenceId: withdrawal.reference_id
+      data: {
+        withdrawal: {
+          id: withdrawal.id,
+          amount: roundMoney(withdrawal.amount || 0) || 0,
+          cardLastFour: withdrawal.card_last_four,
+          cardHolder: withdrawal.card_holder,
+          status: withdrawal.status,
+          requestedAt: withdrawal.requested_at,
+          processedAt: withdrawal.processed_at,
+          referenceId: withdrawal.reference_id
+        }
       }
     });
   } catch (error) {
     console.error('Get withdrawal status error:', error);
-    res.status(500).json({ success: false, message: 'Failed to check withdrawal status' });
+    res.status(500).json({ success: false, error: 'Failed to check withdrawal status' });
   }
 };
 
@@ -455,10 +465,10 @@ exports.payForBooking = async (req, res) => {
     const promoCode = req.body.promoCode;
 
     if (!eventId) {
-      return res.status(400).json({ success: false, message: 'Event ID is required' });
+      return res.status(400).json({ success: false, error: 'Event ID is required' });
     }
     if (selectedSeats.length === 0) {
-      return res.status(400).json({ success: false, message: 'At least one seat must be selected' });
+      return res.status(400).json({ success: false, error: 'At least one seat must be selected' });
     }
 
     connection = await pool.getConnection();
@@ -482,26 +492,26 @@ exports.payForBooking = async (req, res) => {
     if (eventRows.length === 0) {
       await connection.rollback();
       connection.release();
-      return res.status(404).json({ success: false, message: 'Event not found' });
+      return res.status(404).json({ success: false, error: 'Event not found' });
     }
     const event = eventRows[0];
 
     if (event.event_status && event.event_status !== 'approved') {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'This event is not open for booking yet' });
+      return res.status(400).json({ success: false, error: 'This event is not open for booking yet' });
     }
     if (event.lifecycle_status === 'expired' || new Date(event.event_date) <= new Date()) {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'This event has ended and no longer accepts bookings' });
+      return res.status(400).json({ success: false, error: 'This event has ended and no longer accepts bookings' });
     }
 
     const requestedCount = selectedSeats.length;
     if (Number(event.available_seats || 0) < requestedCount) {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'Not enough available seats' });
+      return res.status(400).json({ success: false, error: 'Not enough available seats' });
     }
 
     const limits = getTicketLimits(event);
@@ -520,18 +530,18 @@ exports.payForBooking = async (req, res) => {
       connection.release();
       return res.status(400).json({
         success: false,
-        message: `Seat numbers must be between 1 and ${typeLimit} for ${ticketType}`
+        error: `Seat numbers must be between 1 and ${typeLimit} for ${ticketType}`
       });
     }
     if (alreadyTaken) {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'One or more selected seats are already booked' });
+      return res.status(400).json({ success: false, error: 'One or more selected seats are already booked' });
     }
     if (duplicate) {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'Duplicate seat numbers are not allowed' });
+      return res.status(400).json({ success: false, error: 'Duplicate seat numbers are not allowed' });
     }
 
     let unitPrice = Number(event.price_standard || 0);
@@ -552,7 +562,7 @@ exports.payForBooking = async (req, res) => {
     if (!walletRow) {
       await connection.rollback();
       connection.release();
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
     const availableWalletBalance = roundMoney(walletRow.wallet_balance || 0) || 0;
 
@@ -564,21 +574,21 @@ exports.payForBooking = async (req, res) => {
         connection.release();
         return res.status(400).json({
           success: false,
-          message: `Insufficient wallet balance. Available: ${formatCurrency(availableWalletBalance)} EGP`
+          error: `Insufficient wallet balance. Available: ${formatCurrency(availableWalletBalance)} EGP`
         });
       }
     } else if (paymentMethod === 'split') {
       if (requestedWalletAmount <= 0) {
         await connection.rollback();
         connection.release();
-        return res.status(400).json({ success: false, message: 'Enter a valid wallet amount for split payment' });
+        return res.status(400).json({ success: false, error: 'Enter a valid wallet amount for split payment' });
       }
       if (requestedWalletAmount > availableWalletBalance) {
         await connection.rollback();
         connection.release();
         return res.status(400).json({
           success: false,
-          message: `Wallet amount exceeds available balance (${formatCurrency(availableWalletBalance)} EGP)`
+          error: `Wallet amount exceeds available balance (${formatCurrency(availableWalletBalance)} EGP)`
         });
       }
       walletAmountUsed = Math.min(requestedWalletAmount, amountPaid);
@@ -588,7 +598,7 @@ exports.payForBooking = async (req, res) => {
         connection.release();
         return res.status(400).json({
           success: false,
-          message: 'Split payment requires part of the amount to be paid by card'
+          error: 'Split payment requires part of the amount to be paid by card'
         });
       }
     } else {
@@ -673,20 +683,22 @@ exports.payForBooking = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Payment and booking completed successfully',
-      booking,
-      payment: {
-        id: payment.paymentId,
-        transactionId: payment.transactionId,
-        method: paymentMethod,
-        subtotal,
-        discountAmount: promo.discountAmount,
-        amountPaid,
-        walletAmountUsed,
-        cardAmount
-      },
-      wallet: {
-        balance: walletSnapshot.balance
+      data: {
+        message: 'Payment and booking completed successfully',
+        booking,
+        payment: {
+          id: payment.paymentId,
+          transactionId: payment.transactionId,
+          method: paymentMethod,
+          subtotal,
+          discountAmount: promo.discountAmount,
+          amountPaid,
+          walletAmountUsed,
+          cardAmount
+        },
+        wallet: {
+          balance: walletSnapshot.balance
+        }
       }
     });
   } catch (error) {
@@ -696,6 +708,6 @@ exports.payForBooking = async (req, res) => {
     }
     console.error('Wallet booking payment error:', error);
     const statusCode = error.message && error.message.toLowerCase().includes('promo') ? 400 : 500;
-    res.status(statusCode).json({ success: false, message: error.message || 'Failed to process booking payment' });
+    res.status(statusCode).json({ success: false, error: error.message || 'Failed to process booking payment' });
   }
 };

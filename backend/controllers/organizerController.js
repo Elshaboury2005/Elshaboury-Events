@@ -48,7 +48,7 @@ exports.getProfile = async (req, res) => {
     );
     const user = userRows[0];
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Organizer not found' });
+      return res.status(404).json({ success: false, error: 'Organizer not found' });
     }
 
     const [eventTotalsRows] = await pool.execute(
@@ -137,7 +137,7 @@ exports.getProfile = async (req, res) => {
         SELECT event_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
         FROM event_reviews
         GROUP BY event_id
-      ) rv ON rv.event_id = e.id
+        ) rv ON rv.event_id = e.id
       WHERE e.organizer_id = ?
         AND (e.event_status = 'approved' OR e.event_status IS NULL)
         AND ${eventLifecycleExpression('e')} = 'active'
@@ -224,33 +224,35 @@ exports.getProfile = async (req, res) => {
 
     return res.json({
       success: true,
-      organizer: {
-        id: user.id,
-        name: user.full_name || '',
-        username: user.username || '',
-        member_since: user.created_at,
-        profile_picture: user.profile_image_url || '',
-        verified: isVerified
-      },
-      stats: {
-        total_events_created: totalEventsCreated,
-        total_tickets_sold: totalTicketsSold,
-        average_rating: averageRating,
-        total_attendees: totalAttendees,
-        total_reviews: totalReviews,
-        events_this_year: eventsThisYear,
-        successful_events: successfulEvents
-      },
-      followers_count: followersCount,
-      is_following: isFollowing,
-      reputation_score: reputationScore,
-      upcoming_events: upcomingRows,
-      past_events: pastRows,
-      latest_reviews: latestReviewRows
+      data: {
+        organizer: {
+          id: user.id,
+          name: user.full_name || '',
+          username: user.username || '',
+          member_since: user.created_at,
+          profile_picture: user.profile_image_url || '',
+          verified: isVerified
+        },
+        stats: {
+          total_events_created: totalEventsCreated,
+          total_tickets_sold: totalTicketsSold,
+          average_rating: averageRating,
+          total_attendees: totalAttendees,
+          total_reviews: totalReviews,
+          events_this_year: eventsThisYear,
+          successful_events: successfulEvents
+        },
+        followers_count: followersCount,
+        is_following: isFollowing,
+        reputation_score: reputationScore,
+        upcoming_events: upcomingRows,
+        past_events: pastRows,
+        latest_reviews: latestReviewRows
+      }
     });
   } catch (error) {
     console.error('Get organizer profile error:', error);
-    return res.status(500).json({ success: false, message: 'Error loading organizer profile' });
+    return res.status(500).json({ success: false, error: 'Error loading organizer profile' });
   }
 };
 
@@ -259,10 +261,10 @@ exports.toggleFollow = async (req, res) => {
     const followerId = req.user?.userId;
     const { userId: followingId } = req.params;
     if (!followerId) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
+      return res.status(401).json({ success: false, error: 'Authentication required' });
     }
     if (String(followerId) === String(followingId)) {
-      return res.status(400).json({ success: false, message: 'You cannot follow yourself' });
+      return res.status(400).json({ success: false, error: 'You cannot follow yourself' });
     }
 
     const [targetRows] = await pool.execute(
@@ -271,7 +273,7 @@ exports.toggleFollow = async (req, res) => {
     );
     const targetUser = targetRows[0];
     if (!targetUser) {
-      return res.status(404).json({ success: false, message: 'Organizer not found' });
+      return res.status(404).json({ success: false, error: 'Organizer not found' });
     }
 
     const [existingRows] = await pool.execute(
@@ -313,13 +315,15 @@ exports.toggleFollow = async (req, res) => {
 
     return res.json({
       success: true,
-      action,
-      is_following: isFollowing,
-      followers_count: followersCount,
-      message
+      data: {
+        action,
+        is_following: isFollowing,
+        followers_count: followersCount,
+        message
+      }
     });
   } catch (error) {
     console.error('Toggle follow organizer error:', error);
-    return res.status(500).json({ success: false, message: 'Error updating follow status' });
+    return res.status(500).json({ success: false, error: 'Error updating follow status' });
   }
 };

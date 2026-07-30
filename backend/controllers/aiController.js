@@ -15,6 +15,6 @@ exports.chat = (req, res) => {
   }
 
   setTimeout(() => {
-    res.json({ reply });
+    res.json({ success: true, data: { reply } });
   }, 800);
 };

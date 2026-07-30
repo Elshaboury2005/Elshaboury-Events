@@ -22,10 +22,10 @@ exports.getMessages = async (req, res) => {
       rows = await WorkshopMessage.findByCategoryId(catId, 50);
     }
 
-    return res.json({ success: true, messages: rows });
+    return res.json({ success: true, data: { messages: rows } });
   } catch (error) {
     console.error('getMessages error:', error);
-    return res.status(500).json({ success: false, message: 'Server error fetching chat messages' });
+    return res.status(500).json({ success: false, error: 'Server error fetching chat messages' });
   }
 };
 
@@ -35,7 +35,7 @@ exports.sendMessage = async (req, res) => {
     const { message } = req.body;
 
     if (!message || !message.trim()) {
-      return res.status(400).json({ success: false, message: 'Message content is required' });
+      return res.status(400).json({ success: false, error: 'Message content is required' });
     }
 
     const messageId = await WorkshopMessage.create({
@@ -44,10 +44,10 @@ exports.sendMessage = async (req, res) => {
       message: message.trim()
     });
 
-    return res.status(201).json({ success: true, messageId });
+    return res.status(201).json({ success: true, data: { messageId } });
   } catch (error) {
     console.error('sendMessage error:', error);
-    return res.status(500).json({ success: false, message: 'Server error sending message' });
+    return res.status(500).json({ success: false, error: 'Server error sending message' });
   }
 };
 
@@ -60,13 +60,13 @@ exports.deleteOwnMessage = async (req, res) => {
     if (!deleted) {
       return res.status(400).json({
         success: false,
-        message: 'Message not found, unauthorized, or the 5-minute deletion window has expired'
+        error: 'Message not found, unauthorized, or the 5-minute deletion window has expired'
       });
     }
 
-    return res.json({ success: true, message: 'Message deleted' });
+    return res.json({ success: true, data: { message: 'Message deleted' } });
   } catch (error) {
     console.error('deleteOwnMessage error:', error);
-    return res.status(500).json({ success: false, message: 'Server error deleting message' });
+    return res.status(500).json({ success: false, error: 'Server error deleting message' });
   }
 };

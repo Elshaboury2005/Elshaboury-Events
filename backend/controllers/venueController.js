@@ -210,12 +210,14 @@ exports.getAvailableVenues = async (req, res) => {
     const rows = await Venue.searchCatalog(filters);
     res.json({
       success: true,
-      filters,
-      venues: rows.map((row) => normalizeVenueForResponse(row, { selectedDate: filters.date }))
+      data: {
+        filters,
+        venues: rows.map((row) => normalizeVenueForResponse(row, { selectedDate: filters.date }))
+      }
     });
   } catch (error) {
     console.error('Get venues catalog error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load venues' });
+    res.status(500).json({ success: false, error: 'Failed to load venues' });
   }
 };
 
@@ -225,11 +227,13 @@ exports.getFeaturedVenues = async (req, res) => {
     const rows = await Venue.findFeatured(filters);
     res.json({
       success: true,
-      venues: rows.map((row) => normalizeVenueForResponse(row, { selectedDate: filters.date }))
+      data: {
+        venues: rows.map((row) => normalizeVenueForResponse(row, { selectedDate: filters.date }))
+      }
     });
   } catch (error) {
     console.error('Get featured venues error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load featured venues' });
+    res.status(500).json({ success: false, error: 'Failed to load featured venues' });
   }
 };
 
@@ -237,7 +241,7 @@ exports.getOwnerProfile = async (req, res) => {
   try {
     const ownerId = String(req.params.ownerId || '').trim();
     if (!ownerId) {
-      return res.status(400).json({ success: false, message: 'Owner ID is required' });
+      return res.status(400).json({ success: false, error: 'Owner ID is required' });
     }
 
     const [[owner]] = await pool.execute(
@@ -249,7 +253,7 @@ exports.getOwnerProfile = async (req, res) => {
     );
 
     if (!owner) {
-      return res.status(404).json({ success: false, message: 'Venue owner not found' });
+      return res.status(404).json({ success: false, error: 'Venue owner not found' });
     }
 
     const [venueRows] = await pool.execute(
@@ -303,20 +307,22 @@ exports.getOwnerProfile = async (req, res) => {
 
     res.json({
       success: true,
-      owner: {
-        id: owner.id,
-        fullName: owner.full_name || 'Venue Owner'
-      },
-      stats: {
-        approvedVenuesCount,
-        averageRating: Number(averageRating.toFixed(2)),
-        totalConfirmedBookings: Number(bookingStats.total_confirmed_bookings || 0)
-      },
-      venues: venueRows.map((row) => normalizeVenueForResponse(row))
+      data: {
+        owner: {
+          id: owner.id,
+          fullName: owner.full_name || 'Venue Owner'
+        },
+        stats: {
+          approvedVenuesCount,
+          averageRating: Number(averageRating.toFixed(2)),
+          totalConfirmedBookings: Number(bookingStats.total_confirmed_bookings || 0)
+        },
+        venues: venueRows.map((row) => normalizeVenueForResponse(row))
+      }
     });
   } catch (error) {
     console.error('Get venue owner profile error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load venue owner profile' });
+    res.status(500).json({ success: false, error: 'Failed to load venue owner profile' });
   }
 };
 
@@ -325,12 +331,12 @@ exports.getVenueDetails = async (req, res) => {
     const id = parseInt(req.params.id, 10);
     const selectedDate = String(req.query.date || '').trim() || null;
     if (!Number.isFinite(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid venue ID' });
+      return res.status(400).json({ success: false, error: 'Invalid venue ID' });
     }
 
     const venue = await Venue.findById(id);
     if (!venue || venue.status !== 'approved') {
-      return res.status(404).json({ success: false, message: 'Venue not found' });
+      return res.status(404).json({ success: false, error: 'Venue not found' });
     }
 
     const [bookedDates, blockedDates, reviews, wishlistedIds] = await Promise.all([
@@ -354,16 +360,18 @@ exports.getVenueDetails = async (req, res) => {
 
     res.json({
       success: true,
-      venue: normalizeVenueForResponse(venue, {
-        bookedDates,
-        blockedDates,
-        reviews,
-        selectedDate
-      })
+      data: {
+        venue: normalizeVenueForResponse(venue, {
+          bookedDates,
+          blockedDates,
+          reviews,
+          selectedDate
+        })
+      }
     });
   } catch (error) {
     console.error('Get venue details error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load venue details' });
+    res.status(500).json({ success: false, error: 'Failed to load venue details' });
   }
 };
 
@@ -371,16 +379,18 @@ exports.getVenueReviews = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid venue ID' });
+      return res.status(400).json({ success: false, error: 'Invalid venue ID' });
     }
     const reviews = await VenueReview.listRecentByVenue(id, 10);
     res.json({
       success: true,
-      reviews: reviews.map(normalizeReview)
+      data: {
+        reviews: reviews.map(normalizeReview)
+      }
     });
   } catch (error) {
     console.error('Get venue reviews error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load venue reviews' });
+    res.status(500).json({ success: false, error: 'Failed to load venue reviews' });
   }
 };
 
@@ -394,29 +404,29 @@ exports.submitVenueReview = async (req, res) => {
     const reviewText = String(req.body.reviewText || req.body.review_text || '').trim();
 
     if (!Number.isFinite(venueId) || venueId <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid venue ID' });
+      return res.status(400).json({ success: false, error: 'Invalid venue ID' });
     }
     if (!eventId) {
-      return res.status(400).json({ success: false, message: 'Event ID is required' });
+      return res.status(400).json({ success: false, error: 'Event ID is required' });
     }
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-      return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
+      return res.status(400).json({ success: false, error: 'Rating must be between 1 and 5' });
     }
 
     const eligible = await VenueReview.findEligibleBooking({ venueId, userId, eventId });
     if (!eligible) {
       return res.status(403).json({
         success: false,
-        message: 'You can only review venues that you booked for your completed events'
+        error: 'You can only review venues that you booked for your completed events'
       });
     }
     if (eligible.existing_review_id) {
-      return res.status(409).json({ success: false, message: 'You already reviewed this venue for this event' });
+      return res.status(409).json({ success: false, error: 'You already reviewed this venue for this event' });
     }
 
     const eventEnded = eligible.event_date && new Date(eligible.event_date) <= new Date();
     if (!eventEnded) {
-      return res.status(400).json({ success: false, message: 'Venue reviews can be submitted after the event ends' });
+      return res.status(400).json({ success: false, error: 'Venue reviews can be submitted after the event ends' });
     }
 
     connection = await pool.getConnection();
@@ -445,7 +455,9 @@ exports.submitVenueReview = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      review: created
+      data: {
+        review: created
+      }
     });
   } catch (error) {
     if (connection) {
@@ -453,7 +465,7 @@ exports.submitVenueReview = async (req, res) => {
       connection.release();
     }
     console.error('Submit venue review error:', error);
-    res.status(500).json({ success: false, message: 'Failed to submit venue review' });
+    res.status(500).json({ success: false, error: 'Failed to submit venue review' });
   }
 };
 
@@ -461,22 +473,24 @@ exports.toggleWishlist = async (req, res) => {
   try {
     const venueId = parseInt(req.params.id, 10);
     if (!Number.isFinite(venueId) || venueId <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid venue ID' });
+      return res.status(400).json({ success: false, error: 'Invalid venue ID' });
     }
 
     const venue = await Venue.findById(venueId);
     if (!venue || venue.status !== 'approved') {
-      return res.status(404).json({ success: false, message: 'Venue not found' });
+      return res.status(404).json({ success: false, error: 'Venue not found' });
     }
 
     const result = await VenueWishlist.toggle(req.user.userId, venueId);
     res.json({
       success: true,
-      saved: result.saved
+      data: {
+        saved: result.saved
+      }
     });
   } catch (error) {
     console.error('Toggle venue wishlist error:', error);
-    res.status(500).json({ success: false, message: 'Failed to update wishlist' });
+    res.status(500).json({ success: false, error: 'Failed to update wishlist' });
   }
 };
 
@@ -488,11 +502,13 @@ exports.getWishlist = async (req, res) => {
     const rows = await Venue.searchCatalog(filters);
     res.json({
       success: true,
-      venues: rows.map((row) => normalizeVenueForResponse(row, { selectedDate: filters.date }))
+      data: {
+        venues: rows.map((row) => normalizeVenueForResponse(row, { selectedDate: filters.date }))
+      }
     });
   } catch (error) {
     console.error('Get venue wishlist error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load wishlist venues' });
+    res.status(500).json({ success: false, error: 'Failed to load wishlist venues' });
   }
 };
 
@@ -503,7 +519,7 @@ exports.getVenueSuggestions = async (req, res) => {
     const date = String(req.query.date || '').trim() || null;
 
     if (!eventType) {
-      return res.status(400).json({ success: false, message: 'Event type is required' });
+      return res.status(400).json({ success: false, error: 'Event type is required' });
     }
 
     const rule = EVENT_TYPE_SUGGESTIONS.find((item) => item.match.some((entry) => eventType.includes(entry)));
@@ -529,12 +545,14 @@ exports.getVenueSuggestions = async (req, res) => {
 
     res.json({
       success: true,
-      categories,
-      venues: rows.map((row) => normalizeVenueForResponse(row, { selectedDate: date }))
+      data: {
+        categories,
+        venues: rows.map((row) => normalizeVenueForResponse(row, { selectedDate: date }))
+      }
     });
   } catch (error) {
     console.error('Get venue suggestions error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load venue suggestions' });
+    res.status(500).json({ success: false, error: 'Failed to load venue suggestions' });
   }
 };
 
@@ -548,7 +566,7 @@ exports.bookVenue = async (req, res) => {
     if (!Number.isFinite(venueId) || venueId <= 0 || !eventDate) {
       return res.status(400).json({
         success: false,
-        message: 'Venue ID and event date are required'
+        error: 'Venue ID and event date are required'
       });
     }
 
@@ -559,7 +577,7 @@ exports.bookVenue = async (req, res) => {
     if (!venue || !venue.is_available || venue.status !== 'approved') {
       await connection.rollback();
       connection.release();
-      return res.status(404).json({ success: false, message: 'Venue is not available' });
+      return res.status(404).json({ success: false, error: 'Venue is not available' });
     }
 
     const confirmedBookings = await VenueBooking.findByVenueAndDate(venueId, eventDate, ['accepted', 'confirmed'], connection);
@@ -568,7 +586,7 @@ exports.bookVenue = async (req, res) => {
       connection.release();
       return res.status(409).json({
         success: false,
-        message: 'Venue is already booked on this date'
+        error: 'Venue is already booked on this date'
       });
     }
 
@@ -589,7 +607,7 @@ exports.bookVenue = async (req, res) => {
       connection.release();
       return res.status(409).json({
         success: false,
-        message: 'Venue is unavailable on this date'
+        error: 'Venue is unavailable on this date'
       });
     }
 
@@ -609,8 +627,10 @@ exports.bookVenue = async (req, res) => {
     const booking = await VenueBooking.findById(bookingId);
     res.status(201).json({
       success: true,
-      message: 'Venue booking created and pending payment',
-      booking: normalizeVenueBooking(booking)
+      data: {
+        message: 'Venue booking created and pending payment',
+        booking: normalizeVenueBooking(booking)
+      }
     });
   } catch (error) {
     if (connection) {
@@ -618,7 +638,7 @@ exports.bookVenue = async (req, res) => {
       connection.release();
     }
     console.error('Book venue error:', error);
-    res.status(500).json({ success: false, message: 'Failed to create venue booking' });
+    res.status(500).json({ success: false, error: 'Failed to create venue booking' });
   }
 };
 
@@ -627,11 +647,13 @@ exports.getMyBookings = async (req, res) => {
     const rows = await VenueBooking.findByHost(req.user.userId);
     res.json({
       success: true,
-      bookings: rows.map((row) => normalizeVenueBooking(row))
+      data: {
+        bookings: rows.map((row) => normalizeVenueBooking(row))
+      }
     });
   } catch (error) {
     console.error('Get my venue bookings error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load venue bookings' });
+    res.status(500).json({ success: false, error: 'Failed to load venue bookings' });
   }
 };
 
@@ -645,10 +667,10 @@ exports.checkAvailability = async (req, res) => {
     const { date } = req.query;
 
     if (!Number.isFinite(venueId) || venueId <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid venue ID' });
+      return res.status(400).json({ success: false, error: 'Invalid venue ID' });
     }
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ success: false, message: 'date query parameter is required (YYYY-MM-DD)' });
+      return res.status(400).json({ success: false, error: 'date query parameter is required (YYYY-MM-DD)' });
     }
 
     // Check confirmed/accepted bookings on this date
@@ -676,16 +698,18 @@ exports.checkAvailability = async (req, res) => {
 
     res.json({
       success: true,
-      venueId,
-      date,
-      isAvailable,
-      isBookedByEvent,
-      isBlockedManually,
-      conflictingBookingCount: conflicts.length,
-      conflictingBlock: isBlockedManually ? { reason: blockRows[0].reason || null } : null
+      data: {
+        venueId,
+        date,
+        isAvailable,
+        isBookedByEvent,
+        isBlockedManually,
+        conflictingBookingCount: conflicts.length,
+        conflictingBlock: isBlockedManually ? { reason: blockRows[0].reason || null } : null
+      }
     });
   } catch (error) {
     console.error('checkAvailability error:', error);
-    res.status(500).json({ success: false, message: 'Failed to check venue availability' });
+    res.status(500).json({ success: false, error: 'Failed to check venue availability' });
   }
 };

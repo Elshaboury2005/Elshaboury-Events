@@ -329,7 +329,7 @@ exports.create = async (req, res) => {
     const userId = req.user.userId;
 
     if (!eventId) {
-      return res.status(400).json({ success: false, message: 'Event ID is required' });
+      return res.status(400).json({ success: false, error: 'Event ID is required' });
     }
 
     const useSeatNumbers = Array.isArray(seatNumbers) && seatNumbers.length > 0;
@@ -343,22 +343,22 @@ exports.create = async (req, res) => {
     if (!event) {
       await connection.rollback();
       connection.release();
-      return res.status(404).json({ success: false, message: 'Event not found' });
+      return res.status(404).json({ success: false, error: 'Event not found' });
     }
     if (event.event_status && event.event_status !== 'approved') {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'This event is not open for booking yet' });
+      return res.status(400).json({ success: false, error: 'This event is not open for booking yet' });
     }
     if (event.lifecycle_status === 'expired' || new Date(event.event_date) <= new Date()) {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'This event has ended and no longer accepts bookings' });
+      return res.status(400).json({ success: false, error: 'This event has ended and no longer accepts bookings' });
     }
     if (event.available_seats <= 0) {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'No available seats. You can join the waitlist.' });
+      return res.status(400).json({ success: false, error: 'No available seats. You can join the waitlist.' });
     }
 
     const { limitStandard, limitSpecial, limitVip } = getTicketLimits(event);
@@ -373,7 +373,7 @@ exports.create = async (req, res) => {
       if (validationError) {
         await connection.rollback();
         connection.release();
-        return res.status(400).json({ success: false, message: validationError });
+        return res.status(400).json({ success: false, error: validationError });
       }
     } else {
       const currentCount = await Booking.countByEventAndTicketType(eventId, requestedType, connection);
@@ -382,7 +382,7 @@ exports.create = async (req, res) => {
         connection.release();
         return res.status(400).json({
           success: false,
-          message: `Not enough ${requestedType} seats available. Remaining: ${Math.max(0, typeLimit - currentCount)}`
+          error: `Not enough ${requestedType} seats available. Remaining: ${Math.max(0, typeLimit - currentCount)}`
         });
       }
     }
@@ -427,8 +427,10 @@ exports.create = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Booking created successfully',
-      booking: newBooking || { id: bookingId, event_title: event.title, event_date: event.event_date, location: event.location }
+      data: {
+        message: 'Booking created successfully',
+        booking: newBooking || { id: bookingId, event_title: event.title, event_date: event.event_date, location: event.location }
+      }
     });
   } catch (error) {
     if (connection) {
@@ -436,7 +438,7 @@ exports.create = async (req, res) => {
       connection.release();
     }
     console.error('[bookingController] create error:', error);
-    res.status(500).json({ success: false, message: 'Error creating booking' });
+    res.status(500).json({ success: false, error: 'Error creating booking' });
   }
 };
 
@@ -460,10 +462,10 @@ exports.getMy = async (req, res) => {
         is_active_ticket: !isPastEvent && booking.status === 'confirmed'
       };
     });
-    res.json({ success: true, bookings: normalized });
+    res.json({ success: true, data: { bookings: normalized } });
   } catch (error) {
     console.error('[bookingController] getMy error:', error);
-    res.status(500).json({ success: false, message: 'Error fetching bookings' });
+    res.status(500).json({ success: false, error: 'Error fetching bookings' });
   }
 };
 
@@ -482,12 +484,12 @@ exports.cancel = async (req, res) => {
     if (!booking) {
       await connection.rollback();
       connection.release();
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success: false, error: 'Booking not found' });
     }
     if (booking.status === 'cancelled') {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
+      return res.status(400).json({ success: false, error: 'Booking is already cancelled' });
     }
 
     const seatsToRestore = getSeatsCount(booking);
@@ -574,19 +576,21 @@ exports.cancel = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Booking cancelled successfully',
-      refund: {
-        amountPaid: actualAmountPaid,
-        refundRate: policy.refundRate,
-        refundAmount: policy.refundAmount,
-        policy: policy.policyLabel,
-        reason: policy.reason,
-        destination: 'wallet'
-      },
-      wallet_balance: walletBalance,
-      vault_balance: vaultBalance,
-      wallet: {
-        balance: walletBalance
+      data: {
+        message: 'Booking cancelled successfully',
+        refund: {
+          amountPaid: actualAmountPaid,
+          refundRate: policy.refundRate,
+          refundAmount: policy.refundAmount,
+          policy: policy.policyLabel,
+          reason: policy.reason,
+          destination: 'wallet'
+        },
+        wallet_balance: walletBalance,
+        vault_balance: vaultBalance,
+        wallet: {
+          balance: walletBalance
+        }
       }
     });
   } catch (error) {
@@ -595,7 +599,7 @@ exports.cancel = async (req, res) => {
       connection.release();
     }
     console.error('[bookingController] cancel error:', error);
-    res.status(500).json({ success: false, message: 'Error cancelling booking' });
+    res.status(500).json({ success: false, error: 'Error cancelling booking' });
   }
 };
 
@@ -606,10 +610,10 @@ exports.previewCancel = async (req, res) => {
 
     const booking = await Booking.findByIdAndUserId(id, userId);
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success: false, error: 'Booking not found' });
     }
     if (booking.status === 'cancelled') {
-      return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
+      return res.status(400).json({ success: false, error: 'Booking is already cancelled' });
     }
 
     const amountPaid = await resolveBookingAmountPaid(booking, userId, pool);
@@ -618,24 +622,26 @@ exports.previewCancel = async (req, res) => {
 
     res.json({
       success: true,
-      bookingId: booking.id,
-      eventTitle: booking.event_title,
-      eventDate: booking.event_date,
-      amountPaid,
-      paymentMethod: booking.payment_method || 'card',
-      walletAmountUsed: roundMoney(booking.wallet_amount_used || 0) || 0,
-      refund: {
-        refundRate: policy.refundRate,
-        refundAmount: policy.refundAmount,
-        policy: policy.policyLabel,
-        reason: policy.reason,
-        destination: 'wallet',
-        breakdownLine
+      data: {
+        bookingId: booking.id,
+        eventTitle: booking.event_title,
+        eventDate: booking.event_date,
+        amountPaid,
+        paymentMethod: booking.payment_method || 'card',
+        walletAmountUsed: roundMoney(booking.wallet_amount_used || 0) || 0,
+        refund: {
+          refundRate: policy.refundRate,
+          refundAmount: policy.refundAmount,
+          policy: policy.policyLabel,
+          reason: policy.reason,
+          destination: 'wallet',
+          breakdownLine
+        }
       }
     });
   } catch (error) {
     console.error('[bookingController] previewCancel error:', error);
-    res.status(500).json({ success: false, message: 'Error preparing cancellation preview' });
+    res.status(500).json({ success: false, error: 'Error preparing cancellation preview' });
   }
 };
 
@@ -656,19 +662,19 @@ exports.cancelSeat = async (req, res) => {
     if (!booking) {
       await connection.rollback();
       connection.release();
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success: false, error: 'Booking not found' });
     }
     if (booking.status !== 'confirmed') {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'Only confirmed bookings can cancel tickets' });
+      return res.status(400).json({ success: false, error: 'Only confirmed bookings can cancel tickets' });
     }
 
     const seats = parseSeatList(booking);
     if (seats.length === 0) {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'No seats found for this booking' });
+      return res.status(400).json({ success: false, error: 'No seats found for this booking' });
     }
 
     let targetSeat = null;
@@ -679,19 +685,19 @@ exports.cancelSeat = async (req, res) => {
       if (!targetSeat) {
         await connection.rollback();
         connection.release();
-        return res.status(400).json({ success: false, message: 'Ticket code does not match this booking' });
+        return res.status(400).json({ success: false, error: 'Ticket code does not match this booking' });
       }
     } else {
       const parsedSeat = parseInt(seatNumberRaw, 10);
       if (isNaN(parsedSeat) || parsedSeat < 1) {
         await connection.rollback();
         connection.release();
-        return res.status(400).json({ success: false, message: 'Valid seat number is required' });
+        return res.status(400).json({ success: false, error: 'Valid seat number is required' });
       }
       if (!seats.includes(parsedSeat)) {
         await connection.rollback();
         connection.release();
-        return res.status(400).json({ success: false, message: 'Seat number not found in this booking' });
+        return res.status(400).json({ success: false, error: 'Seat number not found in this booking' });
       }
       targetSeat = parsedSeat;
     }
@@ -699,7 +705,7 @@ exports.cancelSeat = async (req, res) => {
     if (await isSeatAlreadyCheckedIn(booking.id, targetSeat, connection)) {
       await connection.rollback();
       connection.release();
-      return res.status(400).json({ success: false, message: 'Checked-in ticket cannot be cancelled' });
+      return res.status(400).json({ success: false, error: 'Checked-in ticket cannot be cancelled' });
     }
 
     const totalSeatsBefore = seats.length;
@@ -832,20 +838,22 @@ exports.cancelSeat = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Seat ${targetSeat} cancelled successfully`,
-      remainingSeats,
-      refund: {
-        amountPaidForSeat: seatAmountPaid,
-        refundRate: policy.refundRate,
-        refundAmount: policy.refundAmount,
-        policy: policy.policyLabel,
-        reason: policy.reason,
-        destination: 'wallet'
-      },
-      wallet_balance: walletBalance,
-      vault_balance: vaultBalance,
-      wallet: {
-        balance: walletBalance
+      data: {
+        message: `Seat ${targetSeat} cancelled successfully`,
+        remainingSeats,
+        refund: {
+          amountPaidForSeat: seatAmountPaid,
+          refundRate: policy.refundRate,
+          refundAmount: policy.refundAmount,
+          policy: policy.policyLabel,
+          reason: policy.reason,
+          destination: 'wallet'
+        },
+        wallet_balance: walletBalance,
+        vault_balance: vaultBalance,
+        wallet: {
+          balance: walletBalance
+        }
       }
     });
   } catch (error) {
@@ -854,7 +862,7 @@ exports.cancelSeat = async (req, res) => {
       connection.release();
     }
     console.error('[bookingController] cancelSeat error:', error);
-    res.status(500).json({ success: false, message: 'Error cancelling ticket seat' });
+    res.status(500).json({ success: false, error: 'Error cancelling ticket seat' });
   }
 };
 
@@ -865,15 +873,15 @@ exports.getByEventId = async (req, res) => {
 
     const event = await Event.findById(eventId);
     if (!event || event.organizer_id !== userId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized or event not found' });
+      return res.status(403).json({ success: false, error: 'Unauthorized or event not found' });
     }
 
     const rawBookings = await Booking.findByEventId(eventId);
     const bookings = await augmentBookingsWithTicketCheckins(rawBookings);
-    res.json({ success: true, bookings });
+    res.json({ success: true, data: { bookings } });
   } catch (error) {
     console.error('[bookingController] getByEventId error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
@@ -884,25 +892,25 @@ exports.checkInByTicketCode = async (req, res) => {
     const ticketCode = String(req.body.ticketCode || '').trim().toUpperCase();
 
     if (!eventId || !ticketCode) {
-      return res.status(400).json({ success: false, message: 'eventId and ticketCode are required' });
+      return res.status(400).json({ success: false, error: 'eventId and ticketCode are required' });
     }
 
     const event = await Event.findById(eventId);
     if (!event || event.organizer_id !== organizerId) {
-      return res.status(403).json({ success: false, message: 'Only event organizer can check in attendees' });
+      return res.status(403).json({ success: false, error: 'Only event organizer can check in attendees' });
     }
 
     const resolved = await resolveTicketCodeToSeat(eventId, ticketCode);
     if (!resolved) {
-      return res.status(404).json({ success: false, message: 'Ticket code not found for this event' });
+      return res.status(404).json({ success: false, error: 'Ticket code not found for this event' });
     }
     if (resolved.ambiguous) {
-      return res.status(400).json({ success: false, message: 'Ticket code is ambiguous. Use the exact ticket code.' });
+      return res.status(400).json({ success: false, error: 'Ticket code is ambiguous. Use the exact ticket code.' });
     }
 
     const { booking, seatNumber, ticketCode: normalizedCode } = resolved;
     if (await isSeatAlreadyCheckedIn(booking.id, seatNumber)) {
-      return res.status(400).json({ success: false, message: 'This ticket is already checked in' });
+      return res.status(400).json({ success: false, error: 'This ticket is already checked in' });
     }
 
     const result = await markSeatCheckedIn({
@@ -915,18 +923,20 @@ exports.checkInByTicketCode = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Seat ${seatNumber} checked in successfully`,
-      ticket: {
-        bookingId: booking.id,
-        seatNumber: result.seatNumber,
-        ticketCode: result.ticketCode,
-        checkedInSeats: result.checkedInSeats,
-        totalSeats: result.totalSeats
+      data: {
+        message: `Seat ${seatNumber} checked in successfully`,
+        ticket: {
+          bookingId: booking.id,
+          seatNumber: result.seatNumber,
+          ticketCode: result.ticketCode,
+          checkedInSeats: result.checkedInSeats,
+          totalSeats: result.totalSeats
+        }
       }
     });
   } catch (error) {
     console.error('[bookingController] checkInByTicketCode error:', error);
-    res.status(500).json({ success: false, message: 'Error checking in ticket' });
+    res.status(500).json({ success: false, error: 'Error checking in ticket' });
   }
 };
 
@@ -937,25 +947,25 @@ exports.checkIn = async (req, res) => {
 
     const booking = await Booking.findById(id);
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success: false, error: 'Booking not found' });
     }
 
     const event = await Event.findById(booking.event_id);
     if (!event || event.organizer_id !== organizerId) {
-      return res.status(403).json({ success: false, message: 'Only event organizer can check in attendees' });
+      return res.status(403).json({ success: false, error: 'Only event organizer can check in attendees' });
     }
 
     if (booking.status !== 'confirmed') {
-      return res.status(400).json({ success: false, message: 'Only confirmed bookings can be checked in' });
+      return res.status(400).json({ success: false, error: 'Only confirmed bookings can be checked in' });
     }
 
     if (getSeatsCount(booking) > 1) {
-      return res.status(400).json({ success: false, message: 'Use ticket code check-in for multi-seat bookings' });
+      return res.status(400).json({ success: false, error: 'Use ticket code check-in for multi-seat bookings' });
     }
 
     const seatNumber = parseSeatList(booking)[0] || 1;
     if (await isSeatAlreadyCheckedIn(booking.id, seatNumber)) {
-      return res.status(400).json({ success: false, message: 'Attendee already checked in' });
+      return res.status(400).json({ success: false, error: 'Attendee already checked in' });
     }
 
     const result = await markSeatCheckedIn({
@@ -968,17 +978,19 @@ exports.checkIn = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Attendee checked in successfully',
-      ticket: {
-        bookingId: booking.id,
-        seatNumber: result.seatNumber,
-        ticketCode: result.ticketCode,
-        checkedInSeats: result.checkedInSeats,
-        totalSeats: result.totalSeats
+      data: {
+        message: 'Attendee checked in successfully',
+        ticket: {
+          bookingId: booking.id,
+          seatNumber: result.seatNumber,
+          ticketCode: result.ticketCode,
+          checkedInSeats: result.checkedInSeats,
+          totalSeats: result.totalSeats
+        }
       }
     });
   } catch (error) {
     console.error('[bookingController] checkIn error:', error);
-    res.status(500).json({ success: false, message: 'Error checking in attendee' });
+    res.status(500).json({ success: false, error: 'Error checking in attendee' });
   }
 };

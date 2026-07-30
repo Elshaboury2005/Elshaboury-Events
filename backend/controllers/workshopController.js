@@ -25,7 +25,7 @@ async function requireEventOwnership(res, eventId, organizerId) {
     [eventId, organizerId]
   );
   if (!rows.length) {
-    res.status(403).json({ success: false, message: 'Event not found or access denied' });
+    res.status(403).json({ success: false, error: 'Event not found or access denied' });
     return false;
   }
   return true;
@@ -44,7 +44,7 @@ async function requireEventOwnership(res, eventId, organizerId) {
 async function requireCategoryInWorkshop(res, categoryId, workshopId) {
   const catOk = await WorkshopCategory.belongsToWorkshop(categoryId, workshopId);
   if (!catOk) {
-    res.status(403).json({ success: false, message: 'Access denied' });
+    res.status(403).json({ success: false, error: 'Access denied' });
     return false;
   }
   return true;
@@ -127,7 +127,7 @@ exports.getWorkshopForEvent = async (req, res) => {
 
     const workshop = await Workshop.findByEventId(eventId);
     if (!workshop) {
-      return res.json({ success: true, workshop: null });
+      return res.json({ success: true, data: { workshop: null } });
     }
 
     const categories = await WorkshopCategory.findByWorkshopId(workshop.id);
@@ -140,17 +140,19 @@ exports.getWorkshopForEvent = async (req, res) => {
 
     return res.json({
       success: true,
-      workshop: {
-        id: workshop.id,
-        event_id: workshop.event_id,
-        username: workshop.username,
-        created_at: workshop.created_at,
-        categories: categoriesWithMembers
+      data: {
+        workshop: {
+          id: workshop.id,
+          event_id: workshop.event_id,
+          username: workshop.username,
+          created_at: workshop.created_at,
+          categories: categoriesWithMembers
+        }
       }
     });
   } catch (error) {
     console.error('[workshopController] getWorkshopForEvent error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch workshop' });
+    res.status(500).json({ success: false, error: 'Failed to fetch workshop' });
   }
 };
 
@@ -167,17 +169,17 @@ exports.createWorkshop = async (req, res) => {
 
     // ── Input validation ────────────────────────────────────────────────────
     if (!username || !String(username).trim()) {
-      return res.status(400).json({ success: false, message: 'Workshop username is required' });
+      return res.status(400).json({ success: false, error: 'Workshop username is required' });
     }
     if (!accessCode || String(accessCode).trim().length < 4) {
-      return res.status(400).json({ success: false, message: 'Access code must be at least 4 characters' });
+      return res.status(400).json({ success: false, error: 'Access code must be at least 4 characters' });
     }
     if (!Array.isArray(categories) || categories.length === 0) {
-      return res.status(400).json({ success: false, message: 'At least one category is required' });
+      return res.status(400).json({ success: false, error: 'At least one category is required' });
     }
     for (const cat of categories) {
       const catError = validateCategoryInput(cat);
-      if (catError) return res.status(400).json({ success: false, message: catError });
+      if (catError) return res.status(400).json({ success: false, error: catError });
     }
 
     const cleanUsername = String(username).trim().toLowerCase();
@@ -186,12 +188,12 @@ exports.createWorkshop = async (req, res) => {
 
     const existing = await Workshop.findByEventId(eventId);
     if (existing) {
-      return res.status(409).json({ success: false, message: 'A workshop already exists for this event' });
+      return res.status(409).json({ success: false, error: 'A workshop already exists for this event' });
     }
 
     const taken = await Workshop.usernameExists(cleanUsername);
     if (taken) {
-      return res.status(409).json({ success: false, message: 'Workshop username is already taken' });
+      return res.status(409).json({ success: false, error: 'Workshop username is already taken' });
     }
 
     const codeHash = await bcrypt.hash(String(accessCode).trim(), 10);
@@ -224,8 +226,10 @@ exports.createWorkshop = async (req, res) => {
 
       return res.status(201).json({
         success: true,
-        message: 'Workshop created successfully',
-        workshop: { id: workshopId, event_id: eventId, username: cleanUsername, categories: createdCategories }
+        data: {
+          message: 'Workshop created successfully',
+          workshop: { id: workshopId, event_id: eventId, username: cleanUsername, categories: createdCategories }
+        }
       });
     } catch (txErr) {
       await conn.rollback();
@@ -235,9 +239,9 @@ exports.createWorkshop = async (req, res) => {
   } catch (error) {
     console.error('[workshopController] createWorkshop error:', error);
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ success: false, message: 'Workshop username is already taken' });
+      return res.status(409).json({ success: false, error: 'Workshop username is already taken' });
     }
-    res.status(500).json({ success: false, message: 'Failed to create workshop' });
+    res.status(500).json({ success: false, error: 'Failed to create workshop' });
   }
 };
 
@@ -253,42 +257,42 @@ exports.organizerAddMember = async (req, res) => {
     const { categoryId, email, role } = req.body;
 
     if (!categoryId || !email || !role) {
-      return res.status(400).json({ success: false, message: 'categoryId, email, and role are required' });
+      return res.status(400).json({ success: false, error: 'categoryId, email, and role are required' });
     }
     const allowedRoles = ['head', 'vice_head', 'member'];
     if (!allowedRoles.includes(role)) {
-      return res.status(400).json({ success: false, message: 'Invalid role' });
+      return res.status(400).json({ success: false, error: 'Invalid role' });
     }
 
     if (!await requireEventOwnership(res, eventId, organizerId)) return;
 
     const workshop = await Workshop.findByEventId(eventId);
     if (!workshop) {
-      return res.status(404).json({ success: false, message: 'No workshop for this event' });
+      return res.status(404).json({ success: false, error: 'No workshop for this event' });
     }
     const catOk = await WorkshopCategory.belongsToWorkshop(categoryId, workshop.id);
     if (!catOk) {
-      return res.status(400).json({ success: false, message: 'Category does not belong to this event workshop' });
+      return res.status(400).json({ success: false, error: 'Category does not belong to this event workshop' });
     }
 
     if (role === 'vice_head') {
       const hasVH = await WorkshopMember.existsViceHead(categoryId);
       if (hasVH) {
-        return res.status(409).json({ success: false, message: 'A vice head already exists for this category' });
+        return res.status(409).json({ success: false, error: 'A vice head already exists for this category' });
       }
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
     const alreadyIn = await WorkshopMember.emailExistsInCategory(categoryId, cleanEmail);
     if (alreadyIn) {
-      return res.status(409).json({ success: false, message: 'This email is already in this category' });
+      return res.status(409).json({ success: false, error: 'This email is already in this category' });
     }
 
     const member = await WorkshopMember.addMember(categoryId, cleanEmail, role);
-    return res.status(201).json({ success: true, message: 'Member added', member });
+    return res.status(201).json({ success: true, data: { message: 'Member added', member } });
   } catch (error) {
     console.error('[workshopController] organizerAddMember error:', error);
-    res.status(500).json({ success: false, message: 'Failed to add member' });
+    res.status(500).json({ success: false, error: 'Failed to add member' });
   }
 };
 
@@ -306,24 +310,24 @@ exports.workshopLogin = async (req, res) => {
     const { email, workshopUsername, accessCode } = req.body;
 
     if (!email || !workshopUsername || !accessCode) {
-      return res.status(400).json({ success: false, message: 'Invalid workshop credentials' });
+      return res.status(400).json({ success: false, error: 'Invalid workshop credentials' });
     }
 
     const workshop = await Workshop.findByUsername(String(workshopUsername).trim().toLowerCase());
     if (!workshop) {
       // Constant-time-like delay to prevent user enumeration via timing
       await bcrypt.compare('dummy', '$2a$10$dummyhashfortimingprotection000000000000000000000');
-      return res.status(401).json({ success: false, message: 'Invalid workshop credentials' });
+      return res.status(401).json({ success: false, error: 'Invalid workshop credentials' });
     }
 
     const codeMatch = await bcrypt.compare(String(accessCode).trim(), workshop.access_code_hash);
     if (!codeMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid workshop credentials' });
+      return res.status(401).json({ success: false, error: 'Invalid workshop credentials' });
     }
 
     const member = await WorkshopMember.findByWorkshopAndEmail(workshop.id, String(email).trim());
     if (!member) {
-      return res.status(401).json({ success: false, message: 'Invalid workshop credentials' });
+      return res.status(401).json({ success: false, error: 'Invalid workshop credentials' });
     }
 
     const token = signWorkshopToken({
@@ -338,20 +342,22 @@ exports.workshopLogin = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Workshop login successful',
-      token,
-      member: {
-        id: member.id,
-        email: member.email,
-        role: member.role,
-        categoryId: member.category_id,
-        categoryName: member.category_name,
-        workshopId: workshop.id
+      data: {
+        message: 'Workshop login successful',
+        token,
+        member: {
+          id: member.id,
+          email: member.email,
+          role: member.role,
+          categoryId: member.category_id,
+          categoryName: member.category_name,
+          workshopId: workshop.id
+        }
       }
     });
   } catch (error) {
     console.error('[workshopController] workshopLogin error:', error);
-    res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
+    res.status(500).json({ success: false, error: 'Login failed. Please try again.' });
   }
 };
 
@@ -376,20 +382,22 @@ exports.getWorkshopDashboard = async (req, res) => {
     );
     const event = eventRows[0] || null;
     if (!event) {
-      return res.status(404).json({ success: false, message: 'Event not found' });
+      return res.status(404).json({ success: false, error: 'Event not found' });
     }
 
     const venue = await fetchVenueForDashboard(eventId, event.venue_id);
 
     return res.json({
       success: true,
-      event,
-      venue,
-      member: { role, categoryId, categoryName, email }
+      data: {
+        event,
+        venue,
+        member: { role, categoryId, categoryName, email }
+      }
     });
   } catch (error) {
     console.error('[workshopController] getWorkshopDashboard error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load dashboard' });
+    res.status(500).json({ success: false, error: 'Failed to load dashboard' });
   }
 };
 
@@ -439,10 +447,10 @@ exports.getMyCategoryMembers = async (req, res) => {
     if (!await requireCategoryInWorkshop(res, categoryId, workshopId)) return;
 
     const members = await WorkshopMember.findByCategoryId(categoryId);
-    return res.json({ success: true, members });
+    return res.json({ success: true, data: { members } });
   } catch (error) {
     console.error('[workshopController] getMyCategoryMembers error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch category members' });
+    res.status(500).json({ success: false, error: 'Failed to fetch category members' });
   }
 };
 
@@ -458,10 +466,10 @@ exports.headAddMember = async (req, res) => {
     const { email, role } = req.body;
 
     if (!email || !role) {
-      return res.status(400).json({ success: false, message: 'email and role are required' });
+      return res.status(400).json({ success: false, error: 'email and role are required' });
     }
     if (!['vice_head', 'member'].includes(role)) {
-      return res.status(400).json({ success: false, message: 'Head can only add vice_head or member roles' });
+      return res.status(400).json({ success: false, error: 'Head can only add vice_head or member roles' });
     }
 
     if (!await requireCategoryInWorkshop(res, categoryId, workshopId)) return;
@@ -469,14 +477,14 @@ exports.headAddMember = async (req, res) => {
     if (role === 'vice_head') {
       const hasVH = await WorkshopMember.existsViceHead(categoryId);
       if (hasVH) {
-        return res.status(409).json({ success: false, message: 'A vice head already exists for your category' });
+        return res.status(409).json({ success: false, error: 'A vice head already exists for your category' });
       }
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
     const alreadyIn = await WorkshopMember.emailExistsInCategory(categoryId, cleanEmail);
     if (alreadyIn) {
-      return res.status(409).json({ success: false, message: 'This email is already in your category' });
+      return res.status(409).json({ success: false, error: 'This email is already in your category' });
     }
 
     const member = await WorkshopMember.addMember(categoryId, cleanEmail, role);
@@ -499,9 +507,9 @@ exports.headAddMember = async (req, res) => {
       `${req.workshopMember.email} added ${cleanEmail} as ${roleLabel}`
     );
 
-    return res.status(201).json({ success: true, message: 'Member added to your category', member });
+    return res.status(201).json({ success: true, data: { message: 'Member added to your category', member } });
   } catch (error) {
     console.error('[workshopController] headAddMember error:', error);
-    res.status(500).json({ success: false, message: 'Failed to add member' });
+    res.status(500).json({ success: false, error: 'Failed to add member' });
   }
 };

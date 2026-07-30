@@ -7,7 +7,7 @@ exports.checkInBooking = async (req, res) => {
     const { bookingId } = req.body;
 
     if (!bookingId || !bookingId.trim()) {
-      return res.status(400).json({ success: false, message: 'Booking ID is required' });
+      return res.status(400).json({ success: false, error: 'Booking ID is required' });
     }
 
     const cleanBookingId = bookingId.trim();
@@ -22,19 +22,19 @@ exports.checkInBooking = async (req, res) => {
     );
 
     if (bookings.length === 0) {
-      return res.status(404).json({ success: false, message: 'Invalid or non-existent Booking ID' });
+      return res.status(404).json({ success: false, error: 'Invalid or non-existent Booking ID' });
     }
 
     const booking = bookings[0];
 
     // Verify event ownership
     if (booking.event_id !== eventId) {
-      return res.status(400).json({ success: false, message: 'This booking is for a different event' });
+      return res.status(400).json({ success: false, error: 'This booking is for a different event' });
     }
 
     // Verify booking status
     if (booking.status === 'cancelled') {
-      return res.status(400).json({ success: false, message: 'This booking has been cancelled' });
+      return res.status(400).json({ success: false, error: 'This booking has been cancelled' });
     }
 
     const attendeeName = booking.full_name || booking.username || 'Guest';
@@ -55,8 +55,8 @@ exports.checkInBooking = async (req, res) => {
 
       return res.json({
         success: false,
+        error: `Already checked in at ${new Date(booking.checked_in_at).toLocaleTimeString()} by ${staffEmail}`,
         alreadyCheckedIn: true,
-        message: `Already checked in at ${new Date(booking.checked_in_at).toLocaleTimeString()} by ${staffEmail}`,
         attendee: {
           name: attendeeName,
           email: booking.user_email,
@@ -85,18 +85,20 @@ exports.checkInBooking = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Check-in successful!',
-      attendee: {
-        name: attendeeName,
-        email: booking.user_email,
-        ticketType: booking.ticket_type || 'Standard',
-        seatNumber: booking.seat_number,
-        seatNumbers: booking.seat_numbers
+      data: {
+        message: 'Check-in successful!',
+        attendee: {
+          name: attendeeName,
+          email: booking.user_email,
+          ticketType: booking.ticket_type || 'Standard',
+          seatNumber: booking.seat_number,
+          seatNumbers: booking.seat_numbers
+        }
       }
     });
   } catch (error) {
     console.error('checkInBooking error:', error);
-    return res.status(500).json({ success: false, message: 'Server error processing check-in' });
+    return res.status(500).json({ success: false, error: 'Server error processing check-in' });
   }
 };
 
@@ -120,11 +122,10 @@ exports.getCheckInSummary = async (req, res) => {
 
     return res.json({
       success: true,
-      checkedInCount,
-      totalCount
+      data: { checkedInCount, totalCount }
     });
   } catch (error) {
     console.error('getCheckInSummary error:', error);
-    return res.status(500).json({ success: false, message: 'Server error fetching check-in summary' });
+    return res.status(500).json({ success: false, error: 'Server error fetching check-in summary' });
   }
 };

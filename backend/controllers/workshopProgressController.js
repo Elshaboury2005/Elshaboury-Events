@@ -47,19 +47,21 @@ exports.getProgress = async (req, res) => {
 
     return res.json({
       success: true,
-      stats: {
-        totalTasks,
-        todo,
-        in_progress,
-        done,
-        completionPercentage,
-        overdueTasks,
-        memberCount,
-        upcomingMeetings
+      data: {
+        stats: {
+          totalTasks,
+          todo,
+          in_progress,
+          done,
+          completionPercentage,
+          overdueTasks,
+          memberCount,
+          upcomingMeetings
+        }
       }
     });
   } catch (error) {
     console.error('getProgress error:', error);
-    return res.status(500).json({ success: false, message: 'Server error computing progress report' });
+    return res.status(500).json({ success: false, error: 'Server error computing progress report' });
   }
 };

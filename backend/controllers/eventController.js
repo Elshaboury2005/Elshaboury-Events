@@ -785,7 +785,7 @@ exports.getAll = async (req, res) => {
     const events = await Event.findAll({ lifecycleView });
     const now = new Date();
     events.forEach((event) => enrichEventUrgency(event, now));
-    res.json({ success: true, events });
+    res.json({ success: true, data: { events } });
   } catch (error) {
     console.error('[eventController] getAll error:', error);
     res.status(500).json({ success: false, message: 'Error fetching events' });
@@ -808,7 +808,7 @@ exports.getById = async (req, res) => {
     event.is_expired = event.lifecycle_status === 'expired';
     enrichEventUrgency(event);
 
-    res.json({ success: true, event });
+    res.json({ success: true, data: { event } });
   } catch (error) {
     console.error('[eventController] getById error:', error);
     res.status(500).json({ success: false, message: 'Error fetching event' });
@@ -831,7 +831,7 @@ exports.trackView = async (req, res) => {
       [uuidv4(), eventId, null, ipAddress, userAgent]
     );
 
-    return res.status(201).json({ success: true });
+    return res.status(201).json({ success: true, data: {} });
   } catch (error) {
     console.error('[eventController] trackView error:', error);
     return res.status(500).json({ success: false, message: 'Error tracking event view' });
@@ -854,11 +854,8 @@ exports.getViewsLast24Hours = async (req, res) => {
       [eventId]
     );
 
-    return res.json({
-      success: true,
-      event_id: eventId,
-      views_last_24_hours: Number(rows[0]?.total || 0)
-    });
+    return res.json({ success: true, data: { event_id: eventId,
+      views_last_24_hours: Number(rows[0]?.total || 0) } });
   } catch (error) {
     console.error('[eventController] getViewsLast24Hours error:', error);
     return res.status(500).json({ success: false, message: 'Error loading event views' });
@@ -879,11 +876,8 @@ exports.getSeatMap = async (req, res) => {
     } catch (err) {
       console.warn('getTakenSeatsByEvent failed (e.g. seat_numbers column missing):', err.message);
     }
-    res.json({
-      success: true,
-      limits: { standard: limitStandard, special: limitSpecial, vip: limitVip },
-      taken
-    });
+    res.json({ success: true, data: { limits: { standard: limitStandard, special: limitSpecial, vip: limitVip },
+      taken } });
   } catch (error) {
     console.error('[eventController] getSeatMap error:', error);
     res.status(500).json({ success: false, message: 'Error fetching seat map' });
@@ -1109,11 +1103,8 @@ exports.create = async (req, res) => {
       console.error('[eventController] Unexpected AI decision error:', err.message)
     );
 
-    res.status(201).json({
-      success: true,
-      message: 'Event created successfully',
-      event
-    });
+    res.status(201).json({ success: true, data: { message: 'Event created successfully',
+      event } });
   } catch (error) {
     if (connection) {
       try { await connection.rollback(); } catch (_) {}
@@ -1144,7 +1135,7 @@ exports.update = async (req, res) => {
     }
 
     const event = await Event.findById(id);
-    res.json({ success: true, message: 'Event updated successfully', event });
+    res.json({ success: true, data: { message: 'Event updated successfully', event } });
   } catch (error) {
     console.error('[eventController] update error:', error);
     res.status(500).json({ success: false, message: 'Error updating event' });
@@ -1165,7 +1156,7 @@ exports.delete = async (req, res) => {
     }
 
     await Event.delete(id);
-    res.json({ success: true, message: 'Event deleted successfully' });
+    res.json({ success: true, data: { message: 'Event deleted successfully' } });
   } catch (error) {
     console.error('[eventController] delete error:', error);
     res.status(500).json({ success: false, message: 'Error deleting event' });
@@ -1176,7 +1167,7 @@ exports.getMyEvents = async (req, res) => {
   try {
     const userId = req.user.userId;
     const events = await Event.findByOrganizerId(userId);
-    res.json({ success: true, events });
+    res.json({ success: true, data: { events } });
   } catch (error) {
     console.error('[eventController] getMyEvents error:', error);
     res.status(500).json({ success: false, message: 'Error fetching your events' });
@@ -1261,9 +1252,7 @@ exports.getCancellationSummary = async (req, res) => {
       }
     }
 
-    res.json({
-      success: true,
-      summary: {
+    res.json({ success: true, data: { summary: {
         eventId: event.id,
         eventTitle: event.title,
         totalBookingsAffected: attendees.length,
@@ -1271,8 +1260,7 @@ exports.getCancellationSummary = async (req, res) => {
         venueRefundAmount: roundMoney(venueRefundAmount) || 0,
         platformFee: roundMoney(platformFee) || 0,
         attendees
-      }
-    });
+      } } });
   } catch (error) {
     console.error('[eventController] getCancellationSummary error:', error);
     res.status(500).json({ success: false, message: 'Error loading cancellation summary' });
@@ -1312,14 +1300,11 @@ exports.getReviews = async (req, res) => {
        FROM event_reviews WHERE event_id = ?`,
       [eventId]
     );
-    res.json({
-      success: true,
-      reviews: rows,
-      summary: { count: aggRows[0].count, avgRating: Number(aggRows[0].avgRating || 0) }
-    });
+    res.json({ success: true, data: { reviews: rows,
+      summary: { count: aggRows[0].count, avgRating: Number(aggRows[0].avgRating || 0) } } });
   } catch (error) {
     if (error.code === 'ER_NO_SUCH_TABLE') {
-      return res.json({ success: true, reviews: [], summary: { count: 0, avgRating: 0 } });
+      return res.json({ success: true, data: { reviews: [], summary: { count: 0, avgRating: 0 } } });
     }
     console.error('[eventController] getReviews error:', error);
     res.status(500).json({ success: false, message: 'Error loading reviews' });
@@ -1368,7 +1353,7 @@ exports.addReview = async (req, res) => {
       [uuidv4(), eventId, userId, rating, review]
     );
 
-    res.json({ success: true, message: 'Review saved successfully' });
+    res.json({ success: true, data: { message: 'Review saved successfully' } });
   } catch (error) {
     console.error('[eventController] addReview error:', error);
     res.status(500).json({ success: false, message: 'Error saving review' });
@@ -1394,7 +1379,7 @@ exports.joinWaitlist = async (req, res) => {
       'INSERT INTO event_waitlist (id, event_id, user_id, status) VALUES (?, ?, ?, "waiting")',
       [uuidv4(), eventId, userId]
     );
-    res.status(201).json({ success: true, message: 'You joined the waitlist successfully' });
+    res.status(201).json({ success: true, data: { message: 'You joined the waitlist successfully' } });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ success: false, message: 'You are already on the waitlist for this event' });
@@ -1425,7 +1410,7 @@ exports.createPromoCode = async (req, res) => {
       [uuidv4(), eventId, organizerId, cleanCode, validType, val, maxUses || null, expiresAt || null]
     );
 
-    res.status(201).json({ success: true, message: 'Promo code created successfully' });
+    res.status(201).json({ success: true, data: { message: 'Promo code created successfully' } });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ success: false, message: 'Promo code already exists for this event' });
@@ -1447,7 +1432,7 @@ exports.getPromoCodes = async (req, res) => {
        FROM promo_codes WHERE event_id = ? ORDER BY created_at DESC`,
       [eventId]
     );
-    res.json({ success: true, promoCodes: rows });
+    res.json({ success: true, data: { promoCodes: rows } });
   } catch (error) {
     console.error('[eventController] getPromoCodes error:', error);
     res.status(500).json({ success: false, message: 'Error loading promo codes' });
@@ -1469,7 +1454,7 @@ exports.deactivatePromoCode = async (req, res) => {
     if (promoRows.length === 0) return res.status(404).json({ success: false, message: 'Promo code not found' });
 
     if (Number(promoRows[0].is_active) === 0) {
-      return res.json({ success: true, message: 'Promo code is already inactive' });
+      return res.json({ success: true, data: { message: 'Promo code is already inactive' } });
     }
 
     await pool.execute(
@@ -1477,7 +1462,7 @@ exports.deactivatePromoCode = async (req, res) => {
       [promoId, eventId]
     );
 
-    res.json({ success: true, message: 'Promo code deactivated successfully' });
+    res.json({ success: true, data: { message: 'Promo code deactivated successfully' } });
   } catch (error) {
     console.error('[eventController] deactivatePromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error deactivating promo code' });
@@ -1499,7 +1484,7 @@ exports.activatePromoCode = async (req, res) => {
     if (promoRows.length === 0) return res.status(404).json({ success: false, message: 'Promo code not found' });
 
     if (Number(promoRows[0].is_active) === 1) {
-      return res.json({ success: true, message: 'Promo code is already active' });
+      return res.json({ success: true, data: { message: 'Promo code is already active' } });
     }
 
     await pool.execute(
@@ -1507,7 +1492,7 @@ exports.activatePromoCode = async (req, res) => {
       [promoId, eventId]
     );
 
-    res.json({ success: true, message: 'Promo code activated successfully' });
+    res.json({ success: true, data: { message: 'Promo code activated successfully' } });
   } catch (error) {
     console.error('[eventController] activatePromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error activating promo code' });
@@ -1531,7 +1516,7 @@ exports.deletePromoCode = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Promo code not found' });
     }
 
-    res.json({ success: true, message: 'Promo code deleted successfully' });
+    res.json({ success: true, data: { message: 'Promo code deleted successfully' } });
   } catch (error) {
     console.error('[eventController] deletePromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error deleting promo code' });
@@ -1577,16 +1562,13 @@ exports.validatePromoCode = async (req, res) => {
       unitPrice
     });
 
-    res.json({
-      success: true,
-      promo: { id: promo.id, code: promo.code, discountType: promo.discount_type, discountValue: Number(promo.discount_value) },
+    res.json({ success: true, data: { promo: { id: promo.id, code: promo.code, discountType: promo.discount_type, discountValue: Number(promo.discount_value) },
       amount: normalizedAmount,
       seatCount,
       unitPrice,
       discountPerTicket: promoTotals.discountPerTicket,
       discount: promoTotals.discountAmount,
-      finalAmount: promoTotals.finalAmount
-    });
+      finalAmount: promoTotals.finalAmount } });
   } catch (error) {
     console.error('[eventController] validatePromoCode error:', error);
     res.status(500).json({ success: false, message: 'Error validating promo code' });
@@ -1614,7 +1596,7 @@ exports.getPostEventSummary = async (req, res) => {
       event: { ...summary.event }
     };
     delete responseSummary.event.organizer_id;
-    res.json({ success: true, summary: responseSummary });
+    res.json({ success: true, data: { summary: responseSummary } });
   } catch (error) {
     console.error('[eventController] getPostEventSummary error:', error);
     res.status(500).json({ success: false, message: 'Error loading post-event summary' });
@@ -1639,15 +1621,12 @@ exports.getVault = async (req, res) => {
       });
     }
 
-    return res.json({
-      success: true,
-      event: result.event,
+    return res.json({ success: true, data: { event: result.event,
       vault: result.vault,
       canWithdraw: Boolean(result.canWithdraw),
       withdrawReason: result.withdrawReason || '',
       withdrawAmount: Number(result.withdrawAmount || 0),
-      transactions: result.transactions || []
-    });
+      transactions: result.transactions || [] } });
   } catch (error) {
     console.error('[eventController] getVault error:', error);
     return res.status(500).json({ success: false, message: 'Error loading event vault' });
@@ -1667,12 +1646,9 @@ exports.getVaultTransactions = async (req, res) => {
       });
     }
 
-    return res.json({
-      success: true,
-      event: result.event,
+    return res.json({ success: true, data: { event: result.event,
       vault: result.vault,
-      transactions: result.transactions || []
-    });
+      transactions: result.transactions || [] } });
   } catch (error) {
     console.error('[eventController] getVaultTransactions error:', error);
     return res.status(500).json({ success: false, message: 'Error loading vault transactions' });
@@ -1700,14 +1676,11 @@ exports.withdrawVault = async (req, res) => {
       'success'
     );
 
-    return res.json({
-      success: true,
-      message: `${amountLabel} EGP has been transferred to your wallet from ${result.event.title || 'event'} vault`,
+    return res.json({ success: true, data: { message: `${amountLabel} EGP has been transferred to your wallet from ${result.event.title || 'event'} vault`,
       event: result.event,
       amount: Number(result.amount || 0),
       walletBalance: Number(result.walletBalance || 0),
-      vault: result.vault
-    });
+      vault: result.vault } });
   } catch (error) {
     console.error('[eventController] withdrawVault error:', error);
     return res.status(500).json({ success: false, message: 'Error processing vault withdrawal' });
@@ -1822,7 +1795,7 @@ exports.getRevenueTrend = async (req, res) => {
        ORDER BY day ASC`,
       [eventId]
     );
-    res.json({ success: true, points: rows.map((r) => ({ day: r.day, revenue: Number(r.revenue || 0) })) });
+    res.json({ success: true, data: { points: rows.map((r) => ({ day: r.day, revenue: Number(r.revenue || 0) })) } });
   } catch (error) {
     console.error('[eventController] getRevenueTrend error:', error);
     res.status(500).json({ success: false, message: 'Error loading revenue trend' });
@@ -2014,13 +1987,10 @@ exports.selectVenue = async (req, res) => {
     const updatedEvent = await Event.findById(eventId);
     const updatedBooking = await VenueBooking.findById(newBookingId);
 
-    return res.json({
-      success: true,
-      message: 'New venue selected successfully. Waiting for venue owner confirmation.',
+    return res.json({ success: true, data: { message: 'New venue selected successfully. Waiting for venue owner confirmation.',
       event: updatedEvent,
       venueBooking: updatedBooking,
-      priceDifference: diff
-    });
+      priceDifference: diff } });
 
   } catch (error) {
     if (connection) {
@@ -2056,12 +2026,9 @@ exports.getVenueDetails = async (req, res) => {
 
     const booking = bookingRows[0] || null;
     if (!booking) {
-      return res.json({
-        success: true,
-        booking: null,
+      return res.json({ success: true, data: { booking: null,
         venue: null,
-        needsNewVenue: false
-      });
+        needsNewVenue: false } });
     }
 
     const [venueRows] = await pool.execute(
@@ -2097,9 +2064,7 @@ exports.getVenueDetails = async (req, res) => {
 
     const needsNewVenue = ['declined', 'declined_auto_expired'].includes(booking.status) || event.event_status === 'pending_venue';
 
-    return res.json({
-      success: true,
-      booking: {
+    return res.json({ success: true, data: { booking: {
         id: booking.id,
         status: booking.status,
         paymentStatus: booking.payment_status,
@@ -2146,8 +2111,7 @@ exports.getVenueDetails = async (req, res) => {
           };
         })
       },
-      needsNewVenue
-    });
+      needsNewVenue } });
 
   } catch (error) {
     console.error('[eventController] getVenueDetails error:', error);
@@ -2159,7 +2123,7 @@ exports.getPlatformFeeSettings = async (req, res) => {
   try {
     
     const settings = await platformFeeService.getPlatformFeeSettings();
-    res.json({ success: true, settings });
+    res.json({ success: true, data: { settings } });
   } catch (error) {
     console.error('[eventController] getPlatformFeeSettings error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch platform fee settings' });

@@ -185,15 +185,17 @@ exports.getAccess = async (req, res) => {
     const { id: eventId } = req.params;
     const userId = req.user.userId;
     const { event, error } = await getAuthorizedEvent(eventId, userId);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return res.status(error.code).json({ success: false, error: error.message });
 
     res.json({
       success: true,
-      marketing: buildMarketingAccessState(event)
+      data: {
+        marketing: buildMarketingAccessState(event)
+      }
     });
   } catch (error) {
     console.error('Marketing access error:', error);
-    res.status(500).json({ success: false, message: 'Error checking marketing access' });
+    res.status(500).json({ success: false, error: 'Error checking marketing access' });
   }
 };
 
@@ -202,13 +204,13 @@ exports.getSetup = async (req, res) => {
     const { id: eventId } = req.params;
     const userId = req.user.userId;
     const { error } = await getAuthorizedEvent(eventId, userId);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return res.status(error.code).json({ success: false, error: error.message });
 
     const setup = await MarketingSetup.findByEventId(eventId);
-    res.json({ success: true, setup: serializeSetup(setup) });
+    res.json({ success: true, data: { setup: serializeSetup(setup) } });
   } catch (error) {
     console.error('Get marketing setup error:', error);
-    res.status(500).json({ success: false, message: 'Error loading marketing setup' });
+    res.status(500).json({ success: false, error: 'Error loading marketing setup' });
   }
 };
 
@@ -217,16 +219,16 @@ exports.saveSetup = async (req, res) => {
     const { id: eventId } = req.params;
     const userId = req.user.userId;
     const { event, error } = await getAuthorizedEvent(eventId, userId);
-    if (error) return res.status(error.code).json({ success: false, message: error.message });
+    if (error) return res.status(error.code).json({ success: false, error: error.message });
 
     const access = buildMarketingAccessState(event);
     if (!access.canAccessSetup) {
-      return res.status(403).json({ success: false, message: access.lockedMessage });
+      return res.status(403).json({ success: false, error: access.lockedMessage });
     }
 
     const validated = validateSetup(req.body || {});
     if (validated.errors.length > 0) {
-      return res.status(400).json({ success: false, message: validated.errors[0], errors: validated.errors });
+      return res.status(400).json({ success: false, error: validated.errors[0], errors: validated.errors });
     }
 
     const saved = await MarketingSetup.upsert({
@@ -234,10 +236,10 @@ exports.saveSetup = async (req, res) => {
       organizerId: userId,
       ...validated.payload
     });
-    res.json({ success: true, setup: serializeSetup(saved) });
+    res.json({ success: true, data: { setup: serializeSetup(saved) } });
   } catch (error) {
     console.error('Save marketing setup error:', error);
-    res.status(500).json({ success: false, message: 'Error saving marketing setup' });
+    res.status(500).json({ success: false, error: 'Error saving marketing setup' });
   }
 };
 
@@ -250,23 +252,25 @@ exports.generatePlan = async (req, res) => {
     if (result.error) {
       return res.status(result.error.code).json({
         success: false,
-        message: result.error.message,
+        error: result.error.message,
         errors: result.error.errors || undefined
       });
     }
 
     res.json({
       success: true,
-      message: 'Marketing plan generated successfully',
-      setup: result.setup,
-      plan: result.plan
+      data: {
+        message: 'Marketing plan generated successfully',
+        setup: result.setup,
+        plan: result.plan
+      }
     });
   } catch (error) {
     console.error('Generate marketing plan error:', error);
     const statusCode = Number(error.statusCode || 500);
     res.status(statusCode).json({
       success: false,
-      message: error.message || 'Error generating marketing plan'
+      error: error.message || 'Error generating marketing plan'
     });
   }
 };
@@ -276,31 +280,32 @@ exports.generateMarketingPlan = async (req, res) => {
     const userId = req.user.userId;
     const eventId = String(req.body?.eventId || '').trim();
     if (!eventId) {
-      return res.status(400).json({ success: false, message: 'eventId is required' });
+      return res.status(400).json({ success: false, error: 'eventId is required' });
     }
 
     const result = await generatePlanForEvent(eventId, userId, req.body || {});
     if (result.error) {
       return res.status(result.error.code).json({
         success: false,
-        message: result.error.message,
+        error: result.error.message,
         errors: result.error.errors || undefined
       });
     }
 
     res.json({
       success: true,
-      message: 'Marketing plan generated successfully',
-      setup: result.setup,
-      plan: result.plan
+      data: {
+        message: 'Marketing plan generated successfully',
+        setup: result.setup,
+        plan: result.plan
+      }
     });
   } catch (error) {
     console.error('Generate marketing plan (global endpoint) error:', error);
     const statusCode = Number(error.statusCode || 500);
     res.status(statusCode).json({
       success: false,
-      message: error.message || 'Error generating marketing plan'
+      error: error.message || 'Error generating marketing plan'
     });
   }
 };
-

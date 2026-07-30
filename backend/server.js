@@ -47,6 +47,10 @@ const { startChatCleanupJob } = require('./services/chatCleanupService');
 const { startVenueBookingExpiryJob } = require('./services/venueBookingExpiryService');
 const { startVenueBookingFundReleaseJob } = require('./services/venueBookingFundReleaseService');
 
+// Swagger
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+
 const http = require('http');
 const { setupSocket } = require('./utils/socketHandler');
 
@@ -87,22 +91,40 @@ app.get('/api/platform/access', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({
       success: true,
-      locked: accessState.locked,
-      maintenanceMode: accessState.maintenanceMode,
-      siteName: accessState.siteName,
-      message: accessState.message
+      data: {
+        locked: accessState.locked,
+        maintenanceMode: accessState.maintenanceMode,
+        siteName: accessState.siteName,
+        message: accessState.message
+      }
     });
   } catch (error) {
     console.error('Platform access status error:', error);
     res.status(500).json({
       success: false,
-      locked: false,
-      message: 'Unable to load platform access status'
+      error: 'Unable to load platform access status'
     });
   }
 });
 
 app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Swagger UI — served at /api-docs (before the enforcePlatformApiAccess middleware)
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'Elshaboury Events API Docs',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+    docExpansion: 'none',
+  }
+}));
+
+// Expose the raw OpenAPI spec as JSON
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.json(swaggerSpec);
+});
 
 app.use('/api', enforcePlatformApiAccess);
 app.use('/api/Account', accountRoutes);
@@ -143,7 +165,22 @@ app.post('/api/generate-marketing-plan', authenticateToken, marketingController.
 app.use('/api/AI', aiRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+  res.json({ success: true, data: { status: 'OK', message: 'Server is running' } });
+});
+
+// ─── Global error handler ─────────────────────────────────────────────────────
+// Must be defined AFTER all routes. Catches any error passed via next(err) or
+// any unhandled synchronous throw inside route handlers.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  const statusCode = (typeof err.status === 'number' && err.status >= 100 && err.status < 600)
+    ? err.status
+    : 500;
+  res.status(statusCode).json({
+    success: false,
+    error: err.message || 'An unexpected error occurred'
+  });
 });
 
 const runMigrations = async () => {
@@ -189,6 +226,7 @@ runMigrations().then(() => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`Serving static files from: ${path.join(__dirname, '../frontend')}`);
     console.log('API available at: /api');
+    console.log(`Swagger UI available at: http://localhost:${PORT}/api-docs`);
 
     setupDatabase()
       .then((ready) => {
@@ -210,4 +248,7 @@ runMigrations().then(() => {
 }).catch(err => {
   console.error('Fatal migration error, server not started:', err);
   process.exit(1);
+
+  // console.error('Fatal migration error, server not ended:', err);
+  // process.exit(0);
 });

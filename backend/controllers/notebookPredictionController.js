@@ -197,13 +197,13 @@ exports.runPrediction = async (req, res) => {
     const { ml_fields } = req.body;
 
     if (!ml_fields || typeof ml_fields !== 'object') {
-      return res.status(400).json({ success: false, message: 'ml_fields object is required' });
+      return res.status(400).json({ success: false, error: 'ml_fields object is required' });
     }
 
     // Verify notebook ownership
     const notebook = await Notebook.findByIdAndUser(id, userId);
     if (!notebook) {
-      return res.status(404).json({ success: false, message: 'Notebook not found' });
+      return res.status(404).json({ success: false, error: 'Notebook not found' });
     }
 
     // ── Category 2: Auto-fetch organizer data ──────────────────
@@ -312,7 +312,7 @@ exports.runPrediction = async (req, res) => {
       console.error('[notebookPredictionController] Predict service error:', predictErr.message);
       return res.status(502).json({
         success: false,
-        message: 'Prediction service is unavailable. Please ensure the Python service is running.',
+        error: 'Prediction service is unavailable. Please ensure the Python service is running.',
         detail: predictErr.message,
       });
     }
@@ -323,16 +323,18 @@ exports.runPrediction = async (req, res) => {
 
     return res.json({
       success: true,
-      prediction: predictionResult,
-      auto_fetched: orgStats,
-      flagged_fields: {
-        event_quality_score: 'NOT_COMPUTED — formula not confirmed yet. Contact Mohamed.',
-        event_popularity_index: 'NOT_COMPUTED — formula not confirmed yet. Contact Mohamed.',
-      },
+      data: {
+        prediction: predictionResult,
+        auto_fetched: orgStats,
+        flagged_fields: {
+          event_quality_score: 'NOT_COMPUTED — formula not confirmed yet. Contact Mohamed.',
+          event_popularity_index: 'NOT_COMPUTED — formula not confirmed yet. Contact Mohamed.',
+        },
+      }
     });
   } catch (err) {
     console.error('[notebookPredictionController] runPrediction error:', err);
-    res.status(500).json({ success: false, message: 'Internal server error during prediction' });
+    res.status(500).json({ success: false, error: 'Internal server error during prediction' });
   }
 };
 
@@ -347,14 +349,14 @@ exports.getOrganizerStats = async (req, res) => {
 
     const notebook = await Notebook.findByIdAndUser(id, userId);
     if (!notebook) {
-      return res.status(404).json({ success: false, message: 'Notebook not found' });
+      return res.status(404).json({ success: false, error: 'Notebook not found' });
     }
 
     const stats = await fetchOrganizerStats(userId);
-    res.json({ success: true, stats });
+    res.json({ success: true, data: { stats } });
   } catch (err) {
     console.error('[notebookPredictionController] getOrganizerStats error:', err);
-    res.status(500).json({ success: false, message: 'Failed to fetch organizer stats' });
+    res.status(500).json({ success: false, error: 'Failed to fetch organizer stats' });
   }
 };
 
@@ -370,18 +372,18 @@ exports.saveMlFields = async (req, res) => {
     const { ml_fields } = req.body;
 
     if (!ml_fields) {
-      return res.status(400).json({ success: false, message: 'ml_fields is required' });
+      return res.status(400).json({ success: false, error: 'ml_fields is required' });
     }
 
     const notebook = await Notebook.findByIdAndUser(id, userId);
     if (!notebook) {
-      return res.status(404).json({ success: false, message: 'Notebook not found' });
+      return res.status(404).json({ success: false, error: 'Notebook not found' });
     }
 
     await Notebook.updateMlFields(id, userId, { category1: ml_fields });
-    res.json({ success: true, message: 'Fields saved' });
+    res.json({ success: true, data: { message: 'Fields saved' } });
   } catch (err) {
     console.error('[notebookPredictionController] saveMlFields error:', err);
-    res.status(500).json({ success: false, message: 'Failed to save fields' });
+    res.status(500).json({ success: false, error: 'Failed to save fields' });
   }
 };

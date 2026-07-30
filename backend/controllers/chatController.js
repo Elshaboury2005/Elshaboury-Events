@@ -14,11 +14,11 @@ exports.getMyEvents = async (req, res) => {
     const events = await getMyEventChats(userId);
     return res.json({
       success: true,
-      events
+      data: { events }
     });
   } catch (error) {
     console.error('Get my chat events error:', error);
-    return res.status(500).json({ success: false, message: 'Error loading chat events' });
+    return res.status(500).json({ success: false, error: 'Error loading chat events' });
   }
 };
 
@@ -30,20 +30,20 @@ exports.getMessages = async (req, res) => {
 
     const access = await resolveEventChatAccess(eventId, userId, fallbackUsername);
     if (!access.eventExists) {
-      return res.status(404).json({ success: false, message: 'Event not found' });
+      return res.status(404).json({ success: false, error: 'Event not found' });
     }
     if (!access.canAccess) {
-      return res.status(403).json({ success: false, message: 'You are not allowed to access this event chat' });
+      return res.status(403).json({ success: false, error: 'You are not allowed to access this event chat' });
     }
 
     const messages = await getRecentEventChatMessages(access.eventId || eventId, 50);
     return res.json({
       success: true,
-      messages
+      data: { messages }
     });
   } catch (error) {
     console.error('Get chat messages error:', error);
-    return res.status(500).json({ success: false, message: 'Error loading chat messages' });
+    return res.status(500).json({ success: false, error: 'Error loading chat messages' });
   }
 };
 
@@ -57,21 +57,25 @@ exports.canAccess = async (req, res) => {
     if (!access.eventExists) {
       return res.json({
         success: true,
-        canAccess: false,
-        isHost: false
+        data: {
+          canAccess: false,
+          isHost: false
+        }
       });
     }
 
     return res.json({
       success: true,
-      canAccess: Boolean(access.canAccess),
-      isHost: Boolean(access.isHost),
-      username: access.username,
-      eventId: access.eventId || eventId
+      data: {
+        canAccess: Boolean(access.canAccess),
+        isHost: Boolean(access.isHost),
+        username: access.username,
+        eventId: access.eventId || eventId
+      }
     });
   } catch (error) {
     console.error('Can access chat error:', error);
-    return res.status(500).json({ success: false, message: 'Error checking chat access' });
+    return res.status(500).json({ success: false, error: 'Error checking chat access' });
   }
 };
 
@@ -83,20 +87,20 @@ exports.markRead = async (req, res) => {
 
     const access = await resolveEventChatAccess(eventId, userId, fallbackUsername);
     if (!access.eventExists) {
-      return res.status(404).json({ success: false, message: 'Event not found' });
+      return res.status(404).json({ success: false, error: 'Event not found' });
     }
     if (!access.canAccess) {
-      return res.status(403).json({ success: false, message: 'You are not allowed to access this event chat' });
+      return res.status(403).json({ success: false, error: 'You are not allowed to access this event chat' });
     }
 
     await markEventChatRead(access.eventId, userId);
     return res.json({
       success: true,
-      eventId: access.eventId
+      data: { eventId: access.eventId }
     });
   } catch (error) {
     console.error('Mark chat read error:', error);
-    return res.status(500).json({ success: false, message: 'Error marking chat as read' });
+    return res.status(500).json({ success: false, error: 'Error marking chat as read' });
   }
 };
 
@@ -110,19 +114,21 @@ exports.getStatus = async (req, res) => {
     if (!status.success) {
       return res.status(status.status || 400).json({
         success: false,
-        message: status.message || 'Unable to load chat status'
+        error: status.message || 'Unable to load chat status'
       });
     }
 
     return res.json({
       success: true,
-      eventId: status.eventId,
-      chat_locked: Boolean(status.chatLocked),
-      is_host: Boolean(status.isHost)
+      data: {
+        eventId: status.eventId,
+        chat_locked: Boolean(status.chatLocked),
+        is_host: Boolean(status.isHost)
+      }
     });
   } catch (error) {
     console.error('Get chat status error:', error);
-    return res.status(500).json({ success: false, message: 'Error loading chat status' });
+    return res.status(500).json({ success: false, error: 'Error loading chat status' });
   }
 };
 
@@ -135,7 +141,7 @@ async function setLockState(req, res, locked) {
   if (!result.success) {
     return res.status(result.status || 400).json({
       success: false,
-      message: result.message || 'Unable to update chat lock state'
+      error: result.message || 'Unable to update chat lock state'
     });
   }
 
@@ -158,8 +164,10 @@ async function setLockState(req, res, locked) {
 
   return res.json({
     success: true,
-    eventId: result.eventId,
-    chat_locked: Boolean(result.chatLocked)
+    data: {
+      eventId: result.eventId,
+      chat_locked: Boolean(result.chatLocked)
+    }
   });
 }
 
@@ -168,7 +176,7 @@ exports.lock = async (req, res) => {
     return await setLockState(req, res, true);
   } catch (error) {
     console.error('Lock chat error:', error);
-    return res.status(500).json({ success: false, message: 'Error locking chat' });
+    return res.status(500).json({ success: false, error: 'Error locking chat' });
   }
 };
 
@@ -177,6 +185,6 @@ exports.unlock = async (req, res) => {
     return await setLockState(req, res, false);
   } catch (error) {
     console.error('Unlock chat error:', error);
-    return res.status(500).json({ success: false, message: 'Error unlocking chat' });
+    return res.status(500).json({ success: false, error: 'Error unlocking chat' });
   }
 };

@@ -5,16 +5,16 @@ exports.getAll = async (req, res) => {
     const userId = req.user.userId;
     const unreadOnly = req.query.unreadOnly === 'true';
     const notifications = await Notification.findByUserId(userId, unreadOnly);
-    res.json({ success: true, notifications });
+    res.json({ success: true, data: { notifications } });
   } catch (error) {
     console.error('Get notifications error:', error);
     if (error.code === 'ER_NO_SUCH_TABLE' || error.message?.includes("doesn't exist")) {
       return res.status(500).json({
         success: false,
-        message: 'Database table "notifications" not found. Please run the database migration script.'
+        error: 'Database table "notifications" not found. Please run the database migration script.'
       });
     }
-    res.status(500).json({ success: false, message: error.message || 'Error fetching notifications' });
+    res.status(500).json({ success: false, error: error.message || 'Error fetching notifications' });
   }
 };
 
@@ -25,12 +25,12 @@ exports.markAsRead = async (req, res) => {
 
     const updated = await Notification.markAsRead(id, userId);
     if (!updated) {
-      return res.status(404).json({ success: false, message: 'Notification not found' });
+      return res.status(404).json({ success: false, error: 'Notification not found' });
     }
-    res.json({ success: true, message: 'Notification marked as read' });
+    res.json({ success: true, data: { message: 'Notification marked as read' } });
   } catch (error) {
     console.error('Mark read error:', error);
-    res.status(500).json({ success: false, message: 'Error updating notification' });
+    res.status(500).json({ success: false, error: 'Error updating notification' });
   }
 };
 
@@ -38,10 +38,10 @@ exports.markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.userId;
     await Notification.markAllAsRead(userId);
-    res.json({ success: true, message: 'All notifications marked as read' });
+    res.json({ success: true, data: { message: 'All notifications marked as read' } });
   } catch (error) {
     console.error('Mark all read error:', error);
-    res.status(500).json({ success: false, message: 'Error updating notifications' });
+    res.status(500).json({ success: false, error: 'Error updating notifications' });
   }
 };
 
@@ -52,12 +52,12 @@ exports.deleteOne = async (req, res) => {
 
     const deleted = await Notification.deleteById(id, userId);
     if (!deleted) {
-      return res.status(404).json({ success: false, message: 'Notification not found' });
+      return res.status(404).json({ success: false, error: 'Notification not found' });
     }
-    res.json({ success: true, message: 'Notification deleted' });
+    res.json({ success: true, data: { message: 'Notification deleted' } });
   } catch (error) {
     console.error('Delete notification error:', error);
-    res.status(500).json({ success: false, message: 'Error deleting notification' });
+    res.status(500).json({ success: false, error: 'Error deleting notification' });
   }
 };
 
@@ -65,9 +65,9 @@ exports.deleteAll = async (req, res) => {
   try {
     const userId = req.user.userId;
     await Notification.deleteAllByUserId(userId);
-    res.json({ success: true, message: 'All notifications deleted' });
+    res.json({ success: true, data: { message: 'All notifications deleted' } });
   } catch (error) {
     console.error('Delete all notifications error:', error);
-    res.status(500).json({ success: false, message: 'Error deleting notifications' });
+    res.status(500).json({ success: false, error: 'Error deleting notifications' });
   }
 };

@@ -8,10 +8,10 @@ exports.getFiles = async (req, res) => {
   try {
     const { categoryId } = req.workshopMember;
     const files = await WorkshopFile.findByCategoryId(categoryId);
-    return res.json({ success: true, files });
+    return res.json({ success: true, data: { files } });
   } catch (error) {
     console.error('getFiles error:', error);
-    return res.status(500).json({ success: false, message: 'Server error fetching files list' });
+    return res.status(500).json({ success: false, error: 'Server error fetching files list' });
   }
 };
 
@@ -20,7 +20,7 @@ exports.uploadFile = async (req, res) => {
     const { categoryId, workshopMemberId, email } = req.workshopMember;
 
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file was uploaded or file type is blocked' });
+      return res.status(400).json({ success: false, error: 'No file was uploaded or file type is blocked' });
     }
 
     const fileName = req.file.originalname;
@@ -49,18 +49,20 @@ exports.uploadFile = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'File uploaded successfully',
-      file: {
-        id: fileId,
-        fileName,
-        filePath,
-        fileSize,
-        fileType
+      data: {
+        message: 'File uploaded successfully',
+        file: {
+          id: fileId,
+          fileName,
+          filePath,
+          fileSize,
+          fileType
+        }
       }
     });
   } catch (error) {
     console.error('uploadFile error:', error);
-    return res.status(500).json({ success: false, message: 'Server error uploading file' });
+    return res.status(500).json({ success: false, error: 'Server error uploading file' });
   }
 };
 
@@ -71,11 +73,11 @@ exports.deleteFile = async (req, res) => {
 
     const file = await WorkshopFile.findById(fileId);
     if (!file) {
-      return res.status(404).json({ success: false, message: 'File not found' });
+      return res.status(404).json({ success: false, error: 'File not found' });
     }
 
     if (file.category_id !== categoryId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized category access' });
+      return res.status(403).json({ success: false, error: 'Unauthorized category access' });
     }
 
     // Permission: uploader or head/vice_head
@@ -83,7 +85,7 @@ exports.deleteFile = async (req, res) => {
     const isLead = role === 'head' || role === 'vice_head';
 
     if (!isUploader && !isLead) {
-      return res.status(403).json({ success: false, message: 'Only the uploader or category leads can delete this file' });
+      return res.status(403).json({ success: false, error: 'Only the uploader or category leads can delete this file' });
     }
 
     // Delete database row
@@ -99,9 +101,9 @@ exports.deleteFile = async (req, res) => {
 
     await logWorkshopActivity(categoryId, workshopMemberId, 'file_deleted', `${email} deleted file "${file.file_name}"`);
 
-    return res.json({ success: true, message: 'File deleted successfully' });
+    return res.json({ success: true, data: { message: 'File deleted successfully' } });
   } catch (error) {
     console.error('deleteFile error:', error);
-    return res.status(500).json({ success: false, message: 'Server error deleting file' });
+    return res.status(500).json({ success: false, error: 'Server error deleting file' });
   }
 };

@@ -6,10 +6,10 @@ exports.getEvents = async (req, res) => {
   try {
     const { categoryId } = req.workshopMember;
     const events = await WorkshopEvent.findByCategoryId(categoryId);
-    return res.json({ success: true, events });
+    return res.json({ success: true, data: { events } });
   } catch (error) {
     console.error('getEvents error:', error);
-    return res.status(500).json({ success: false, message: 'Server error fetching events' });
+    return res.status(500).json({ success: false, error: 'Server error fetching events' });
   }
 };
 
@@ -19,7 +19,7 @@ exports.createEvent = async (req, res) => {
     const { title, description, eventDate, startTime, endTime, location } = req.body;
 
     if (!title || !title.trim() || !eventDate || !startTime) {
-      return res.status(400).json({ success: false, message: 'Title, date, and start time are required' });
+      return res.status(400).json({ success: false, error: 'Title, date, and start time are required' });
     }
 
     const eventId = await WorkshopEvent.create({
@@ -43,10 +43,10 @@ exports.createEvent = async (req, res) => {
 
     await logWorkshopActivity(categoryId, workshopMemberId, 'meeting_created', `${email} proposed meeting "${title.trim()}"`);
 
-    return res.status(201).json({ success: true, message: 'Meeting created successfully', eventId });
+    return res.status(201).json({ success: true, data: { message: 'Meeting created successfully', eventId } });
   } catch (error) {
     console.error('createEvent error:', error);
-    return res.status(500).json({ success: false, message: 'Server error proposing meeting' });
+    return res.status(500).json({ success: false, error: 'Server error proposing meeting' });
   }
 };
 
@@ -57,16 +57,16 @@ exports.updateEvent = async (req, res) => {
     const { title, description, eventDate, startTime, endTime, location } = req.body;
 
     if (!title || !title.trim() || !eventDate || !startTime) {
-      return res.status(400).json({ success: false, message: 'Title, date, and start time are required' });
+      return res.status(400).json({ success: false, error: 'Title, date, and start time are required' });
     }
 
     const event = await WorkshopEvent.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: 'Meeting not found' });
+      return res.status(404).json({ success: false, error: 'Meeting not found' });
     }
 
     if (event.category_id !== categoryId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized category access' });
+      return res.status(403).json({ success: false, error: 'Unauthorized category access' });
     }
 
     // Permission: creator or head/vice_head
@@ -74,7 +74,7 @@ exports.updateEvent = async (req, res) => {
     const isLead = role === 'head' || role === 'vice_head';
 
     if (!isCreator && !isLead) {
-      return res.status(403).json({ success: false, message: 'Only the creator or category leads can edit this meeting' });
+      return res.status(403).json({ success: false, error: 'Only the creator or category leads can edit this meeting' });
     }
 
     await WorkshopEvent.update(eventId, {
@@ -88,10 +88,10 @@ exports.updateEvent = async (req, res) => {
 
     await logWorkshopActivity(categoryId, workshopMemberId, 'meeting_updated', `${email} updated meeting "${title.trim()}"`);
 
-    return res.json({ success: true, message: 'Meeting updated successfully' });
+    return res.json({ success: true, data: { message: 'Meeting updated successfully' } });
   } catch (error) {
     console.error('updateEvent error:', error);
-    return res.status(500).json({ success: false, message: 'Server error updating meeting' });
+    return res.status(500).json({ success: false, error: 'Server error updating meeting' });
   }
 };
 
@@ -102,11 +102,11 @@ exports.deleteEvent = async (req, res) => {
 
     const event = await WorkshopEvent.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: 'Meeting not found' });
+      return res.status(404).json({ success: false, error: 'Meeting not found' });
     }
 
     if (event.category_id !== categoryId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized category access' });
+      return res.status(403).json({ success: false, error: 'Unauthorized category access' });
     }
 
     // Permission: creator or head/vice_head
@@ -114,16 +114,16 @@ exports.deleteEvent = async (req, res) => {
     const isLead = role === 'head' || role === 'vice_head';
 
     if (!isCreator && !isLead) {
-      return res.status(403).json({ success: false, message: 'Only the creator or category leads can delete this meeting' });
+      return res.status(403).json({ success: false, error: 'Only the creator or category leads can delete this meeting' });
     }
 
     await WorkshopEvent.delete(eventId);
 
     await logWorkshopActivity(categoryId, workshopMemberId, 'meeting_deleted', `${email} deleted meeting "${event.title}"`);
 
-    return res.json({ success: true, message: 'Meeting deleted successfully' });
+    return res.json({ success: true, data: { message: 'Meeting deleted successfully' } });
   } catch (error) {
     console.error('deleteEvent error:', error);
-    return res.status(500).json({ success: false, message: 'Server error deleting meeting' });
+    return res.status(500).json({ success: false, error: 'Server error deleting meeting' });
   }
 };

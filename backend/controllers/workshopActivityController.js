@@ -8,9 +8,9 @@ exports.getActivityLog = async (req, res) => {
     const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;
 
     const activities = await WorkshopActivityLog.findByCategoryId(catId, limit, offset);
-    return res.json({ success: true, activities });
+    return res.json({ success: true, data: { activities } });
   } catch (error) {
     console.error('getActivityLog error:', error);
-    return res.status(500).json({ success: false, message: 'Server error fetching activity log' });
+    return res.status(500).json({ success: false, error: 'Server error fetching activity log' });
   }
 };

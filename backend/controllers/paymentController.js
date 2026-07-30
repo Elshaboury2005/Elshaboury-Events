@@ -33,7 +33,7 @@ exports.create = async (req, res) => {
 
     const numAmount = typeof amount === 'number' ? amount : parseFloat(amount);
     if (numAmount == null || isNaN(numAmount) || numAmount < 0) {
-      return res.status(400).json({ success: false, message: 'Valid amount is required' });
+      return res.status(400).json({ success: false, error: 'Valid amount is required' });
     }
 
     if (!eventId) {
@@ -41,7 +41,7 @@ exports.create = async (req, res) => {
       try {
         const topupAmount = roundMoney(numAmount);
         if (topupAmount == null || topupAmount <= 0) {
-          return res.status(400).json({ success: false, message: 'Top-up amount must be greater than 0' });
+          return res.status(400).json({ success: false, error: 'Top-up amount must be greater than 0' });
         }
 
         const paymentId = uuidv4();
@@ -78,8 +78,10 @@ exports.create = async (req, res) => {
 
         return res.status(201).json({
           success: true,
-          message: 'Payment processed successfully',
-          payment: { id: paymentId, transactionId, amount: topupAmount, status: 'completed' }
+          data: {
+            message: 'Payment processed successfully',
+            payment: { id: paymentId, transactionId, amount: topupAmount, status: 'completed' }
+          }
         });
       } catch (error) {
         if (connection) {
@@ -145,7 +147,7 @@ exports.create = async (req, res) => {
         if (eventRows.length === 0) {
           await connection.rollback();
           connection.release();
-          return res.status(404).json({ success: false, message: 'Event not found' });
+          return res.status(404).json({ success: false, error: 'Event not found' });
         }
 
         const event = eventRows[0];
@@ -187,7 +189,7 @@ exports.create = async (req, res) => {
           if (!walletRow) {
             await connection.rollback();
             connection.release();
-            return res.status(404).json({ success: false, message: 'User not found' });
+            return res.status(404).json({ success: false, error: 'User not found' });
           }
 
           const balance = roundMoney(walletRow.wallet_balance || 0) || 0;
@@ -199,7 +201,7 @@ exports.create = async (req, res) => {
               connection.release();
               return res.status(400).json({
                 success: false,
-                message: 'Split payment requires a valid wallet amount smaller than the total'
+                error: 'Split payment requires a valid wallet amount smaller than the total'
               });
             }
             walletAmountUsedResolved = requestedWalletAmount;
@@ -212,7 +214,7 @@ exports.create = async (req, res) => {
             connection.release();
             return res.status(400).json({
               success: false,
-              message: `Insufficient wallet balance. Available: ${balance} EGP`
+              error: `Insufficient wallet balance. Available: ${balance} EGP`
             });
           }
 
@@ -282,7 +284,7 @@ exports.create = async (req, res) => {
             if (!walletRow) {
               await connection.rollback();
               connection.release();
-              return res.status(404).json({ success: false, message: 'User not found' });
+              return res.status(404).json({ success: false, error: 'User not found' });
             }
 
             const balance = roundMoney(walletRow.wallet_balance || 0) || 0;
@@ -294,7 +296,7 @@ exports.create = async (req, res) => {
                 connection.release();
                 return res.status(400).json({
                   success: false,
-                  message: 'Split payment requires a valid wallet amount smaller than the total'
+                  error: 'Split payment requires a valid wallet amount smaller than the total'
                 });
               }
               walletAmountUsedResolved = requestedWalletAmount;
@@ -305,7 +307,7 @@ exports.create = async (req, res) => {
               connection.release();
               return res.status(400).json({
                 success: false,
-                message: `Insufficient wallet balance. Available: ${balance} EGP`
+                error: `Insufficient wallet balance. Available: ${balance} EGP`
               });
             }
 
@@ -371,25 +373,27 @@ exports.create = async (req, res) => {
 
         return res.status(201).json({
           success: true,
-          message: 'Payment processed successfully',
-          payment: {
-            id: paymentId,
-            transactionId,
-            amount: amountToStore,
-            walletAmountUsed: walletAmountUsedResolved,
-            cardAmount: roundMoney(amountToStore - walletAmountUsedResolved) || 0,
-            method: normalizedMethod,
-            status: 'completed'
-          },
-          wallet: walletSnapshot ? { balance: walletSnapshot.balance } : null,
-          venueBooking: paymentVenueBooking
-            ? {
-              id: paymentVenueBooking.id,
-              status: paymentVenueBooking.status,
-              paymentStatus: paymentVenueBooking.payment_status,
-              bookedAt: paymentVenueBooking.booked_at
-            }
-            : null
+          data: {
+            message: 'Payment processed successfully',
+            payment: {
+              id: paymentId,
+              transactionId,
+              amount: amountToStore,
+              walletAmountUsed: walletAmountUsedResolved,
+              cardAmount: roundMoney(amountToStore - walletAmountUsedResolved) || 0,
+              method: normalizedMethod,
+              status: 'completed'
+            },
+            wallet: walletSnapshot ? { balance: walletSnapshot.balance } : null,
+            venueBooking: paymentVenueBooking
+              ? {
+                id: paymentVenueBooking.id,
+                status: paymentVenueBooking.status,
+                paymentStatus: paymentVenueBooking.payment_status,
+                bookedAt: paymentVenueBooking.booked_at
+              }
+              : null
+          }
         });
       }
 
@@ -404,8 +408,10 @@ exports.create = async (req, res) => {
 
       res.status(201).json({
         success: true,
-        message: 'Payment processed successfully',
-        payment: { id: paymentId, transactionId, amount: amountToStore, status: 'completed' }
+        data: {
+          message: 'Payment processed successfully',
+          payment: { id: paymentId, transactionId, amount: amountToStore, status: 'completed' }
+        }
       });
     } catch (error) {
       if (connection) {
@@ -416,7 +422,7 @@ exports.create = async (req, res) => {
     }
   } catch (error) {
     console.error('Create payment error:', error);
-    res.status(500).json({ success: false, message: 'Error processing payment' });
+    res.status(500).json({ success: false, error: 'Error processing payment' });
   }
 };
 
@@ -428,12 +434,12 @@ exports.update = async (req, res) => {
 
     const updated = await Payment.updateEventId(id, userId, eventId);
     if (!updated) {
-      return res.status(404).json({ success: false, message: 'Payment not found' });
+      return res.status(404).json({ success: false, error: 'Payment not found' });
     }
-    res.json({ success: true, message: 'Payment updated successfully' });
+    res.json({ success: true, data: { message: 'Payment updated successfully' } });
   } catch (error) {
     console.error('Update payment error:', error);
-    res.status(500).json({ success: false, message: 'Error updating payment' });
+    res.status(500).json({ success: false, error: 'Error updating payment' });
   }
 };
 
@@ -441,9 +447,9 @@ exports.getMy = async (req, res) => {
   try {
     const userId = req.user.userId;
     const payments = await Payment.findByUserId(userId);
-    res.json({ success: true, payments });
+    res.json({ success: true, data: { payments } });
   } catch (error) {
     console.error('Get payments error:', error);
-    res.status(500).json({ success: false, message: 'Error fetching payments' });
+    res.status(500).json({ success: false, error: 'Error fetching payments' });
   }
 };
